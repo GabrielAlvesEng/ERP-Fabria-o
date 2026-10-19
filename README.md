@@ -17,7 +17,7 @@ Stack: React, TypeScript, Tailwind CSS, Supabase (PostgreSQL, Auth, Storage) e N
 
 ## Estado atual
 
-Exemplar do módulo Vendas escrito e banco aplicado no Supabase "ERP Fabriaço" (ref `iobfyuscyzyjxmcwcqwj`), com os contatos de 2026 importados. Ver CHANGELOG.
+Publicado em https://erp-fabriaco-brasil.netlify.app (Netlify). Exemplar do módulo Vendas escrito e banco aplicado no Supabase "ERP Fabriaço" (ref `iobfyuscyzyjxmcwcqwj`), com os contatos de 2026 importados. Ver CHANGELOG.
 
 ## Como rodar localmente
 
