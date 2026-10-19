@@ -1,5 +1,5 @@
-import { useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { CalendarDays, Check, ChevronDown, Paperclip, X } from 'lucide-react';
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
@@ -34,7 +34,106 @@ export function Campo({ rotulo, erro, children, className }: { rotulo: string; e
 
 export const Entrada = (p: InputHTMLAttributes<HTMLInputElement>) => <input {...p} className={cx(campoBase, p.className)} />;
 export const AreaTexto = (p: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea rows={3} {...p} className={cx(campoBase, p.className)} />;
-export const Selecao = (p: SelectHTMLAttributes<HTMLSelectElement>) => <select {...p} className={cx(campoBase, p.className)} />;
+// Select com seta própria (sem a seta padrão do navegador).
+export function Selecao({ className, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className={cx('relative', className)}>
+      <select {...p} className={cx(campoBase, 'cursor-pointer appearance-none pr-9 disabled:cursor-not-allowed disabled:opacity-60')} />
+      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+    </div>
+  );
+}
+
+// Data: mostra sempre DD/MM/AAAA, guarda ISO (AAAA-MM-DD). O botão abre o calendário do navegador.
+function isoParaBR(iso: string) {
+  const [a, m, d] = (iso || '').split('-');
+  return a && m && d ? `${d}/${m}/${a}` : '';
+}
+function brParaISO(br: string) {
+  const m = br.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, d, mes, a] = m;
+  const dt = new Date(Number(a), Number(mes) - 1, Number(d));
+  return dt.getFullYear() === Number(a) && dt.getMonth() === Number(mes) - 1 && dt.getDate() === Number(d) ? `${a}-${mes}-${d}` : null;
+}
+function mascaraData(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  return [d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)].filter(Boolean).join('/');
+}
+
+export function CampoData({ value, onChange, disabled, required, id }: { value: string | null | undefined; onChange: (iso: string) => void; disabled?: boolean; required?: boolean; id?: string }) {
+  const [texto, setTexto] = useState(isoParaBR(value ?? ''));
+  const [invalida, setInvalida] = useState(false);
+  const nativo = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    setTexto(isoParaBR(value ?? ''));
+    setInvalida(false);
+  }, [value]);
+
+  function digitar(v: string) {
+    const t = mascaraData(v);
+    setTexto(t);
+    if (!t) { setInvalida(false); onChange(''); return; }
+    const iso = brParaISO(t);
+    setInvalida(t.length === 10 && !iso);
+    if (iso) onChange(iso);
+  }
+
+  function abrirCalendario() {
+    const el = nativo.current;
+    if (!el || disabled) return;
+    try { el.showPicker(); } catch { el.focus(); }
+  }
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        inputMode="numeric"
+        placeholder="DD/MM/AAAA"
+        value={texto}
+        onChange={(e) => digitar(e.target.value)}
+        onBlur={() => { if (texto && !brParaISO(texto)) setInvalida(true); }}
+        disabled={disabled}
+        required={required}
+        className={cx(campoBase, 'pr-10 tabular-nums disabled:opacity-60', invalida && 'border-red-500 focus:border-red-500 focus:ring-red-100')}
+      />
+      <button type="button" onClick={abrirCalendario} disabled={disabled} aria-label="Abrir calendário"
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 hover:bg-roxo-50 hover:text-roxo-600 disabled:opacity-40 dark:hover:bg-marinho-700">
+        <CalendarDays size={16} />
+      </button>
+      <input ref={nativo} type="date" tabIndex={-1} aria-hidden value={value ?? ''} onChange={(e) => onChange(e.target.value)}
+        className="pointer-events-none absolute bottom-0 right-0 h-0 w-0 opacity-0" />
+      {invalida && <span className="mt-1 block text-xs text-red-600">Data inválida</span>}
+    </div>
+  );
+}
+
+// Checkbox personalizada.
+export function Caixa({ marcado, onChange, children, disabled }: { marcado: boolean; onChange: (v: boolean) => void; children?: ReactNode; disabled?: boolean }) {
+  return (
+    <label className={cx('inline-flex cursor-pointer select-none items-center gap-2 text-sm', disabled && 'cursor-not-allowed opacity-60')}>
+      <span className="relative inline-flex">
+        <input type="checkbox" className="peer sr-only" checked={marcado} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+        <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-slate-300 bg-white transition peer-checked:border-roxo-500 peer-checked:bg-roxo-500 peer-focus-visible:ring-2 peer-focus-visible:ring-roxo-200 dark:border-marinho-500 dark:bg-marinho-800">
+          <Check size={13} strokeWidth={3} className={cx('text-white transition', marcado ? 'scale-100 opacity-100' : 'scale-50 opacity-0')} />
+        </span>
+      </span>
+      {children}
+    </label>
+  );
+}
+
+// Escolha de arquivo com botão no padrão do sistema.
+export function CampoArquivo({ arquivo, onChange, accept }: { arquivo: File | null; onChange: (f: File | null) => void; accept?: string }) {
+  return (
+    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm hover:border-roxo-500 dark:border-marinho-500">
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-roxo-50 px-2.5 py-1 font-medium text-roxo-700 dark:bg-roxo-700/30 dark:text-roxo-100"><Paperclip size={14} /> Escolher arquivo</span>
+      <span className="truncate text-slate-500">{arquivo ? arquivo.name : 'Nenhum arquivo selecionado'}</span>
+      <input type="file" accept={accept} className="sr-only" onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
+    </label>
+  );
+}
 
 export function Cartao({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cx('rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700', className)}>{children}</div>;

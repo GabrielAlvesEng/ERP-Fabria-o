@@ -13,9 +13,13 @@ export async function listarEmpresas(): Promise<Empresa[]> {
 }
 
 export async function salvarEmpresa(e: Partial<Empresa>): Promise<void> {
-  const { id, criado_em: _c, ...dados } = e;
+  const { id, criado_em: _c, ativo: _a, ...dados } = e;
   if (id) ok(await supabase.from('empresas').update(dados).eq('id', id));
   else ok(await supabase.from('empresas').insert(dados));
+}
+
+export async function definirAtivoEmpresa(id: string, ativo: boolean): Promise<void> {
+  ok(await supabase.from('empresas').update({ ativo }).eq('id', id));
 }
 
 // Contatos -------------------------------------------------------------------

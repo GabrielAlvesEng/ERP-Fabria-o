@@ -34,6 +34,13 @@ Este arquivo registra o que foi **decidido** e o que está **pendente**. Não su
 22. **Finalizado** = execução concluída. Depois vêm Emitido NF e Pago, todos movidos pelo Financeiro (decisão 12).
 23. **Exemplar agora:** o Gabriel autorizou executar um exemplar funcional de Vendas já, deixando as perguntas restantes para depois. Onde a pergunta continua aberta, o exemplar usa a recomendação do planejamento, e isso pode ser revisto.
 
+## Decisões confirmadas pelo Gabriel (19/10/2026, ajustes do exemplar)
+
+24. **Navegação:** a sidebar lista só os módulos. Dentro de Vendas, Dashboard, Empresas, Contatos e Propostas são abas superiores (estilo abas do Windows).
+25. **Desativar empresa:** o formulário de edição tem o botão "Desativar empresa" (com confirmação). A empresa desativada vai para a lista "Empresas desativadas", abaixo das ativas, e pode ser reativada. Desativar **não apaga nada** (contatos, propostas e histórico ficam) e a empresa deixa de aparecer na escolha de empresa para novos contatos e propostas. Quem pode: permissão vendas.editar.
+26. **CNPJ preenche a empresa:** ao digitar um CNPJ válido no cadastro, o sistema consulta a Receita Federal por serviços públicos gratuitos (BrasilAPI, depois CNPJ.ws, depois CNPJá) e preenche **só os campos vazios**. Só o CNPJ é enviado a esses serviços. Se todos falharem, o cadastro continua manual.
+27. **Campos de formulário:** datas sempre em DD/MM/AAAA com botão de calendário ao lado; checkboxes, selects e escolha de arquivo com visual próprio do sistema.
+
 ## Regras do módulo Vendas (do Documento Mestre)
 
 Detalhes completos em `DOCUMENTO_MESTRE.md`, seção 8. Resumo:

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { mensagemErro, numeroBR } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, Entrada, Modal, Selecao } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, Modal, Selecao } from '@/shared/ui';
 import { criarProposta, listarContatos, listarEmpresas } from '../api';
 
 export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; onFechar: () => void; onCriada: (id: string) => void }) {
@@ -41,7 +41,7 @@ export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; on
         <Campo rotulo="Empresa *">
           <Selecao value={f.empresa_id} onChange={(e) => setF({ ...f, empresa_id: e.target.value, contato_id: '' })}>
             <option value="">Selecione…</option>
-            {empresas.map((e) => <option key={e.id} value={e.id}>{e.nome_fantasia}</option>)}
+            {empresas.filter((e) => e.ativo).map((e) => <option key={e.id} value={e.id}>{e.nome_fantasia}</option>)}
           </Selecao>
         </Campo>
         <Campo rotulo="Contato *">
@@ -63,7 +63,7 @@ export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; on
         <Campo rotulo="Descrição" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} /></Campo>
         <Campo rotulo="Valor (R$)"><Entrada inputMode="decimal" value={f.valor} onChange={set('valor')} placeholder="0,00" /></Campo>
         <Campo rotulo="Prazo previsto"><Entrada value={f.prazo_previsto} onChange={set('prazo_previsto')} placeholder="ex.: 30 dias" /></Campo>
-        <Campo rotulo="Validade da proposta"><Entrada type="date" value={f.validade} onChange={set('validade')} /></Campo>
+        <Campo rotulo="Validade da proposta"><CampoData value={f.validade} onChange={(v) => setF({ ...f, validade: v })} /></Campo>
         <Campo rotulo="Condições comerciais" className="sm:col-span-2"><AreaTexto value={f.condicoes_comerciais} onChange={set('condicoes_comerciais')} /></Campo>
         <div className="flex justify-end gap-2 sm:col-span-2">
           <Botao type="button" variante="secundario" onClick={onFechar}>Cancelar</Botao>

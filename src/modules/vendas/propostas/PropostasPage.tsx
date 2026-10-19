@@ -5,7 +5,7 @@ import { AlarmClock, Plus, Search } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Cabecalho, Entrada, Selecao, Selo } from '@/shared/ui';
+import { Aviso, Botao, Cabecalho, Caixa, Entrada, Selecao, Selo } from '@/shared/ui';
 import { listarPropostas, moverProposta } from '../api';
 import { STATUS, type Proposta, type StatusProposta } from '../types';
 import { followupVencido, rotuloRevisao, tipoTransicao } from './regras';
@@ -94,7 +94,7 @@ export function PropostasPage() {
           <option value="">Todas as empresas</option>
           {empresasDoAno.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
         </Selecao>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={soVencidos} onChange={(e) => setSoVencidos(e.target.checked)} /> Só follow-up vencido</label>
+        <Caixa marcado={soVencidos} onChange={setSoVencidos}>Só follow-up vencido</Caixa>
       </div>
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
       {isLoading ? <div className="text-sm text-slate-500">Carregando…</div> : (

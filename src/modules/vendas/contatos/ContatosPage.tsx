@@ -4,7 +4,7 @@ import { CalendarPlus, Pencil, Plus, Search } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Cabecalho, Campo, Cartao, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Cartao, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import { incluirContatoNoAno, listarContatos, listarEmpresas, salvarContato } from '../api';
 import type { Contato } from '../types';
 
@@ -61,7 +61,7 @@ export function ContatosPage() {
             <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
             <Entrada placeholder="Buscar por nome, empresa ou e-mail" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={todos} onChange={(e) => setTodos(e.target.checked)} /> Mostrar contatos de todos os anos</label>
+          <Caixa marcado={todos} onChange={setTodos}>Mostrar contatos de todos os anos</Caixa>
         </div>
         {isLoading ? <Vazio>Carregando…</Vazio> : lista.length === 0 ? <Vazio>Nenhum contato em {ano}. Use “Incluir contato existente” ou crie uma proposta.</Vazio> : (
           <div className="overflow-x-auto">
@@ -143,7 +143,7 @@ function ContatoForm({ inicial, ano, onFechar }: { inicial: Partial<Contato>; an
         <Campo rotulo="Empresa *">
           <Selecao value={f.empresa_id} onChange={set('empresa_id')}>
             <option value="">Selecione…</option>
-            {empresas.map((e) => <option key={e.id} value={e.id}>{e.nome_fantasia}</option>)}
+            {empresas.filter((e) => e.ativo || e.id === f.empresa_id).map((e) => <option key={e.id} value={e.id}>{e.nome_fantasia}</option>)}
           </Selecao>
         </Campo>
         <Campo rotulo="Cargo"><Entrada value={f.cargo} onChange={set('cargo')} /></Campo>
@@ -154,9 +154,9 @@ function ContatoForm({ inicial, ano, onFechar }: { inicial: Partial<Contato>; an
         <Campo rotulo="Unidade / cidade"><Entrada value={f.unidade} onChange={set('unidade')} /></Campo>
         <Campo rotulo="Observações" className="sm:col-span-2"><AreaTexto value={f.observacoes} onChange={set('observacoes')} /></Campo>
         {!f.id && (
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input type="checkbox" checked={noAno} onChange={(e) => setNoAno(e.target.checked)} /> Incluir já em {ano} (recebe o próximo código do cliente)
-          </label>
+          <div className="sm:col-span-2">
+            <Caixa marcado={noAno} onChange={setNoAno}>Incluir já em {ano} (recebe o próximo código do cliente)</Caixa>
+          </div>
         )}
         <div className="flex justify-end gap-2 sm:col-span-2">
           <Botao type="button" variante="secundario" onClick={onFechar}>Cancelar</Botao>

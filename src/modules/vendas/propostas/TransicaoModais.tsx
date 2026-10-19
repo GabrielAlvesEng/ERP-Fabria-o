@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { hojeISO, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, Entrada, Modal, Selecao } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, Entrada, Modal, Selecao } from '@/shared/ui';
 import { aprovarProposta, enviarComprovante, moverProposta, registrarFollowup, reprovarProposta } from '../api';
 import type { Proposta, StatusProposta } from '../types';
 
@@ -47,8 +47,8 @@ export function EnviarModal({ proposta, onFechar }: { proposta: Proposta; onFech
       <Form onSubmit={() => m.mutate()}>
         <Aviso tipo="info">Ao enviar, a revisão R{proposta.revisao_atual} fica congelada: dados e arquivos não podem mais ser alterados. Ajustes depois disso geram nova revisão.</Aviso>
         {erro && <Aviso>{erro}</Aviso>}
-        <Campo rotulo="Data de envio"><Entrada type="date" value={data} onChange={(e) => setData(e.target.value)} required /></Campo>
-        <Campo rotulo="Próximo follow-up (vazio = prazo padrão de 5 dias)"><Entrada type="date" value={retorno} onChange={(e) => setRetorno(e.target.value)} /></Campo>
+        <Campo rotulo="Data de envio"><CampoData value={data} onChange={setData} required /></Campo>
+        <Campo rotulo="Próximo follow-up (vazio = prazo padrão de 5 dias)"><CampoData value={retorno} onChange={setRetorno} /></Campo>
         <Rodape onFechar={onFechar} ocupado={m.isPending} rotulo="Confirmar envio" />
       </Form>
     </Modal>
@@ -75,11 +75,11 @@ export function AprovarModal({ proposta, onFechar }: { proposta: Proposta; onFec
             </Selecao>
           </Campo>
           <Campo rotulo="Nº do documento (PC, contrato…)"><Entrada value={f.numero_documento} onChange={set('numero_documento')} /></Campo>
-          <Campo rotulo="Data da aprovação"><Entrada type="date" value={f.data_aprovacao} onChange={set('data_aprovacao')} /></Campo>
+          <Campo rotulo="Data da aprovação"><CampoData value={f.data_aprovacao} onChange={(v) => setF({ ...f, data_aprovacao: v })} /></Campo>
           <Campo rotulo={`Valor aprovado (proposta: ${moeda(proposta.valor)})`}><Entrada inputMode="decimal" value={f.valor_aprovado} onChange={set('valor_aprovado')} /></Campo>
         </div>
         <Campo rotulo="Comprovante * (PDF ou imagem)">
-          <input type="file" accept=".pdf,image/*,.eml,.msg" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
+          <CampoArquivo arquivo={arquivo} onChange={setArquivo} accept=".pdf,image/*,.eml,.msg" />
         </Campo>
         <Campo rotulo="Observações"><AreaTexto value={f.observacoes} onChange={set('observacoes')} /></Campo>
         <Aviso tipo="info">Ao aprovar, o contato passa a ser Cliente.</Aviso>
@@ -152,7 +152,7 @@ export function FollowupModal({ proposta, onFechar }: { proposta: Proposta; onFe
       <Form onSubmit={() => m.mutate()}>
         {erro && <Aviso>{erro}</Aviso>}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Campo rotulo="Data do contato"><Entrada type="date" value={f.data_contato} onChange={set('data_contato')} /></Campo>
+          <Campo rotulo="Data do contato"><CampoData value={f.data_contato} onChange={(v) => setF({ ...f, data_contato: v })} /></Campo>
           <Campo rotulo="Canal">
             <Selecao value={f.canal} onChange={set('canal')}>
               {['Ligação', 'WhatsApp', 'E-mail', 'Presencial', 'Outro'].map((o) => <option key={o}>{o}</option>)}
@@ -160,7 +160,7 @@ export function FollowupModal({ proposta, onFechar }: { proposta: Proposta; onFe
           </Campo>
         </div>
         <Campo rotulo="Resumo"><AreaTexto value={f.resumo} onChange={set('resumo')} /></Campo>
-        <Campo rotulo="Próximo follow-up"><Entrada type="date" value={f.proxima_data} onChange={set('proxima_data')} /></Campo>
+        <Campo rotulo="Próximo follow-up"><CampoData value={f.proxima_data} onChange={(v) => setF({ ...f, proxima_data: v })} /></Campo>
         <Rodape onFechar={onFechar} ocupado={m.isPending} rotulo="Registrar" />
       </Form>
     </Modal>

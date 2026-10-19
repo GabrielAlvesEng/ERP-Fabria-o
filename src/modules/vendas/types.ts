@@ -16,6 +16,7 @@ export interface Empresa {
   site: string;
   segmento_id: string | null;
   observacoes: string;
+  ativo: boolean;
   criado_em: string;
 }
 
