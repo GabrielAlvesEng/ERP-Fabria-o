@@ -13,6 +13,7 @@ Stack: React, TypeScript, Tailwind CSS, Supabase (PostgreSQL, Auth, Storage) e N
 - `docs/REGRAS_DE_NEGOCIO.md` — decisões confirmadas e pendências.
 - `docs/FLUXOGRAMA.md` — fluxograma operacional da empresa.
 - `docs/PLANEJAMENTO_VENDAS.md` — planejamento do módulo Vendas (aguardando aprovação).
+- `docs/PLANEJAMENTO_CUSTOS_E_EMAIL.md` — aba Custos da proposta e e-mail de envio (aguardando aprovação).
 - `referencia/` — material de um sistema anterior, somente para consulta.
 
 ## Estado atual
