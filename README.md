@@ -17,4 +17,14 @@ Stack: React, TypeScript, Tailwind CSS, Supabase (PostgreSQL, Auth, Storage) e N
 
 ## Estado atual
 
-Em planejamento do módulo Vendas. Nenhum código de produção foi escrito ainda.
+Exemplar do módulo Vendas escrito (ver CHANGELOG). Migrations ainda não aplicadas no Supabase.
+
+## Como rodar localmente
+
+1. `npm install`
+2. Copie `.env.example` para `.env.local` e preencha a URL do projeto Supabase e a chave pública (anon/publishable).
+3. `npm run dev` e abra http://localhost:5173
+
+Testes: `npm test`. Build: `npm run build` (saída em `dist/`, publicada pelo Netlify conforme `netlify.toml`).
+
+Banco: migrations em `supabase/migrations/`, aplicadas em ordem, nunca editadas depois de aplicadas.

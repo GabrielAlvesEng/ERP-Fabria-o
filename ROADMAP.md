@@ -34,4 +34,4 @@ A ordem dos módulos 2 a 8 será revista quando o fluxograma completo da empresa
 
 ## Próxima etapa autorizada
 
-Planejamento do módulo Vendas apresentado em `docs/PLANEJAMENTO_VENDAS.md` (19/10/2026), versão 2 com as primeiras respostas do Gabriel (decisões 8 a 17). **Aguardando as perguntas [DECIDIR] restantes e a aprovação.** Depois da aprovação, a próxima etapa é a entrega V0 (Base), e nada além dela sem validação.
+Exemplar funcional de Vendas autorizado (decisão 23) e escrito. Falta: aplicar as migrations no Supabase do Gabriel (após confirmar o Project Ref), rodar a importação de 2026, criar o usuário geral, testar no navegador e publicar o repositório no GitHub. Depois, o Gabriel valida o exemplar e responde as perguntas [DECIDIR] restantes.
