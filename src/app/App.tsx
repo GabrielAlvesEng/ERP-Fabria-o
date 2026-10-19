@@ -4,6 +4,7 @@ import { supabaseConfigurado } from '@/shared/lib/supabase';
 import { AnoProvider } from './AnoContext';
 import { Layout } from './Layout';
 import { LoginPage } from './LoginPage';
+import { VendasLayout } from '@/modules/vendas/VendasLayout';
 import { DashboardPage } from '@/modules/vendas/dashboard/DashboardPage';
 import { EmpresasPage } from '@/modules/vendas/empresas/EmpresasPage';
 import { ContatosPage } from '@/modules/vendas/contatos/ContatosPage';
@@ -26,10 +27,12 @@ export function App() {
     <AnoProvider>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/vendas" element={<DashboardPage />} />
-          <Route path="/vendas/empresas" element={<EmpresasPage />} />
-          <Route path="/vendas/contatos" element={<ContatosPage />} />
-          <Route path="/vendas/propostas" element={<PropostasPage />} />
+          <Route path="/vendas" element={<VendasLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="empresas" element={<EmpresasPage />} />
+            <Route path="contatos" element={<ContatosPage />} />
+            <Route path="propostas" element={<PropostasPage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/vendas" replace />} />
         </Route>
       </Routes>

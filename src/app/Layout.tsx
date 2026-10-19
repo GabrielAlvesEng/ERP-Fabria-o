@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Building2, ChevronLeft, ChevronRight, KanbanSquare, LayoutDashboard, LogOut, Moon, Sun, Users } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
 
-const menu = [
-  { to: '/vendas', rotulo: 'Dashboard Comercial', icone: LayoutDashboard, end: true },
-  { to: '/vendas/empresas', rotulo: 'Empresas', icone: Building2 },
-  { to: '/vendas/contatos', rotulo: 'Contatos', icone: Users },
-  { to: '/vendas/propostas', rotulo: 'Propostas', icone: KanbanSquare },
-];
+// Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
+const menu = [{ to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness }];
 
 export function Layout() {
   const { session, sair } = useAuth();
@@ -25,13 +21,12 @@ export function Layout() {
           <div className="text-lg font-bold text-white">ERP Fabriaço</div>
           <div className="text-xs text-slate-400">Montagens Industriais e Caldeiraria</div>
         </div>
-        <div className="px-5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Vendas</div>
+        <div className="px-5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Módulos</div>
         <nav className="flex-1 space-y-1 px-3">
           {menu.map((m) => (
             <NavLink
               key={m.to}
               to={m.to}
-              end={m.end}
               className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-roxo-500 text-white' : 'hover:bg-marinho-700'}`}
             >
               <m.icone size={18} /> {m.rotulo}
@@ -50,7 +45,7 @@ export function Layout() {
         <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-marinho-700 dark:bg-marinho-800">
           <nav className="flex gap-1 overflow-x-auto md:hidden">
             {menu.map((m) => (
-              <NavLink key={m.to} to={m.to} end={m.end} title={m.rotulo} className={({ isActive }) => `rounded-lg p-2 ${isActive ? 'bg-roxo-500 text-white' : ''}`}>
+              <NavLink key={m.to} to={m.to} title={m.rotulo} className={({ isActive }) => `rounded-lg p-2 ${isActive ? 'bg-roxo-500 text-white' : ''}`}>
                 <m.icone size={18} />
               </NavLink>
             ))}
