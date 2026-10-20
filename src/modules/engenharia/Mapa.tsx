@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Minus, Plus, RotateCcw } from 'lucide-react';
 import { NOME_STATUS, montarArvore, type Conjunto, type No, type Peca } from './regras';
-import { COR_STATUS, ICONE_TIPO, codigoCurto } from './Arvore';
+import { COR_ICONE, COR_STATUS, ICONE_TIPO, codigoCurto } from './Arvore';
 
 // Mapa da estrutura em cards (organograma), no estilo de quadro do Figma.
 export function MapaView({ projetoCodigo, conjuntos, pecas, onAbrir }: { projetoCodigo: string; conjuntos: Conjunto[]; pecas: Peca[]; onAbrir: (id: string) => void }) {
@@ -15,12 +15,12 @@ export function MapaView({ projetoCodigo, conjuntos, pecas, onAbrir }: { projeto
 
   const Card = ({ n }: { n: No }) => {
     const Icone = ICONE_TIPO[n.tipo];
-    const cor = n.tipo === 'geral' ? 'border-t-marinho-500' : n.tipo === 'submontagem' ? 'border-t-roxo-500' : 'border-t-petroleo-500';
+    const cor = { geral: 'border-t-marinho-500', submontagem: 'border-t-roxo-500', conjunto: 'border-t-petroleo-500', soldado: 'border-t-amber-500' }[n.tipo];
     return (
       <button onClick={() => onAbrir(n.id)}
         className={`w-48 rounded-xl border-t-4 bg-white p-3 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-roxo-500 dark:bg-marinho-800 dark:ring-marinho-600 ${cor}`}>
         <div className="flex items-center justify-between">
-          <Icone size={15} className={n.tipo === 'geral' ? 'text-marinho-500 dark:text-slate-200' : n.tipo === 'submontagem' ? 'text-roxo-500' : 'text-petroleo-500'} />
+          <Icone size={15} className={COR_ICONE[n.tipo]} />
           <span className="inline-flex items-center gap-1 text-[10px] text-slate-500"><span className={`h-2 w-2 rounded-full ${COR_STATUS[n.status]}`} />{NOME_STATUS[n.status]}</span>
         </div>
         <div className="mt-1 font-mono text-[10px] text-slate-500">{codigoCurto(n.codigo, projetoCodigo)}</div>

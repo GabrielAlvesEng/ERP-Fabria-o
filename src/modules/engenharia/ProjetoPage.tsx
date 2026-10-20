@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ClipboardList, Download, ListTree, Network, Settings2, Table2 } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Download, FileUp, ListTree, Network, Settings2, Table2 } from 'lucide-react';
 import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Campo, CampoData, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
+import { dataHoraBR, mensagemErro } from '@/shared/lib/formato';
+import { AreaTexto, Aviso, Botao, Campo, CampoData, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
 import { atualizarProjeto, listarConjuntos, listarPecas, obterProjeto } from './api';
 import { ArvoreView } from './Arvore';
+import { ImportarSolidworks } from './ImportarSolidworks';
 import { MapaView } from './Mapa';
 import { COR_STATUS_PROJETO, NOME_STATUS_PROJETO } from './ProjetosPage';
 import { COD_OPS, NOME_PASTA, listaMateriais, progresso, rotuloMaterial, type CodOp, type Pasta, type Projeto } from './regras';
@@ -25,6 +26,8 @@ export function ProjetoPage() {
   const { id = '' } = useParams();
   const [aba, setAba] = useState<Aba>('arvore');
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [importando, setImportando] = useState(false);
+  const { pode } = useAuth();
   const { data: projeto, error } = useQuery({ queryKey: ['eng', id, 'projeto'], queryFn: () => obterProjeto(id) });
   const { data: conjuntos = [] } = useQuery({ queryKey: ['eng', id, 'conjuntos'], queryFn: () => listarConjuntos(id) });
   const { data: pecas = [] } = useQuery({ queryKey: ['eng', id, 'pecas'], queryFn: () => listarPecas(id) });
@@ -45,7 +48,10 @@ export function ProjetoPage() {
           <div className="font-semibold">{projeto.titulo}</div>
           <div className="text-sm text-slate-500">{projeto.empresas?.nome_fantasia}</div>
         </div>
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap items-end gap-4 text-sm">
+          {pode('engenharia', 'editar') && !projeto.importado_cad_em && (
+            <Botao variante="secundario" onClick={() => setImportando(true)}><FileUp size={15} /> Importar do SolidWorks</Botao>
+          )}
           <Indicador rotulo="Conjuntos" valor={String(conjuntos.length)} />
           <Indicador rotulo="Peças e itens" valor={String(pecas.length)} />
           <div>
@@ -71,6 +77,7 @@ export function ProjetoPage() {
       {aba === 'bom' && <ListaMateriais projeto={projeto} />}
       {aba === 'kickoff' && <KickoffAba propostaId={projeto.proposta_id} statusProposta="Aprovado" somenteLeitura />}
       {aba === 'dados' && <DadosProjeto projeto={projeto} />}
+      {importando && <ImportarSolidworks projeto={projeto} conjuntos={conjuntos} pecas={pecas} onFechar={() => setImportando(false)} />}
     </div>
   );
 }
@@ -168,9 +175,31 @@ function DadosProjeto({ projeto }: { projeto: Projeto }) {
       <Campo rotulo="Observações">
         <AreaTexto defaultValue={projeto.observacoes} disabled={!editavel} rows={5} onBlur={(e) => e.target.value !== projeto.observacoes && salvar({ observacoes: e.target.value })} />
       </Campo>
+      {projeto.importado_cad_em && <DadosCad projeto={projeto} />}
       <div className="text-sm text-slate-500">
         Código do projeto = código da proposta (decisão 11). Proposta de origem: <Link to="/vendas/propostas" className="font-mono text-roxo-600 hover:underline">{projeto.codigo}</Link>
       </div>
     </Cartao>
+  );
+}
+
+// Dados que vieram do carimbo do SolidWorks na importação (só leitura).
+function DadosCad({ projeto }: { projeto: Projeto }) {
+  const d = (projeto.dados_cad ?? {}) as Record<string, string | number | null>;
+  const linhas: [string, string | number | null | undefined][] = [
+    ['Código CAD', d.codigo_cad], ['Título no CAD', d.titulo], ['Nº pedido no CAD', d.pedido],
+    ['Peso total (kg)', d.peso == null ? null : Number(d.peso).toLocaleString('pt-BR')], ['Área de pintura (m²)', d.area_pintura == null ? null : Number(d.area_pintura).toLocaleString('pt-BR')],
+    ['Projetado', [d.projetado, d.data_projetado].filter(Boolean).join(' · ')], ['Desenhado', [d.desenhado, d.data_desenhado].filter(Boolean).join(' · ')],
+    ['Aprovado', [d.aprovado, d.data_aprovado].filter(Boolean).join(' · ')], ['Revisão do CAD', d.revisao],
+  ];
+  return (
+    <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-marinho-700/40">
+      <div className="mb-2 font-semibold">Importado do SolidWorks em {dataHoraBR(projeto.importado_cad_em)}{d.macro ? ` (macro ${d.macro})` : ''}</div>
+      <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+        {linhas.filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => (
+          <div key={k} className="flex gap-2"><dt className="text-slate-500">{k}:</dt><dd className="font-medium">{v}</dd></div>
+        ))}
+      </dl>
+    </div>
   );
 }

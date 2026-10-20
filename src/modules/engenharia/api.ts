@@ -65,3 +65,8 @@ export async function listarCatalogo(): Promise<MaterialCatalogo[]> {
 export async function excluirItem(tabela: 'conjunto' | 'peca', id: string): Promise<void> {
   ok(await supabase.rpc('excluir_item_eng', { p_tabela: tabela, p_id: id }));
 }
+
+// Importação do SolidWorks: o plano vem do leitor do JSON (solidworks.ts); o banco gera os códigos e valida.
+export async function importarSolidworks(projetoId: string, plano: unknown): Promise<{ nos: number; pecas: number }> {
+  return ok(await supabase.rpc('importar_solidworks', { p_projeto: projetoId, p_plano: plano })) as { nos: number; pecas: number };
+}

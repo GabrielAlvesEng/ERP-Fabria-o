@@ -1,6 +1,6 @@
 // Regras da Engenharia: árvore de montagens, classificação das peças e lista de materiais (BOM).
 
-export type TipoConjunto = 'geral' | 'submontagem' | 'conjunto';
+export type TipoConjunto = 'geral' | 'submontagem' | 'conjunto' | 'soldado';
 export type StatusConjunto = 'modelando' | 'detalhando' | 'revisao' | 'liberado';
 export const COD_OPS = ['LC', 'LP', 'PO', 'GU', 'DO', 'CL', 'US', 'CM'] as const;
 export type CodOp = (typeof COD_OPS)[number];
@@ -21,6 +21,8 @@ export interface Projeto {
   prazo: string | null;
   observacoes: string;
   criado_em: string;
+  dados_cad?: Record<string, unknown>;
+  importado_cad_em?: string | null;
   empresas?: { nome_fantasia: string } | null;
 }
 
@@ -38,6 +40,7 @@ export interface Conjunto {
   status: StatusConjunto;
   revisao: string;
   ordem: number;
+  codigo_cad?: string;
 }
 
 export interface Peca {
@@ -53,6 +56,8 @@ export interface Peca {
   cod_mat: string | null;
   espessura: number | null;
   peso_unit: number | null;
+  comprimento?: number | null;
+  codigo_cad?: string;
   observacoes: string;
 }
 

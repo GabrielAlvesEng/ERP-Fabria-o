@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Box, Boxes, ChevronRight, Component, Copy, Folder, Nut, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { Box, Boxes, ChevronRight, Component, Copy, Flame, Folder, Nut, Package, Plus, Search, Trash2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, CampoCelula, CampoNumero, Selo } from '@/shared/ui';
@@ -10,8 +10,10 @@ import {
   type CodOp, type Conjunto, type No, type Pasta, type Peca, type StatusConjunto,
 } from './regras';
 
-export const ICONE_TIPO = { geral: Boxes, submontagem: Box, conjunto: Component };
-export const NOME_TIPO = { geral: 'Montagem geral', submontagem: 'Submontagem', conjunto: 'Conjunto secundário' };
+export const ICONE_TIPO = { geral: Boxes, submontagem: Box, conjunto: Component, soldado: Flame };
+export const NOME_TIPO = { geral: 'Montagem geral', submontagem: 'Submontagem', conjunto: 'Conjunto secundário', soldado: 'Conjunto soldado' };
+// Cor do ícone por tipo (o conjunto soldado em âmbar, para destacar que é uma peça soldada única).
+export const COR_ICONE = { geral: 'text-marinho-500 dark:text-slate-200', submontagem: 'text-roxo-500', conjunto: 'text-petroleo-500', soldado: 'text-amber-500' };
 export const COR_STATUS: Record<StatusConjunto, string> = {
   modelando: 'bg-slate-400', detalhando: 'bg-amber-500', revisao: 'bg-roxo-500', liberado: 'bg-petroleo-500',
 };
@@ -62,7 +64,7 @@ export function ArvoreView({ projetoCodigo, conjuntos, pecas, selecionado, onSel
           >
             <ChevronRight size={14} className={`transition-transform ${aberto ? 'rotate-90' : ''}`} />
           </button>
-          <Icone size={15} className={ativo ? 'text-white' : n.tipo === 'geral' ? 'text-marinho-500 dark:text-slate-200' : n.tipo === 'submontagem' ? 'text-roxo-500' : 'text-petroleo-500'} />
+          <Icone size={15} className={ativo ? 'text-white' : COR_ICONE[n.tipo]} />
           <span className={`font-mono text-[11px] ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{codigoCurto(n.codigo, projetoCodigo)}</span>
           <span className="min-w-0 flex-1 truncate">{n.nome}</span>
           {Number(n.quantidade) !== 1 && <span className={`rounded px-1 text-[10px] font-semibold ${ativo ? 'bg-white/20' : 'bg-slate-200 text-slate-600 dark:bg-marinho-600 dark:text-slate-200'}`}>×{Number(n.quantidade).toLocaleString('pt-BR')}</span>}
@@ -131,7 +133,7 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
       <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            <div className={`rounded-xl p-2.5 ${c.tipo === 'geral' ? 'bg-marinho-50 text-marinho-500 dark:bg-marinho-700 dark:text-slate-100' : c.tipo === 'submontagem' ? 'bg-roxo-50 text-roxo-600 dark:bg-roxo-700/30 dark:text-roxo-100' : 'bg-petroleo-50 text-petroleo-600 dark:bg-petroleo-600/30 dark:text-teal-100'}`}>
+            <div className={`rounded-xl p-2.5 ${c.tipo === 'geral' ? 'bg-marinho-50 text-marinho-500 dark:bg-marinho-700 dark:text-slate-100' : c.tipo === 'submontagem' ? 'bg-roxo-50 text-roxo-600 dark:bg-roxo-700/30 dark:text-roxo-100' : c.tipo === 'soldado' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-petroleo-50 text-petroleo-600 dark:bg-petroleo-600/30 dark:text-teal-100'}`}>
               <Icone size={22} />
             </div>
             <div className="min-w-0">
@@ -140,7 +142,7 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
                 <button title="Copiar código" onClick={() => { navigator.clipboard?.writeText(c.codigo); setCopiado(true); }} className="text-slate-400 hover:text-roxo-600"><Copy size={13} /></button>
                 {copiado && <span className="text-[11px] text-petroleo-600">copiado</span>}
               </div>
-              <div className="text-xs text-slate-500">{NOME_TIPO[c.tipo]} · aparece {mult.toLocaleString('pt-BR')}× no projeto</div>
+              <div className="text-xs text-slate-500">{NOME_TIPO[c.tipo]} · aparece {mult.toLocaleString('pt-BR')}× no projeto{c.codigo_cad && c.codigo_cad !== c.codigo && <> · CAD <span className="font-mono">{c.codigo_cad}</span></>}</div>
               <div className="mt-1 text-lg font-semibold">
                 {editavel ? <CampoCelula valor={c.nome} onConfirmar={(v) => v.trim() && tentar(() => atualizarConjunto(c.id, { nome: v.trim() }))} /> : c.nome}
               </div>
@@ -166,15 +168,15 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
         </div>
       </div>
 
-      {c.tipo !== 'conjunto' && (
+      {(c.tipo === 'geral' || c.tipo === 'submontagem') && (
         <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700">
-          <div className="mb-2 flex items-center gap-2 font-semibold">{c.tipo === 'geral' ? 'Submontagens' : 'Conjuntos secundários'} <Selo>{filhos.length}</Selo></div>
+          <div className="mb-2 flex items-center gap-2 font-semibold">{c.tipo === 'geral' ? (filhos.some((f) => f.tipo === 'soldado') ? 'Submontagens e conjuntos soldados' : 'Submontagens') : 'Conjuntos secundários'} <Selo>{filhos.length}</Selo></div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {filhos.map((f) => {
               const I = ICONE_TIPO[f.tipo];
               return (
                 <button key={f.id} onClick={() => onSelecionar(f.id)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm ring-1 ring-slate-200 transition hover:ring-roxo-500 dark:ring-marinho-600">
-                  <I size={16} className={f.tipo === 'submontagem' ? 'text-roxo-500' : 'text-petroleo-500'} />
+                  <I size={16} className={COR_ICONE[f.tipo]} />
                   <span className="font-mono text-[11px] text-slate-500">{codigoCurto(f.codigo, projetoCodigo)}</span>
                   <span className="min-w-0 flex-1 truncate">{f.nome}</span>
                   <span className={`h-2 w-2 rounded-full ${COR_STATUS[f.status]}`} />
@@ -223,7 +225,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
 
   return (
     <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700">
-      <div className="mb-2 flex items-center gap-2 font-semibold">Peças e itens {conjunto.tipo === 'geral' ? 'da montagem geral' : conjunto.tipo === 'submontagem' ? 'desta submontagem' : 'deste conjunto'} <Selo>{pecas.length}</Selo></div>
+      <div className="mb-2 flex items-center gap-2 font-semibold">Peças e itens {conjunto.tipo === 'geral' ? 'da montagem geral' : conjunto.tipo === 'submontagem' ? 'desta submontagem' : conjunto.tipo === 'soldado' ? 'deste conjunto soldado (lista de corte)' : 'deste conjunto'} <Selo>{pecas.length}</Selo></div>
 
       {(['fabricada', 'fixador', 'comercial'] as Pasta[]).map((pasta) => {
         const lista = porPasta(pasta);
