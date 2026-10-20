@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, GripVertical, Lock, Plus, Scale, Trash2 } from 'lucide-react';
+import { ChevronRight, GripVertical, Lock, Map as IconeMapa, Plus, Route, Scale, Trash2 } from 'lucide-react';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -13,12 +13,12 @@ import { Aviso, Botao, CampoCelula, CampoEscolha, CampoNumero, Campo, Entrada, M
 import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
 import {
-  adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarRefMaoObraMaquinas, listarRefMateriais, removerLinha, reordenarLinhas,
-  type RefMaoObra, type RefMaquina, type RefMaterial,
+  adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarRefMaoObraMaquinas, listarRefMateriais, listarVeiculosECombustivel, removerLinha, reordenarLinhas,
+  type RefMaoObra, type RefMaquina, type RefMaterial, type RefVeiculo,
 } from './api';
 import {
-  COLUNAS_MATERIAIS, GRUPOS_MATERIAIS, SECOES, pesoChapa, reordenar, resumoItem, totalLinha, totalSecao,
-  type Coluna, type CustoItem, type CustoLinha, type GrupoMaterial, type Secao,
+  LINK_QUALP, SECOES, linkMapa, pesoChapa, pesoMateriais, reordenar, resumoItem, secoesVisiveis, totalLinha, totalSecao,
+  type Bloco, type Coluna, type CustoItem, type CustoLinha, type DefSecao, type GrupoMaterial, type Secao,
 } from './regras';
 
 const celula = 'px-1 py-1 align-middle';
@@ -38,6 +38,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
   const { data: refs = [] } = useQuery({ queryKey: ['ref_materiais'], queryFn: listarRefMateriais, staleTime: 5 * 60_000 });
   const { data: catalogo = [] } = useQuery({ queryKey: ['catalogo_materiais'], queryFn: listarCatalogo, staleTime: 10 * 60_000 });
   const { data: refMo } = useQuery({ queryKey: ['ref_mo_maquinas'], queryFn: listarRefMaoObraMaquinas, staleTime: 10 * 60_000 });
+  const { data: frota } = useQuery({ queryKey: ['ref_veiculos'], queryFn: listarVeiculosECombustivel, staleTime: 10 * 60_000 });
   const [itemId, setItemId] = useState<string | null>(null);
   const item = itens.find((i) => i.id === itemId) ?? itens[0];
 
@@ -109,7 +110,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
           item={item}
           linhas={linhas.filter((l) => l.item_id === item.id)}
           refs={refs}
-          listas={{ catalogo, maoObra: refMo?.maoObra ?? [], maquinas: refMo?.maquinas ?? [] }}
+          listas={{ catalogo, maoObra: refMo?.maoObra ?? [], maquinas: refMo?.maquinas ?? [], veiculos: frota?.veiculos ?? [], combustivelPadrao: frota?.combustivelPadrao ?? null }}
           editavel={editavel}
           onErro={(e) => setErro(mensagemErro(e))}
           onLinha={trocarLinha}
@@ -121,7 +122,15 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
   );
 }
 
-interface Listas { catalogo: MaterialCatalogo[]; maoObra: RefMaoObra[]; maquinas: RefMaquina[] }
+// Blocos da seção; linhas com grupo que não existe mais (revisões antigas) aparecem num bloco "Outros".
+const OUTROS = '__outros__';
+function blocosDaSecao(s: DefSecao, linhas: CustoLinha[]): Bloco[] | null {
+  if (!s.blocos) return null;
+  const temOutros = linhas.some((l) => !s.blocos!.some((b) => b.grupo === l.grupo));
+  return temOutros ? [...s.blocos, { grupo: OUTROS, adicionar: '', colunas: [{ campo: 'grupo', rotulo: 'Grupo', tipo: 'texto', largura: 'w-36' }, ...s.blocos[0].colunas] }] : s.blocos;
+}
+
+interface Listas { catalogo: MaterialCatalogo[]; maoObra: RefMaoObra[]; maquinas: RefMaquina[]; veiculos: RefVeiculo[]; combustivelPadrao: number | null }
 
 function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onRecarregar, onExcluido }: {
   item: CustoItem; linhas: CustoLinha[]; refs: RefMaterial[]; listas: Listas; editavel: boolean;
@@ -131,6 +140,8 @@ function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onR
   useEffect(() => setIt(item), [item]);
   const [abertas, setAbertas] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(SECOES.map((s) => [s.id, s.id === 'materiais' || totalSecao(linhas, s.id) > 0])));
+  const kgPorMetro = useMemo(() => { const m = new Map(refs.filter((x) => x.tipo === 'Perfis' && x.kg_m).map((x) => [x.descricao, Number(x.kg_m)])); return (d: string) => m.get(d) ?? null; }, [refs]);
+  const peso = useMemo(() => pesoMateriais(linhas, kgPorMetro), [linhas, kgPorMetro]);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const r = resumoItem(it, linhas);
 
@@ -144,7 +155,9 @@ function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onR
   }
   async function novaLinha(secao: Secao, grupo = '') {
     const ordem = Math.max(0, ...linhas.map((l) => l.ordem)) + 1;
-    try { await adicionarLinha(item.id, { secao, grupo, ordem }); onRecarregar(); setAbertas((a) => ({ ...a, [secao]: true })); } catch (e) { onErro(e); }
+    const padrao = secao === 'frota' && grupo === 'Veículo próprio' ? { quantidade: 1, combustivel: listas.combustivelPadrao }
+      : secao === 'acabamentos' && grupo === 'Acabamento em inox' ? { quantidade: 1 } : {};
+    try { await adicionarLinha(item.id, { secao, grupo, ordem, ...padrao }); onRecarregar(); setAbertas((a) => ({ ...a, [secao]: true })); } catch (e) { onErro(e); }
   }
   async function mover(lista: CustoLinha[], deId: string, paraId: string) {
     const mudancas = reordenar(lista, deId, paraId);
@@ -165,20 +178,15 @@ function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onR
             <Entrada defaultValue={it.descricao} disabled={!editavel} onBlur={(e) => e.target.value !== it.descricao && salvarItem({ descricao: e.target.value })} />
           </Campo>
           <CampoPct rotulo="Quantidade" valor={it.quantidade} casas={3} editavel={editavel} onConfirmar={(n) => n > 0 && salvarItem({ quantidade: n })} />
-          <CampoPct rotulo="Lucro (%)" valor={it.lucro_pct} editavel={editavel} onConfirmar={(n) => salvarItem({ lucro_pct: n })} />
+          <CampoPct rotulo="Margem (%)" valor={it.lucro_pct} editavel={editavel} onConfirmar={(n) => salvarItem({ lucro_pct: n })} />
           <CampoPct rotulo="Negociação (%)" valor={it.negociacao_pct} editavel={editavel} onConfirmar={(n) => salvarItem({ negociacao_pct: n })} />
-          <CampoPct rotulo="Imposto (%)" valor={it.imposto_pct} editavel={editavel} onConfirmar={(n) => n < 100 && salvarItem({ imposto_pct: n })} />
-          <Campo rotulo="Imposto" className="sm:col-span-2">
-            <Selecao value={it.imposto_modo} disabled={!editavel} onChange={(e) => salvarItem({ imposto_modo: e.target.value as CustoItem['imposto_modo'] })}>
-              <option value="dentro">Por dentro (sobre o preço)</option>
-              <option value="fora">Por fora (sobre o custo)</option>
-            </Selecao>
-          </Campo>
+          <CampoPct rotulo="Imposto (%) sobre o preço" valor={it.imposto_pct} editavel={editavel} onConfirmar={(n) => n < 100 && salvarItem({ imposto_pct: n })} />
         </div>
 
-        {SECOES.map((s) => {
+        {secoesVisiveis(linhas).map((s) => {
           const doS = linhas.filter((l) => l.secao === s.id).sort((a, b) => a.ordem - b.ordem);
           const aberta = abertas[s.id];
+          const blocos = blocosDaSecao(s, doS);
           return (
             <div key={s.id} className="rounded-xl ring-1 ring-slate-200 dark:ring-marinho-700">
               <button type="button" onClick={() => setAbertas({ ...abertas, [s.id]: !aberta })} className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-marinho-700/40">
@@ -190,28 +198,28 @@ function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onR
               </button>
               {aberta && (
                 <div className="border-t border-slate-100 px-2 pb-2 dark:border-marinho-700">
-                  {s.id === 'materiais' ? GRUPOS_MATERIAIS.map((g) => {
-                    const doG = doS.filter((l) => l.grupo === g);
+                  {blocos ? blocos.map((b) => {
+                    const doG = doS.filter((l) => (b.grupo === OUTROS ? !s.blocos!.some((x) => x.grupo === l.grupo) : l.grupo === b.grupo));
                     return (
-                      <div key={g} className="mt-2">
+                      <div key={b.grupo} className="mt-2">
                         <div className="flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {g} <Selo>{doG.length}</Selo>
+                          {b.grupo === OUTROS ? 'Outros (grupo antigo)' : b.grupo} <Selo>{doG.length}</Selo>
                           <span className="ml-auto font-semibold normal-case tabular-nums text-slate-700 dark:text-slate-200">{moeda(doG.reduce((t, l) => t + totalLinha(l), 0))}</span>
                         </div>
-                        <TabelaLinhas linhas={doG} colunas={COLUNAS_MATERIAIS[g]} secao={s.id} grupo={g} refs={refs} listas={listas} editavel={editavel}
+                        <TabelaLinhas linhas={doG} colunas={b.colunas} secao={s.id} grupo={b.grupo as GrupoMaterial} refs={refs} listas={listas} peso={peso} editavel={editavel}
                           onSalvar={salvarLinha} onRemover={apagarLinha} onMover={(de, para) => mover(doG, de, para)} />
-                        {editavel && (
-                          <button onClick={() => novaLinha('materiais', g)} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-roxo-600 hover:bg-roxo-50 dark:hover:bg-marinho-700">
-                            <Plus size={13} /> Adicionar {g === 'Chapas' ? 'chapa' : g === 'Perfis' ? 'perfil' : 'item comercial'}
+                        {editavel && b.grupo !== OUTROS && (
+                          <button onClick={() => novaLinha(s.id, b.grupo)} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-roxo-600 hover:bg-roxo-50 dark:hover:bg-marinho-700">
+                            <Plus size={13} /> Adicionar {b.adicionar}
                           </button>
                         )}
                       </div>
                     );
                   }) : (
                     <>
-                      <TabelaLinhas linhas={doS} colunas={s.colunas} secao={s.id} refs={refs} listas={listas} editavel={editavel}
+                      <TabelaLinhas linhas={doS} colunas={s.colunas} secao={s.id} refs={refs} listas={listas} peso={peso} editavel={editavel}
                         onSalvar={salvarLinha} onRemover={apagarLinha} onMover={(de, para) => mover(doS, de, para)} />
-                      {editavel && (
+                      {editavel && !s.legado && (
                         <button onClick={() => novaLinha(s.id)} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-roxo-600 hover:bg-roxo-50 dark:hover:bg-marinho-700">
                           <Plus size={13} /> Adicionar linha
                         </button>
@@ -233,14 +241,14 @@ function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onR
       <div className="xl:sticky xl:top-2 xl:self-start">
         <div className="rounded-xl bg-marinho-800 p-4 text-sm text-slate-100 dark:bg-marinho-900">
           <div className="mb-2 font-semibold text-white">Orçamento · Item {it.letra}</div>
-          {SECOES.map((s) => (
+          {secoesVisiveis(linhas).map((s) => (
             <div key={s.id} className="flex justify-between py-0.5"><span className="text-slate-300">{s.letra} · {s.titulo}</span><span className="tabular-nums">{moeda(r.porSecao[s.id])}</span></div>
           ))}
           <div className="my-2 border-t border-marinho-500" />
           <Linha r="Custos" v={r.custos} forte />
-          <Linha r={`Lucro (${it.lucro_pct}%)`} v={r.lucro} />
+          <Linha r={`Margem (${it.lucro_pct}%)`} v={r.margem} />
           <Linha r={`Negociação (${it.negociacao_pct}%)`} v={r.negociacao} />
-          <Linha r={`Imposto (${it.imposto_pct}% ${it.imposto_modo === 'dentro' ? 'por dentro' : 'por fora'})`} v={r.imposto} />
+          <Linha r={`Imposto (${it.imposto_pct}% sobre o preço)`} v={r.imposto} />
           <div className="my-2 border-t border-marinho-500" />
           <Linha r="Preço unitário" v={r.precoUnitario} forte />
           <div className="flex justify-between py-0.5 text-slate-300"><span>Quantidade</span><span className="tabular-nums">× {Number(it.quantidade).toLocaleString('pt-BR')}</span></div>
@@ -277,8 +285,8 @@ function CampoPct({ rotulo, valor, onConfirmar, editavel, casas = 2 }: { rotulo:
 }
 
 // Tabela de linhas de uma seção (ou de um bloco de Materiais), com a alça ⋮⋮ para arrastar (decisão 41).
-function TabelaLinhas({ linhas, colunas, secao, grupo, refs, listas, editavel, onSalvar, onRemover, onMover }: {
-  linhas: CustoLinha[]; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; refs: RefMaterial[]; listas: Listas; editavel: boolean;
+function TabelaLinhas({ linhas, colunas, secao, grupo, refs, listas, peso, editavel, onSalvar, onRemover, onMover }: {
+  linhas: CustoLinha[]; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; refs: RefMaterial[]; listas: Listas; peso: Peso; editavel: boolean;
   onSalvar: (l: CustoLinha, d: Partial<CustoLinha>) => void; onRemover: (l: CustoLinha) => void; onMover: (de: string, para: string) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -299,7 +307,7 @@ function TabelaLinhas({ linhas, colunas, secao, grupo, refs, listas, editavel, o
           <SortableContext items={ordenadas.map((l) => l.id)} strategy={verticalListSortingStrategy}>
             <tbody>
               {ordenadas.map((l) => (
-                <LinhaCusto key={l.id} linha={l} colunas={colunas} secao={secao} grupo={grupo} refs={refs} listas={listas} editavel={editavel}
+                <LinhaCusto key={l.id} linha={l} colunas={colunas} secao={secao} grupo={grupo} refs={refs} listas={listas} peso={peso} editavel={editavel}
                   onSalvar={(d) => onSalvar(l, d)} onRemover={() => onRemover(l)} />
               ))}
               {ordenadas.length === 0 && <tr><td colSpan={colunas.length + 3} className="px-2 py-3 text-center text-xs text-slate-500">Sem linhas.</td></tr>}
@@ -314,8 +322,10 @@ function TabelaLinhas({ linhas, colunas, secao, grupo, refs, listas, editavel, o
 const rotuloCatalogo = (m: MaterialCatalogo) => `${m.cod_mat} — ${m.nome}`;
 const codDoMaterial = (texto: string) => texto.match(/^([A-Z]{2}-\d{3})/i)?.[1].toUpperCase() ?? null;
 
-function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, editavel, onSalvar, onRemover }: {
-  linha: CustoLinha; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; refs: RefMaterial[]; listas: Listas; editavel: boolean;
+type Peso = { kg: number; perfisSemKgM: number };
+
+function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, peso, editavel, onSalvar, onRemover }: {
+  linha: CustoLinha; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; refs: RefMaterial[]; listas: Listas; peso: Peso; editavel: boolean;
   onSalvar: (d: Partial<CustoLinha>) => void; onRemover: () => void;
 }) {
   const [calc, setCalc] = useState(false);
@@ -336,6 +346,7 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, editavel, o
     if (secao === 'mao_obra' && c.campo === 'grupo') return [...new Set(listas.maoObra.map((m) => m.etapa))].map((v) => ({ valor: v }));
     if (secao === 'mao_obra') return listas.maoObra.filter((m) => !l.grupo || m.etapa === l.grupo).map((m) => ({ valor: m.funcao, detalhe: `${moeda(m.valor_hora)}/h` }));
     if (secao === 'maquinas') return listas.maquinas.map((m) => ({ valor: m.nome, detalhe: `${moeda(m.valor_hora)}/h` }));
+    if (c.tipo === 'veiculo') return listas.veiculos.map((v) => ({ valor: v.nome, detalhe: `${Number(v.consumo_km_l).toLocaleString('pt-BR')} km/l` }));
     return [];
   }
 
@@ -353,6 +364,10 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, editavel, o
     if (secao === 'mao_obra' && c.campo === 'descricao') {
       const ref = listas.maoObra.find((m) => m.funcao === v && (!l.grupo || m.etapa === l.grupo));
       return onSalvar({ descricao: v, ...(ref ? { valor_unitario: Number(ref.valor_hora), ...(l.grupo ? {} : { grupo: ref.etapa }) } : {}) });
+    }
+    if (c.tipo === 'veiculo') {
+      const ref = listas.veiculos.find((x) => x.nome === v);
+      return onSalvar({ descricao: v, ...(ref ? { consumo: Number(ref.consumo_km_l) } : {}) });
     }
     if (secao === 'maquinas') {
       const ref = listas.maquinas.find((m) => m.nome === v);
@@ -374,7 +389,11 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, editavel, o
         <td key={c.campo} className={celula}>
           {c.tipo === 'numero' ? (
             <div className="flex items-center gap-1">
-              <CampoNumero valor={Number(l[c.campo])} casas={c.campo === 'valor_unitario' ? 4 : 3} disabled={!editavel} onConfirmar={(n) => onSalvar({ [c.campo]: n })} />
+              <CampoNumero valor={Number(l[c.campo] ?? 0)} casas={c.campo === 'valor_unitario' ? 4 : c.campo === 'adicional' ? 2 : 3} disabled={!editavel || (c.campo === 'quantidade' && grupo === ('Acabamento em inox' as GrupoMaterial))} onConfirmar={(n) => onSalvar({ [c.campo]: n })} />
+              {c.pesoMateriais && editavel && peso.kg > 0 && (
+                <button title={`Usar o peso dos materiais do item: ${peso.kg.toLocaleString('pt-BR')} kg${peso.perfisSemKgM ? ` (${peso.perfisSemKgM} perfil(is) sem kg/m na lista de preços ficaram de fora)` : ''}`}
+                  onClick={() => onSalvar({ quantidade: peso.kg })} className="shrink-0 rounded p-1 text-slate-400 hover:bg-roxo-50 hover:text-roxo-600 dark:hover:bg-marinho-700"><Scale size={14} /></button>
+              )}
               {secao === 'materiais' && c.campo === 'fator' && (
                 <>
                   <span className="w-7 text-[11px] text-slate-500">{l.unidade}</span>
@@ -389,10 +408,20 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, editavel, o
               className="w-full cursor-pointer rounded-md border border-transparent bg-transparent px-1 py-1 text-sm outline-none hover:border-slate-300 focus:border-roxo-500 dark:bg-marinho-800">
               <option>Sim</option><option>Não</option>
             </select>
-          ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' ? (
+          ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' || c.tipo === 'veiculo' ? (
             <CampoEscolha valor={String(l[c.campo] ?? '')} opcoes={opcoes(c)} disabled={!editavel}
               placeholder={c.tipo === 'catalogo' ? 'Ex.: IN-001' : c.tipo === 'material' ? 'Digite para buscar na lista de preços' : ''}
               onConfirmar={(v) => escolher(c, v)} />
+          ) : c.rota ? (
+            <div className="flex items-center gap-0.5">
+              <CampoCelula valor={String(l[c.campo] ?? '')} disabled={!editavel} onConfirmar={(v) => onSalvar({ [c.campo]: v })} />
+              <button title="Abrir o Qualp (a rota vai para a área de transferência: cole no site)" disabled={!l.detalhe || !l.detalhe2}
+                onClick={() => { navigator.clipboard?.writeText(`${l.detalhe} → ${l.detalhe2}`); window.open(LINK_QUALP, '_blank', 'noopener'); }}
+                className="shrink-0 rounded p-1 text-slate-400 hover:bg-roxo-50 hover:text-roxo-600 disabled:opacity-30 dark:hover:bg-marinho-700"><Route size={14} /></button>
+              <button title="Ver a rota no Google Maps (conferir os km)" disabled={!l.detalhe || !l.detalhe2}
+                onClick={() => window.open(linkMapa(l.detalhe, l.detalhe2), '_blank', 'noopener')}
+                className="shrink-0 rounded p-1 text-slate-400 hover:bg-roxo-50 hover:text-roxo-600 disabled:opacity-30 dark:hover:bg-marinho-700"><IconeMapa size={14} /></button>
+            </div>
           ) : (
             <CampoCelula valor={String(l[c.campo] ?? '')} disabled={!editavel} onConfirmar={(v) => onSalvar({ [c.campo]: v })} />
           )}

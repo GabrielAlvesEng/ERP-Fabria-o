@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { KeyRound, RotateCcw, Trash2 } from 'lucide-react';
+import { KeyRound, RotateCcw, Trash2, Truck } from 'lucide-react';
 import { supabase } from '@/shared/lib/supabase';
 import { dataHoraBR, mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, Cabecalho, Campo, Cartao, Entrada, Selo, Vazio } from '@/shared/ui';
@@ -9,6 +9,7 @@ import { Aviso, Botao, Cabecalho, Campo, Cartao, Entrada, Selo, Vazio } from '@/
 const abas = [
   { to: '/admin', rotulo: 'Senhas', icone: KeyRound, end: true },
   { to: '/admin/excluidas', rotulo: 'Propostas excluídas', icone: Trash2 },
+  { to: '/admin/frota', rotulo: 'Frota (custos)', icone: Truck },
 ];
 
 export function AdminLayout() {

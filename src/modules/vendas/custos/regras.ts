@@ -1,6 +1,9 @@
-// Regras da aba Custos (decisões 29 e 30). Espelham public.custo_resumo no banco.
+// Regras da aba Custos (decisões 29, 30, 41, 42 e 43). Espelham o gatilho ajustar_linha_custo e public.custo_resumo no banco.
 
-export type Secao = 'materiais' | 'acessorios' | 'mao_obra' | 'maquinas' | 'deslocamento' | 'alimentacao' | 'hospedagem' | 'fretes';
+export type Secao =
+  | 'materiais' | 'acabamentos' | 'mao_obra' | 'maquinas' | 'frota' | 'alimentacao' | 'hospedagem'
+  // Seções antigas: só aparecem em revisões enviadas antes da decisão 42 (ficam como foram enviadas).
+  | 'acessorios' | 'deslocamento' | 'fretes';
 
 export interface CustoItem {
   id: string;
@@ -11,7 +14,7 @@ export interface CustoItem {
   lucro_pct: number;
   negociacao_pct: number;
   imposto_pct: number;
-  imposto_modo: 'dentro' | 'fora';
+  imposto_modo: 'dentro';
   ordem: number;
 }
 
@@ -30,54 +33,127 @@ export interface CustoLinha {
   total: number;
   ordem: number;
   material: string;
+  adicional: number;
+  consumo: number | null;
+  combustivel: number | null;
 }
 
-export type CampoLinha = 'grupo' | 'descricao' | 'detalhe' | 'detalhe2' | 'quantidade' | 'fator' | 'valor_unitario' | 'material';
+export type CampoLinha = 'grupo' | 'descricao' | 'detalhe' | 'detalhe2' | 'quantidade' | 'fator' | 'valor_unitario' | 'material' | 'adicional' | 'consumo' | 'combustivel';
 
 export interface Coluna {
   campo: CampoLinha;
   rotulo: string;
-  tipo: 'texto' | 'numero' | 'material' | 'catalogo' | 'escolha' | 'simnao';
+  tipo: 'texto' | 'numero' | 'material' | 'catalogo' | 'escolha' | 'simnao' | 'veiculo';
   largura?: string;
+  pesoMateriais?: boolean; // botão "usar peso dos materiais" (galvanização e zincagem)
+  rota?: boolean;          // botões de rota (Qualp e mapa) no destino da frota
 }
 
-export const SECOES: { id: Secao; letra: string; titulo: string; colunas: Coluna[] }[] = [
+// Seção com blocos fixos: cada bloco tem seu grupo, suas colunas e seu botão de adicionar.
+export interface Bloco { grupo: string; colunas: Coluna[]; adicionar: string }
+
+export interface DefSecao { id: Secao; letra: string; titulo: string; colunas: Coluna[]; blocos?: Bloco[]; legado?: boolean }
+
+const DESCRICAO: Coluna = { campo: 'descricao', rotulo: 'Descrição', tipo: 'texto', largura: 'min-w-[200px]' };
+const MAO_OBRA_COLS: Coluna[] = [
+  { campo: 'descricao', rotulo: 'Função', tipo: 'escolha', largura: 'min-w-[200px]' },
+  { campo: 'valor_unitario', rotulo: 'Valor hora', tipo: 'numero', largura: 'w-28' },
+  { campo: 'quantidade', rotulo: 'Horas', tipo: 'numero', largura: 'w-24' },
+];
+
+export const SECOES: DefSecao[] = [
   {
-    id: 'materiais', letra: 'A', titulo: 'Materiais',
-    colunas: [], // Materiais usam COLUNAS_MATERIAIS, um bloco por grupo (decisão 41).
-  },
-  {
-    id: 'acessorios', letra: 'B', titulo: 'Acessórios',
-    colunas: [
-      { campo: 'descricao', rotulo: 'Descrição', tipo: 'texto' },
-      { campo: 'valor_unitario', rotulo: 'Valor', tipo: 'numero', largura: 'w-36' },
+    id: 'materiais', letra: 'A', titulo: 'Materiais', colunas: [],
+    blocos: [
+      { grupo: 'Chapas', adicionar: 'chapa', colunas: [
+        { campo: 'material', rotulo: 'Material', tipo: 'catalogo', largura: 'w-44' },
+        { campo: 'descricao', rotulo: 'Chapa', tipo: 'material', largura: 'min-w-[240px]' },
+        { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+        { campo: 'fator', rotulo: 'Peso (kg)', tipo: 'numero', largura: 'w-32' },
+        { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+      ] },
+      { grupo: 'Perfis', adicionar: 'perfil', colunas: [
+        { campo: 'material', rotulo: 'Material', tipo: 'catalogo', largura: 'w-44' },
+        { campo: 'descricao', rotulo: 'Perfil', tipo: 'material', largura: 'min-w-[240px]' },
+        { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+        { campo: 'fator', rotulo: 'Metros', tipo: 'numero', largura: 'w-32' },
+        { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+      ] },
+      { grupo: 'Comerciais', adicionar: 'item comercial', colunas: [
+        { campo: 'descricao', rotulo: 'Item comercial', tipo: 'material', largura: 'min-w-[280px]' },
+        { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+        { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+      ] },
     ],
   },
   {
-    id: 'mao_obra', letra: 'C', titulo: 'Mão de obra',
-    colunas: [
-      { campo: 'grupo', rotulo: 'Etapa', tipo: 'escolha', largura: 'w-36' },
-      { campo: 'descricao', rotulo: 'Função', tipo: 'escolha' },
-      { campo: 'valor_unitario', rotulo: 'Valor hora', tipo: 'numero', largura: 'w-28' },
-      { campo: 'quantidade', rotulo: 'Horas', tipo: 'numero', largura: 'w-24' },
+    id: 'acabamentos', letra: 'B', titulo: 'Acabamentos', colunas: [],
+    blocos: [
+      { grupo: 'Acabamento em inox', adicionar: 'acabamento em inox', colunas: [
+        { ...DESCRICAO, rotulo: 'Acabamento (escovado, polido…)' },
+        { campo: 'valor_unitario', rotulo: 'Consumíveis (R$)', tipo: 'numero', largura: 'w-36' },
+        { campo: 'adicional', rotulo: 'Mão de obra (R$)', tipo: 'numero', largura: 'w-36' },
+      ] },
+      { grupo: 'Pintura por tinta', adicionar: 'pintura', colunas: [
+        { ...DESCRICAO, rotulo: 'Tinta' },
+        { campo: 'quantidade', rotulo: 'Latas', tipo: 'numero', largura: 'w-24' },
+        { campo: 'valor_unitario', rotulo: 'Valor da lata', tipo: 'numero', largura: 'w-32' },
+        { campo: 'adicional', rotulo: 'Mão de obra (R$)', tipo: 'numero', largura: 'w-36' },
+      ] },
+      { grupo: 'Galvanização a fogo', adicionar: 'galvanização', colunas: [
+        DESCRICAO,
+        { campo: 'quantidade', rotulo: 'Peso (kg)', tipo: 'numero', largura: 'w-40', pesoMateriais: true },
+        { campo: 'valor_unitario', rotulo: 'Valor por kg', tipo: 'numero', largura: 'w-32' },
+      ] },
+      { grupo: 'Pintura eletrostática', adicionar: 'pintura eletrostática', colunas: [
+        DESCRICAO,
+        { campo: 'quantidade', rotulo: 'Área (m²)', tipo: 'numero', largura: 'w-28' },
+        { campo: 'valor_unitario', rotulo: 'Valor por m²', tipo: 'numero', largura: 'w-32' },
+      ] },
+      { grupo: 'Zincagem', adicionar: 'zincagem', colunas: [
+        DESCRICAO,
+        { campo: 'quantidade', rotulo: 'Peso (kg)', tipo: 'numero', largura: 'w-40', pesoMateriais: true },
+        { campo: 'valor_unitario', rotulo: 'Valor por kg', tipo: 'numero', largura: 'w-32' },
+      ] },
+    ],
+  },
+  {
+    id: 'mao_obra', letra: 'C', titulo: 'Mão de obra', colunas: [],
+    blocos: [
+      { grupo: 'Administrativo', adicionar: 'função administrativa', colunas: MAO_OBRA_COLS },
+      { grupo: 'Fabricação', adicionar: 'função de fabricação', colunas: MAO_OBRA_COLS },
+      { grupo: 'Instalação', adicionar: 'função de instalação', colunas: MAO_OBRA_COLS },
     ],
   },
   {
     id: 'maquinas', letra: 'D', titulo: 'Máquinas',
     colunas: [
-      { campo: 'descricao', rotulo: 'Máquina', tipo: 'escolha' },
+      { campo: 'descricao', rotulo: 'Máquina', tipo: 'escolha', largura: 'min-w-[200px]' },
       { campo: 'detalhe', rotulo: 'Terceirizada', tipo: 'simnao', largura: 'w-28' },
       { campo: 'valor_unitario', rotulo: 'Valor hora', tipo: 'numero', largura: 'w-28' },
       { campo: 'quantidade', rotulo: 'Horas', tipo: 'numero', largura: 'w-24' },
     ],
   },
   {
-    id: 'deslocamento', letra: 'E', titulo: 'Deslocamento',
-    colunas: [
-      { campo: 'descricao', rotulo: 'Tipo', tipo: 'texto' },
-      { campo: 'detalhe', rotulo: 'Destino', tipo: 'texto', largura: 'w-40' },
-      { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
-      { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+    id: 'frota', letra: 'E', titulo: 'Frota e fretes', colunas: [],
+    blocos: [
+      { grupo: 'Veículo próprio', adicionar: 'trecho com veículo próprio', colunas: [
+        { campo: 'descricao', rotulo: 'Veículo', tipo: 'veiculo', largura: 'min-w-[160px]' },
+        { campo: 'detalhe', rotulo: 'Origem', tipo: 'texto', largura: 'min-w-[130px]' },
+        { campo: 'detalhe2', rotulo: 'Destino', tipo: 'texto', largura: 'min-w-[150px]', rota: true },
+        { campo: 'fator', rotulo: 'Km por viagem', tipo: 'numero', largura: 'w-24' },
+        { campo: 'quantidade', rotulo: 'Viagens', tipo: 'numero', largura: 'w-20' },
+        { campo: 'consumo', rotulo: 'Km/l', tipo: 'numero', largura: 'w-20' },
+        { campo: 'combustivel', rotulo: 'R$/l', tipo: 'numero', largura: 'w-24' },
+        { campo: 'adicional', rotulo: 'Pedágio por viagem', tipo: 'numero', largura: 'w-28' },
+      ] },
+      { grupo: 'Frete terceirizado', adicionar: 'frete ou custo terceirizado', colunas: [
+        { campo: 'descricao', rotulo: 'Descrição', tipo: 'texto', largura: 'min-w-[200px]' },
+        { campo: 'detalhe', rotulo: 'Origem', tipo: 'texto', largura: 'min-w-[130px]' },
+        { campo: 'detalhe2', rotulo: 'Destino', tipo: 'texto', largura: 'min-w-[130px]' },
+        { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+        { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+      ] },
     ],
   },
   {
@@ -92,47 +168,34 @@ export const SECOES: { id: Secao; letra: string; titulo: string; colunas: Coluna
   {
     id: 'hospedagem', letra: 'G', titulo: 'Hospedagem',
     colunas: [
-      { campo: 'detalhe', rotulo: 'Cidade', tipo: 'texto' },
       { campo: 'quantidade', rotulo: 'Diárias', tipo: 'numero', largura: 'w-24' },
       { campo: 'valor_unitario', rotulo: 'Valor do hotel', tipo: 'numero', largura: 'w-32' },
     ],
   },
-  {
-    id: 'fretes', letra: 'H', titulo: 'Fretes',
-    colunas: [
-      { campo: 'descricao', rotulo: 'Tipo', tipo: 'texto' },
-      { campo: 'detalhe', rotulo: 'Partida', tipo: 'texto', largura: 'w-36' },
-      { campo: 'detalhe2', rotulo: 'Destino', tipo: 'texto', largura: 'w-36' },
-      { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
-      { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
-    ],
-  },
+  // Seções antigas (só em revisões enviadas antes da decisão 42).
+  { id: 'acessorios', letra: '·', titulo: 'Acessórios (antigo)', legado: true, colunas: [
+    { campo: 'descricao', rotulo: 'Descrição', tipo: 'texto' },
+    { campo: 'valor_unitario', rotulo: 'Valor', tipo: 'numero', largura: 'w-36' },
+  ] },
+  { id: 'deslocamento', letra: '·', titulo: 'Deslocamento (antigo)', legado: true, colunas: [
+    { campo: 'descricao', rotulo: 'Tipo', tipo: 'texto' },
+    { campo: 'detalhe', rotulo: 'Destino', tipo: 'texto', largura: 'w-40' },
+    { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+    { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+  ] },
+  { id: 'fretes', letra: '·', titulo: 'Fretes (antigo)', legado: true, colunas: [
+    { campo: 'descricao', rotulo: 'Tipo', tipo: 'texto' },
+    { campo: 'detalhe', rotulo: 'Partida', tipo: 'texto', largura: 'w-36' },
+    { campo: 'detalhe2', rotulo: 'Destino', tipo: 'texto', largura: 'w-36' },
+    { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+    { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+  ] },
 ];
 
-// Materiais em blocos (decisão 41): sem coluna Tipo; Comerciais só com a quantidade de itens.
+// Seções mostradas: as atuais sempre; as antigas só se tiverem linhas.
+export const secoesVisiveis = (linhas: CustoLinha[]) => SECOES.filter((s) => !s.legado || linhas.some((l) => l.secao === s.id));
+
 export type GrupoMaterial = 'Chapas' | 'Perfis' | 'Comerciais';
-export const GRUPOS_MATERIAIS: GrupoMaterial[] = ['Chapas', 'Perfis', 'Comerciais'];
-export const COLUNAS_MATERIAIS: Record<GrupoMaterial, Coluna[]> = {
-  Chapas: [
-    { campo: 'material', rotulo: 'Material', tipo: 'catalogo', largura: 'w-44' },
-    { campo: 'descricao', rotulo: 'Chapa', tipo: 'material', largura: 'min-w-[240px]' },
-    { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
-    { campo: 'fator', rotulo: 'Peso (kg)', tipo: 'numero', largura: 'w-32' },
-    { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
-  ],
-  Perfis: [
-    { campo: 'material', rotulo: 'Material', tipo: 'catalogo', largura: 'w-44' },
-    { campo: 'descricao', rotulo: 'Perfil', tipo: 'material', largura: 'min-w-[240px]' },
-    { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
-    { campo: 'fator', rotulo: 'Metros', tipo: 'numero', largura: 'w-32' },
-    { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
-  ],
-  Comerciais: [
-    { campo: 'descricao', rotulo: 'Item comercial', tipo: 'material', largura: 'min-w-[280px]' },
-    { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
-    { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
-  ],
-};
 
 // Nova ordem depois de arrastar: a linha sai da posição antiga e entra na nova; devolve só as que mudaram.
 export function reordenar<T extends { id: string; ordem: number }>(lista: T[], deId: string, paraId: string): { id: string; ordem: number }[] {
@@ -146,8 +209,21 @@ export function reordenar<T extends { id: string; ordem: number }>(lista: T[], d
   return ids.map((id, i) => ({ id, ordem: base + i })).filter((x) => antes.get(x.id) !== x.ordem);
 }
 
-export function totalLinha(l: Pick<CustoLinha, 'quantidade' | 'fator' | 'valor_unitario'>): number {
-  return Math.round(Number(l.quantidade) * Number(l.fator) * Number(l.valor_unitario) * 100) / 100;
+// Mesma regra do gatilho ajustar_linha_custo no banco.
+export function totalLinha(l: Pick<CustoLinha, 'secao' | 'grupo' | 'quantidade' | 'fator' | 'valor_unitario'> & Partial<Pick<CustoLinha, 'adicional' | 'consumo' | 'combustivel'>>): number {
+  const q = Number(l.quantidade), f = Number(l.fator), v = Number(l.valor_unitario), a = Number(l.adicional ?? 0);
+  let t: number;
+  if (l.secao === 'frota' && l.grupo === 'Veículo próprio') {
+    const c = Number(l.consumo ?? 0);
+    t = q * ((c > 0 ? (f / c) * Number(l.combustivel ?? 0) : 0) + a);
+  } else if (l.secao === 'acabamentos') {
+    t = (l.grupo === 'Acabamento em inox' ? 1 : q) * v + a;
+  } else if (l.secao === 'materiais' && l.grupo === 'Comerciais') {
+    t = q * v;
+  } else {
+    t = q * f * v;
+  }
+  return Math.round(t * 100) / 100;
 }
 
 export function totalSecao(linhas: CustoLinha[], secao: Secao): number {
@@ -159,32 +235,52 @@ const r2 = (v: number) => Math.round(v * 100) / 100;
 export interface Resumo {
   porSecao: Record<Secao, number>;
   custos: number;
-  lucro: number;
+  margem: number;
   negociacao: number;
   imposto: number;
   precoUnitario: number;
   precoTotal: number;
 }
 
-// Decisão 30: lucro e negociação sobre todos os custos; imposto por dentro (padrão) ou por fora.
-export function resumoItem(item: Pick<CustoItem, 'quantidade' | 'lucro_pct' | 'negociacao_pct' | 'imposto_pct' | 'imposto_modo'>, linhas: CustoLinha[]): Resumo {
+// Margem e negociação sobre todos os custos; imposto sempre por dentro, sobre o preço (decisões 30 e 43).
+export function resumoItem(item: Pick<CustoItem, 'quantidade' | 'lucro_pct' | 'negociacao_pct' | 'imposto_pct'>, linhas: CustoLinha[]): Resumo {
   const porSecao = Object.fromEntries(SECOES.map((s) => [s.id, r2(totalSecao(linhas, s.id))])) as Record<Secao, number>;
   const custos = Object.values(porSecao).reduce((a, b) => a + b, 0);
-  const lucro = (custos * Number(item.lucro_pct)) / 100;
+  const margem = (custos * Number(item.lucro_pct)) / 100;
   const negociacao = (custos * Number(item.negociacao_pct)) / 100;
-  const base = custos + lucro + negociacao;
-  const t = Number(item.imposto_pct) / 100;
-  const pu = item.imposto_modo === 'dentro' ? base / (1 - t) : base * (1 + t);
+  const base = custos + margem + negociacao;
+  const pu = base / (1 - Number(item.imposto_pct) / 100);
   return {
     porSecao,
     custos: r2(custos),
-    lucro: r2(lucro),
+    margem: r2(margem),
     negociacao: r2(negociacao),
     imposto: r2(pu - base),
     precoUnitario: r2(pu),
     precoTotal: r2(pu * Number(item.quantidade)),
   };
 }
+
+// Peso dos materiais do item (para galvanização e zincagem): chapas = qtd × kg; perfis = qtd × metros × kg/m da lista de preços.
+export function pesoMateriais(linhas: CustoLinha[], kgPorMetro: (descricao: string) => number | null): { kg: number; perfisSemKgM: number } {
+  let kg = 0;
+  let perfisSemKgM = 0;
+  for (const l of linhas.filter((x) => x.secao === 'materiais')) {
+    if (l.grupo === 'Chapas') kg += Number(l.quantidade) * Number(l.fator);
+    else if (l.grupo === 'Perfis' && Number(l.quantidade) * Number(l.fator) > 0) {
+      const kgm = kgPorMetro(l.descricao);
+      if (kgm) kg += Number(l.quantidade) * Number(l.fator) * kgm;
+      else perfisSemKgM += 1;
+    }
+  }
+  return { kg: Math.round(kg * 1000) / 1000, perfisSemKgM };
+}
+
+// Links de rota (decisão 42): o Qualp não aceita origem/destino pelo endereço, então abre o site e a rota vai para a área de transferência;
+// o Google Maps abre a rota pronta para conferir os km.
+export const linkMapa = (origem: string, destino: string) =>
+  `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origem)}&destination=${encodeURIComponent(destino)}&travelmode=driving`;
+export const LINK_QUALP = 'https://qualp.com.br/';
 
 // Peso de chapa: espessura × largura × comprimento (mm) × densidade (kg/mm³), como a aba "Cálculo Peso".
 export const DENSIDADES = { inox: 8e-6, carbono: 7.85e-6 } as const;
@@ -202,17 +298,15 @@ export function proximaLetra(usadas: string[]): string {
   return 'ZZ';
 }
 
-// Linhas iniciais de um item novo (o mesmo modelo da planilha de hoje).
+// Linhas iniciais de um item novo.
 export type LinhaNova = Omit<CustoLinha, 'id' | 'item_id' | 'total'>;
 export function modeloLinhas(maoObra: { etapa: string; funcao: string; valor_hora: number }[], maquinas: { nome: string; terceirizada: boolean; valor_hora: number }[]): LinhaNova[] {
-  const base = { grupo: '', descricao: '', detalhe: '', detalhe2: '', unidade: '', quantidade: 0, fator: 1, valor_unitario: 0, material: '' };
+  const base = { grupo: '', descricao: '', detalhe: '', detalhe2: '', unidade: '', quantidade: 0, fator: 1, valor_unitario: 0, material: '', adicional: 0, consumo: null, combustivel: null };
   const linhas: LinhaNova[] = [];
   let o = 0;
   const add = (secao: Secao, l: Partial<LinhaNova>) => linhas.push({ ...base, ...l, secao, ordem: o++ });
-  ['Fixação', 'Conexões', 'Transmissão de Potência', 'Controle de Fluxo e Nível', 'Componentes Mecânicos', 'Tintas'].forEach((d) => add('acessorios', { descricao: d, quantidade: 1 }));
   maoObra.forEach((m) => add('mao_obra', { grupo: m.etapa, descricao: m.funcao, valor_unitario: Number(m.valor_hora) }));
   maquinas.forEach((m) => add('maquinas', { descricao: m.nome, detalhe: m.terceirizada ? 'Sim' : 'Não', valor_unitario: Number(m.valor_hora) }));
-  ['Combustível (ida e volta)', 'Pedágio (ida e volta)', 'Aluguel de veículo'].forEach((d) => add('deslocamento', { descricao: d }));
   add('alimentacao', { descricao: 'Refeições' });
   add('hospedagem', {});
   [
@@ -220,6 +314,6 @@ export function modeloLinhas(maoObra: { etapa: string; funcao: string; valor_hor
     ['Coleta de matéria-prima (perfis)', 'São Paulo-SP', 'Mococa-SP'],
     ['Coleta dos itens comerciais', 'São Paulo-SP', 'Mococa-SP'],
     ['Transporte para entrega no projeto', 'Mococa-SP', ''],
-  ].forEach(([d, p, de]) => add('fretes', { descricao: d, detalhe: p, detalhe2: de }));
+  ].forEach(([d, p, de]) => add('frota', { grupo: 'Frete terceirizado', descricao: d, detalhe: p, detalhe2: de }));
   return linhas;
 }

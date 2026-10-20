@@ -41,7 +41,7 @@ export async function criarItem(revisaoId: string, letrasUsadas: string[], descr
         lucro_pct: p.lucro_pct ?? 20,
         negociacao_pct: p.negociacao_pct ?? 5,
         imposto_pct: p.imposto_pct ?? 20,
-        imposto_modo: p.imposto_modo ?? 'dentro',
+        imposto_modo: 'dentro', // decisão 43
       })
       .select()
       .single(),
@@ -61,7 +61,7 @@ export async function excluirItem(id: string): Promise<void> {
 }
 
 export async function adicionarLinha(itemId: string, l: Partial<LinhaNova> & Pick<LinhaNova, 'secao'>): Promise<CustoLinha> {
-  return ok(await supabase.from('custo_linhas').insert({ item_id: itemId, quantidade: l.secao === 'acessorios' ? 1 : 0, ...l }).select().single());
+  return ok(await supabase.from('custo_linhas').insert({ item_id: itemId, quantidade: 0, ...l }).select().single());
 }
 
 export async function atualizarLinha(id: string, dados: Partial<CustoLinha>): Promise<CustoLinha> {
@@ -87,4 +87,16 @@ export async function listarRefMaoObraMaquinas(): Promise<{ maoObra: RefMaoObra[
 
 export async function removerLinha(id: string): Promise<void> {
   ok(await supabase.from('custo_linhas').delete().eq('id', id));
+}
+
+export interface RefVeiculo { id: string; nome: string; consumo_km_l: number; ativo: boolean }
+
+// Veículos ativos e preço padrão do combustível (Administração → Frota), para a seção Frota e fretes.
+export async function listarVeiculosECombustivel(): Promise<{ veiculos: RefVeiculo[]; combustivelPadrao: number | null }> {
+  const [v, c] = await Promise.all([
+    supabase.from('ref_veiculos').select('id, nome, consumo_km_l, ativo').eq('ativo', true).order('ordem').order('nome'),
+    supabase.from('configuracoes').select('valor').eq('chave', 'combustivel_preco_padrao').maybeSingle(),
+  ]);
+  const preco = Number(ok(c)?.valor);
+  return { veiculos: ok(v) ?? [], combustivelPadrao: Number.isFinite(preco) && preco > 0 ? preco : null };
 }

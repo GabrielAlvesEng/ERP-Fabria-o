@@ -13,6 +13,7 @@ import { EngenhariaLayout } from '@/modules/engenharia/EngenhariaLayout';
 import { ProjetosPage } from '@/modules/engenharia/ProjetosPage';
 import { ProjetoPage } from '@/modules/engenharia/ProjetoPage';
 import { AdminLayout, ExcluidasPage, SenhasPage } from '@/modules/admin/AdminPages';
+import { FrotaPage } from '@/modules/admin/FrotaPage';
 
 export function App() {
   const { session, carregando } = useAuth();
@@ -44,6 +45,7 @@ export function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<SenhasPage />} />
             <Route path="excluidas" element={<ExcluidasPage />} />
+            <Route path="frota" element={<FrotaPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/vendas" replace />} />
         </Route>
