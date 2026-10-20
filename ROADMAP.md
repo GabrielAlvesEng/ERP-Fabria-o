@@ -21,7 +21,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 |---|--------|--------|
 | 0 | Base do projeto (estrutura, Supabase novo, login, permissões, tema) | A definir junto com o planejamento de Vendas |
 | 1 | **Vendas** (Empresas, Contatos, Propostas, Kanban, Kick-off) | **Em planejamento, aguardando aprovação** |
-| 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Exemplar em andamento** (autorizado pelo Gabriel em 20/10/2026, decisão 33): projetos, árvore, peças e lista de materiais. SolidWorks ainda não |
+| 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Exemplar em andamento** (autorizado pelo Gabriel em 20/10/2026, decisão 33): projetos, árvore, peças, lista de materiais e importação do SolidWorks (primeira importação; reimportação de revisão ainda não) |
 | 3 | Compras e Financeiro (aprovação e pagamento) | Não iniciado |
 | 4 | Almoxarifado | Não iniciado |
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |
@@ -34,4 +34,4 @@ A ordem dos módulos 2 a 8 será revista quando o fluxograma completo da empresa
 
 ## Próxima etapa autorizada
 
-Vendas (Custos, e-mail, kick-off, exclusão com senha) e o exemplar de Engenharia (árvore, mapa, lista de materiais, COD_MAT) estão publicados. Pendentes: importação do SolidWorks (aguarda um JSON real da macro), Outlook web (aguarda decisão sobre app no Azure), confirmação das regras implementadas por recomendação (ver REGRAS_DE_NEGOCIO.md) e validação final do Gabriel.
+Vendas (Custos, e-mail, kick-off, exclusão com senha) e o exemplar de Engenharia (árvore, mapa, lista de materiais, COD_MAT) estão publicados. Importação do SolidWorks feita e testada com a Bancada Moedor Aplicalis no projeto de teste 26-27-001. Pendentes: reimportação de nova revisão do CAD, Outlook web (aguarda decisão sobre app no Azure), confirmação das regras implementadas por recomendação (ver REGRAS_DE_NEGOCIO.md) e validação final do Gabriel.

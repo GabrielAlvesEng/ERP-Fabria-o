@@ -138,7 +138,7 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
                   <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-slate-500">{NOME_PASTA[l.pasta]}</div></td>
                   <td className="px-3 py-1.5"><div className="flex flex-wrap gap-0.5">{l.cod_op.map((o) => <span key={o} className={`rounded px-1 font-mono text-[10px] font-semibold text-white ${o === 'CM' ? 'bg-amber-500' : 'bg-roxo-500'}`}>{o}</span>)}</div></td>
                   <td className="px-3 py-1.5">{rotuloMaterial(l) || '—'}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{l.espessura ?? '—'}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{l.espessura == null ? '—' : Number(l.espessura).toLocaleString('pt-BR')}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{Number(l.quantidade).toLocaleString('pt-BR')}</td>
                   <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{l.qtdTotal.toLocaleString('pt-BR')}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{l.pesoTotal == null ? '—' : `${l.pesoTotal.toLocaleString('pt-BR')} kg`}</td>

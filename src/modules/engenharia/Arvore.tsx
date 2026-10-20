@@ -250,7 +250,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
                   <tbody>
                     {lista.map((p) => (
                       <tr key={p.id} className="border-t border-slate-100 dark:border-marinho-700">
-                        <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-slate-500" title={p.codigo}>…{p.codigo.slice(-10)}</td>
+                        <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-slate-500" title={p.codigo}>{p.codigo.replace(/^\d{2}-\d{2,}-\d{3}-/, '')}</td>
                         <td className="px-1"><CampoCelula valor={p.descricao} disabled={!editavel} onConfirmar={(v) => tentar(() => atualizarPeca(p.id, { descricao: v }))} /></td>
                         <td className="px-1"><CampoNumero valor={p.quantidade} casas={3} disabled={!editavel} onConfirmar={(n) => n > 0 && tentar(() => atualizarPeca(p.id, { quantidade: n }))} /></td>
                         <td className="px-1"><SeletorOps valor={p.cod_op} disabled={!editavel} onChange={(ops) => tentar(() => atualizarPeca(p.id, { cod_op: ops }))} /></td>

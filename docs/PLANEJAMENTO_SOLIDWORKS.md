@@ -1,6 +1,6 @@
 # Importação do SolidWorks (JSON da macro) → árvore do projeto
 
-Versão 1, 20/10/2026. **Estado: aprovado (decisões 34 a 36), em implementação.**
+Versão 1, 20/10/2026. **Estado: aprovado (decisões 34 a 36) e implementado em 20/10/2026** (primeira importação; reimportação de revisão fica para a segunda etapa).
 
 Arquivo analisado: `26-059-BMA-00-00-000_Fabriaco_20261020_090024.json` (Bancada Moedor Aplicalis, SYMRISE), macro V2.0.0, esquema `fabriaco.solidworks.tree` v2.
 
