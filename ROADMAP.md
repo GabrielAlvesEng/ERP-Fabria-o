@@ -34,4 +34,4 @@ A ordem dos módulos 2 a 8 será revista quando o fluxograma completo da empresa
 
 ## Próxima etapa autorizada
 
-Vendas (com Custos e e-mail) e o exemplar de Engenharia estão no banco e no código. Falta: teste visual das telas novas com o Gabriel logado, publicação no Netlify e validação dele. Pendências abertas: integração SolidWorks (importação da árvore), catálogo COD_MAT, kick-off, exclusão de proposta com senha, Outlook web (Microsoft 365) para o e-mail.
+Vendas (Custos, e-mail, kick-off, exclusão com senha) e o exemplar de Engenharia (árvore, mapa, lista de materiais, COD_MAT) estão publicados. Pendentes: importação do SolidWorks (aguarda um JSON real da macro), Outlook web (aguarda decisão sobre app no Azure), confirmação das regras implementadas por recomendação (ver REGRAS_DE_NEGOCIO.md) e validação final do Gabriel.

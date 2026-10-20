@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { listaMateriais, montarArvore, multiplicador, pastaDaPeca, progresso, type Conjunto, type Peca } from './regras';
+import { lerMaterial, listaMateriais, montarArvore, multiplicador, pastaDaPeca, progresso, type Conjunto, type Peca } from './regras';
 
 const c = (id: string, pai: string | null, tipo: Conjunto['tipo'], codigo: string, quantidade = 1, status: Conjunto['status'] = 'modelando'): Conjunto => ({
   id, projeto_id: 'p', pai_id: pai, tipo, sub: '', conj: 0, codigo, nome: id, descricao: '', quantidade, status, revisao: 'R0', ordem: 0,
@@ -11,7 +11,7 @@ const conjuntos = [
   c('a1', 'a', 'conjunto', '26-01-001-0A-01-000', 3),
 ];
 const peca = (id: string, conj: string, qtd: number, ops: Peca['cod_op'], desc = 'Chapa', peso: number | null = null): Peca => ({
-  id, projeto_id: 'p', conjunto_id: conj, seq: 1, codigo: id, descricao: desc, quantidade: qtd, cod_op: ops, material: '', espessura: null, peso_unit: peso, observacoes: '',
+  id, projeto_id: 'p', conjunto_id: conj, seq: 1, codigo: id, descricao: desc, quantidade: qtd, cod_op: ops, material: '', cod_mat: null, espessura: null, peso_unit: peso, observacoes: '',
 });
 
 describe('árvore', () => {
@@ -40,5 +40,17 @@ describe('peças e lista de materiais', () => {
     const bom = listaMateriais([peca('x', 'a1', 2, ['LC'], 'Chapa', 1.5)], conjuntos);
     expect(bom[0].qtdTotal).toBe(12);
     expect(bom[0].pesoTotal).toBe(18);
+  });
+});
+
+describe('COD_MAT', () => {
+  const cat = [{ cod_mat: 'IN-001', nome: 'AISI 304', categoria: 'Inox' }, { cod_mat: 'AC-008', nome: 'ASTM A36', categoria: 'Carbono' }];
+  it('lê o código do catálogo', () => {
+    expect(lerMaterial('IN-001 — AISI 304', cat)).toEqual({ cod_mat: 'IN-001', material: 'AISI 304' });
+    expect(lerMaterial('ac-008', cat)).toEqual({ cod_mat: 'AC-008', material: 'ASTM A36' });
+    expect(lerMaterial('astm a36', cat)).toEqual({ cod_mat: 'AC-008', material: 'ASTM A36' });
+  });
+  it('texto fora do catálogo fica sem COD_MAT', () => {
+    expect(lerMaterial('Nylon especial', cat)).toEqual({ cod_mat: null, material: 'Nylon especial' });
   });
 });

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Box, Boxes, ChevronRight, Component, Copy, Folder, Nut, Package, Plus, Search, Trash2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, CampoCelula, CampoNumero, Selo } from '@/shared/ui';
-import { adicionarConjunto, adicionarPeca, atualizarConjunto, atualizarPeca, excluirItem } from './api';
+import { adicionarConjunto, adicionarPeca, atualizarConjunto, atualizarPeca, excluirItem, listarCatalogo } from './api';
 import {
-  COD_OPS, NOME_OP, NOME_PASTA, NOME_STATUS, montarArvore, multiplicador, pastaDaPeca,
+  COD_OPS, NOME_OP, NOME_PASTA, NOME_STATUS, lerMaterial, montarArvore, multiplicador, pastaDaPeca, rotuloMaterial,
   type CodOp, type Conjunto, type No, type Pasta, type Peca, type StatusConjunto,
 } from './regras';
 
@@ -211,6 +211,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
   const [abertas, setAbertas] = useState<Record<Pasta, boolean>>({ fabricada: true, fixador: true, comercial: true });
   const [nova, setNova] = useState({ descricao: '', quantidade: 1, cod_op: [] as CodOp[] });
   const tentar = async (fn: () => Promise<unknown>) => { try { await fn(); onRecarregar(); } catch (e) { onErro(mensagemErro(e)); } };
+  const { data: catalogo = [] } = useQuery({ queryKey: ['catalogo_materiais'], queryFn: listarCatalogo, staleTime: 10 * 60_000 });
   const porPasta = (p: Pasta) => pecas.filter((x) => pastaDaPeca(x) === p).sort((a, b) => a.seq - b.seq);
 
   async function adicionar(e: FormEvent) {
@@ -251,7 +252,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
                         <td className="px-1"><CampoCelula valor={p.descricao} disabled={!editavel} onConfirmar={(v) => tentar(() => atualizarPeca(p.id, { descricao: v }))} /></td>
                         <td className="px-1"><CampoNumero valor={p.quantidade} casas={3} disabled={!editavel} onConfirmar={(n) => n > 0 && tentar(() => atualizarPeca(p.id, { quantidade: n }))} /></td>
                         <td className="px-1"><SeletorOps valor={p.cod_op} disabled={!editavel} onChange={(ops) => tentar(() => atualizarPeca(p.id, { cod_op: ops }))} /></td>
-                        <td className="px-1"><CampoCelula valor={p.material} disabled={!editavel} placeholder="COD_MAT / material" onConfirmar={(v) => tentar(() => atualizarPeca(p.id, { material: v }))} /></td>
+                        <td className="px-1"><CampoCelula valor={rotuloMaterial(p)} lista="lista-cod-mat" disabled={!editavel} placeholder="COD_MAT (ex.: IN-001)" onConfirmar={(v) => tentar(() => atualizarPeca(p.id, lerMaterial(v, catalogo)))} /></td>
                         <td className="px-1"><CampoNumero valor={p.espessura ?? 0} casas={2} disabled={!editavel} onConfirmar={(n) => tentar(() => atualizarPeca(p.id, { espessura: n || null }))} /></td>
                         <td className="px-1"><CampoNumero valor={p.peso_unit ?? 0} casas={3} disabled={!editavel} onConfirmar={(n) => tentar(() => atualizarPeca(p.id, { peso_unit: n || null }))} /></td>
                         <td className="px-2 text-right font-medium tabular-nums" title="Quantidade total no projeto">{(Number(p.quantidade) * mult).toLocaleString('pt-BR')}</td>
@@ -265,6 +266,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
           </div>
         );
       })}
+      <datalist id="lista-cod-mat">{catalogo.map((c) => <option key={c.cod_mat} value={`${c.cod_mat} — ${c.nome}`}>{c.categoria}</option>)}</datalist>
       {pecas.length === 0 && <div className="py-3 text-center text-sm text-slate-500">Nenhuma peça neste {conjunto.tipo === 'geral' ? 'nível' : 'conjunto'}.</div>}
 
       {editavel && (

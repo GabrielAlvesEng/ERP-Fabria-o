@@ -36,3 +36,21 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `projeto_conjuntos` (pai, tipo geral/submontagem/conjunto, sub 00/0A…, conj, código, nome, quantidade no pai, situação, revisão; exclusão lógica)
 - `projeto_pecas` (conjunto, seq, código …-0A-01-001, descrição, quantidade, `cod_op` text[] LC/LP/PO/GU/DO/CL/US/CM, material, espessura, peso unitário; exclusão lógica)
 - RPCs: `criar_projeto`, `adicionar_conjunto`, `adicionar_peca`, `excluir_item_eng`; códigos protegidos por gatilho
+
+## Correção (`20261020000008_corrige_protecao_eng.sql`)
+
+- `proteger_codigos_eng` reescrita com um bloco por tabela (a versão da 0007 impedia editar conjuntos e peças).
+
+## Kick-off (`20261020000009_kickoff.sql`)
+
+- `kickoff_modelo_itens` (setor, descrição, ordem), `kickoffs` (proposta, versão, data, participantes, observações, marcos jsonb, status rascunho/finalizado), `kickoff_itens` (setor, descrição, necessário sim/nao/a_definir, responsável, prazo, observação)
+- RPCs `iniciar_kickoff` (v1 a partir do modelo ou nova versão copiando a anterior) e `finalizar_kickoff`; finalizado travado por gatilho e RLS
+
+## Exclusão com senha (`20261020000010_exclusao_senha.sql`)
+
+- `senhas_administrativas` (hash bcrypt, sem leitura pela API) e `senha_tentativas`
+- RPCs `definir_senha_administrativa`, `situacao_senha`, `exclusao_exige_senha`, `excluir_proposta` (retorna ok / senha_incorreta), `propostas_excluidas`, `restaurar_proposta`
+
+## Catálogo COD_MAT (`20261020000011_catalogo_cod_mat.sql`)
+
+- `catalogo_materiais` (cod_mat AA-000, nome, nome completo, nome no SolidWorks, categoria, densidade a preencher) com 124 materiais; `projeto_pecas.cod_mat` → catálogo

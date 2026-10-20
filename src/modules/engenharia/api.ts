@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
-import type { Conjunto, Peca, Projeto } from './regras';
+import type { Conjunto, MaterialCatalogo, Peca, Projeto } from './regras';
 
 function ok<T>(r: { data: T | null; error: unknown }): T {
   if (r.error) throw r.error;
@@ -56,6 +56,10 @@ export async function adicionarPeca(conjuntoId: string, dados: Partial<Peca>): P
 
 export async function atualizarPeca(id: string, dados: Partial<Peca>): Promise<void> {
   ok(await supabase.from('projeto_pecas').update(dados).eq('id', id));
+}
+
+export async function listarCatalogo(): Promise<MaterialCatalogo[]> {
+  return ok(await supabase.from('catalogo_materiais').select('cod_mat, nome, categoria').eq('ativo', true).order('cod_mat'));
 }
 
 export async function excluirItem(tabela: 'conjunto' | 'peca', id: string): Promise<void> {

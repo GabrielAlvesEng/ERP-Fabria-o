@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, LogOut, Moon, Sun } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, LogOut, Moon, ShieldCheck, Sun } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
@@ -9,11 +9,12 @@ import { aplicarTema, lerTema, type Tema } from './tema';
 const modulos = [
   { to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness, modulo: 'vendas' },
   { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia' },
+  { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const },
 ];
 
 export function Layout() {
   const { session, sair, pode } = useAuth();
-  const menu = modulos.filter((m) => pode(m.modulo, 'ler'));
+  const menu = modulos.filter((m) => pode(m.modulo, ('acao' in m && m.acao) || 'ler'));
   const { ano, setAno } = useAno();
   const [tema, setTema] = useState<Tema>(lerTema);
   useEffect(() => aplicarTema(tema), [tema]);

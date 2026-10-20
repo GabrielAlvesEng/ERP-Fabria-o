@@ -50,6 +50,14 @@ Este arquivo registra o que foi **decidido** e o que está **pendente**. Não su
 32. **E-mail de envio:** parte da equipe usa Outlook do Microsoft 365 e parte usa Thunderbird. Assunto: "Proposta {código} FABRIAÇO - {título}" na R0 e "Proposta {código}-R{n} FABRIAÇO - {título}" nas revisões (ex.: Proposta 26-26-005-R1 FABRIAÇO - Tanques Diversos Inox). Texto padrão do Gabriel, com CC e os PDFs comercial e técnico anexados.
 33. **Engenharia autorizada:** o Gabriel pediu expressamente para fazer a parte de Engenharia (projetos com árvore de montagens) agora, antes da validação formal de Vendas. Entra como exemplar, seguindo os códigos da decisão 16.
 
+## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
+
+Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
+
+- **Kick-off:** só depois da aprovação; uma reunião por versão; checklist por setor (Engenharia, Compras, Fabricação, Montagem em campo, Logística, RH e Segurança, Financeiro, Prazos) com Sim/Não/A definir, responsável, prazo e observação; condições de medição e faturamento (marcos); para finalizar, nenhum item pode ficar "A definir"; finalizado fica só leitura; mudança gera nova versão. O checklist inicial foi escrito a partir do Documento Mestre 8.10 e pode ser editado.
+- **Exclusão de proposta:** sempre lógica e com justificativa; rascunho nunca enviado pede só a permissão "excluir"; proposta já enviada pede também a senha "Excluir Proposta" (Administração → Senhas); aprovada ou com projeto de Engenharia não pode ser excluída; 5 senhas erradas em 15 minutos bloqueiam; código não é reaproveitado; a Administração pode restaurar.
+- **COD_MAT:** é o código do material da biblioteca do SolidWorks (ex.: IN-001 = AISI 304). Catálogo inicial de 124 materiais carregado da lista que estava no material de referência (biblioteca "Materiais_Fabriaco(2).sldmat"). Confirmar se é a versão atual.
+
 ## Regras do módulo Vendas (do Documento Mestre)
 
 Detalhes completos em `DOCUMENTO_MESTRE.md`, seção 8. Resumo:
@@ -68,10 +76,12 @@ Detalhes completos em `DOCUMENTO_MESTRE.md`, seção 8. Resumo:
 - [x] ~~**Código do projeto de fabricação.**~~ Resolvido pelas decisões 11 e 16 (mesmo código da proposta; montagens com o mesmo prefixo). Detalhes de peças e da macro do SolidWorks ficam para Engenharia.
 - [ ] **Supabase:** um projeto só, já criado (decisões 17 e 19). Falta confirmar o Project Ref antes de qualquer operação.
 - [ ] Perfis de usuário e matriz de permissões por módulo e ação. *Parcial:* decisões 12 e 13.
-- [ ] Política exata de exclusão de propostas (rascunhos incluídos).
+- [ ] Política exata de exclusão de propostas: implementada pela recomendação (ver seção acima); falta confirmação.
 - [ ] Unicidade do código comercial do contato (CC). *Parcial:* decisões 8 e 9. Atribuição decidida (decisão 18). Falta: lista das propostas de 2026 já emitidas, para continuar o NNN de cada contato.
 - [ ] Ligação com o Financeiro. *Parcial:* decisão 12. Falta definir que dados o Financeiro informa em cada etapa (nº da NF, data do pagamento etc.).
 - [ ] Critérios de retorno de etapa (ex.: voltar de Enviados para À enviar cria revisão).
 - [ ] Onde fica a pasta do código (dentro ou fora do OneDrive) e qual conta do GitHub usar.
+- [ ] SolidWorks: arquivo JSON real exportado pela macro atual, para construir a importação da árvore.
+- [ ] E-mail pelo Outlook web (Microsoft 365): exige registrar um aplicativo no Azure da empresa.
 
 As demais perguntas marcadas [DECIDIR] no `docs/PLANEJAMENTO_VENDAS.md` continuam abertas até o Gabriel responder ou aprovar as recomendações.

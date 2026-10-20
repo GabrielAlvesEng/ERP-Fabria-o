@@ -50,6 +50,7 @@ export interface Peca {
   quantidade: number;
   cod_op: CodOp[];
   material: string;
+  cod_mat: string | null;
   espessura: number | null;
   peso_unit: number | null;
   observacoes: string;
@@ -110,6 +111,18 @@ export function listaMateriais(pecas: Peca[], conjuntos: Conjunto[]): LinhaBom[]
     })
     .sort((a, b) => a.codigo.localeCompare(b.codigo));
 }
+
+export interface MaterialCatalogo { cod_mat: string; nome: string; categoria: string }
+
+// "IN-001 — AISI 304" → { cod_mat: "IN-001", material: "AISI 304" }; texto livre fica sem COD_MAT.
+export function lerMaterial(texto: string, catalogo: MaterialCatalogo[]): { cod_mat: string | null; material: string } {
+  const t = texto.trim();
+  const m = t.match(/^([A-Z]{2}-[0-9]{3})(?![0-9])/i);
+  const item = m ? catalogo.find((c) => c.cod_mat === m[1].toUpperCase()) : catalogo.find((c) => c.nome.toLowerCase() === t.toLowerCase());
+  return item ? { cod_mat: item.cod_mat, material: item.nome } : { cod_mat: null, material: t };
+}
+
+export const rotuloMaterial = (p: Pick<Peca, 'cod_mat' | 'material'>) => (p.cod_mat ? `${p.cod_mat} — ${p.material}` : p.material);
 
 // Progresso simples da árvore: % de conjuntos liberados.
 export function progresso(conjuntos: Conjunto[]): number {

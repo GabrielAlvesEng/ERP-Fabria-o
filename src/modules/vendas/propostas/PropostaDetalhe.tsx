@@ -13,8 +13,10 @@ import { rotuloRevisao, tipoTransicao } from './regras';
 import type { Pendente } from './PropostasPage';
 import { FollowupModal } from './TransicaoModais';
 import { CustosAba } from '../custos/CustosAba';
+import { KickoffAba } from '../kickoff/KickoffAba';
+import { ExcluirModal } from './ExcluirModal';
 
-const abas = ['Dados', 'Custos', 'Revisões e arquivos', 'Aprovação', 'Histórico'] as const;
+const abas = ['Dados', 'Custos', 'Revisões e arquivos', 'Aprovação', 'Kick-off', 'Histórico'] as const;
 const tiposArquivo: Record<Arquivo['tipo'], string> = { comercial: 'Proposta comercial', tecnica: 'Proposta técnica', documento_tecnico: 'Documento técnico', anexo: 'Anexo' };
 
 const proximos: Partial<Record<StatusProposta, StatusProposta[]>> = {
@@ -33,6 +35,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
   const [aba, setAba] = useState<(typeof abas)[number]>('Dados');
   const [erro, setErro] = useState('');
   const [followup, setFollowup] = useState(false);
+  const [excluir, setExcluir] = useState(false);
   const { data: p } = useQuery({ queryKey: ['proposta', id], queryFn: () => obterProposta(id) });
 
   const mover = useMutation({
@@ -61,7 +64,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-marinho-900/40" onMouseDown={onFechar}>
-      <div className={`flex h-full w-full flex-col bg-white shadow-xl transition-[max-width] dark:bg-marinho-800 ${aba === 'Custos' ? 'max-w-6xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
+      <div className={`flex h-full w-full flex-col bg-white shadow-xl transition-[max-width] dark:bg-marinho-800 ${aba === 'Custos' ? 'max-w-6xl' : aba === 'Kick-off' ? 'max-w-4xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
         {!p ? <Vazio>Carregando…</Vazio> : (
           <>
             <div className="border-b border-slate-200 px-5 py-4 dark:border-marinho-700">
@@ -86,6 +89,9 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
                 {['Enviados', 'Follow-up'].includes(p.status) && pode('vendas', 'editar') && (
                   <Botao variante="secundario" onClick={() => setFollowup(true)}>Registrar follow-up</Botao>
                 )}
+                {pode('vendas', 'excluir') && !['Aprovado', 'Finalizado', 'Emitido NF', 'Pago'].includes(p.status) && (
+                  <Botao variante="fantasma" className="ml-auto text-red-600" onClick={() => setExcluir(true)}><Trash2 size={15} /> Excluir</Botao>
+                )}
               </div>
               {erro && <div className="mt-2"><Aviso>{erro}</Aviso></div>}
             </div>
@@ -99,12 +105,14 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
               {aba === 'Custos' && <CustosAba proposta={p} />}
               {aba === 'Revisões e arquivos' && <AbaRevisoes p={p} />}
               {aba === 'Aprovação' && <AbaAprovacao p={p} />}
+              {aba === 'Kick-off' && <KickoffAba propostaId={p.id} statusProposta={p.status} />}
               {aba === 'Histórico' && <AbaHistorico id={p.id} />}
             </div>
           </>
         )}
       </div>
       {followup && p && <FollowupModal proposta={p} onFechar={() => setFollowup(false)} />}
+      {excluir && p && <ExcluirModal proposta={p} onFechar={() => setExcluir(false)} onExcluida={() => { setExcluir(false); onFechar(); }} />}
     </div>
   );
 }

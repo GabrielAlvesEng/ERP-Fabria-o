@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Download, ListTree, Network, Settings2, Table2 } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Download, ListTree, Network, Settings2, Table2 } from 'lucide-react';
+import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Campo, CampoData, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
@@ -9,12 +10,13 @@ import { atualizarProjeto, listarConjuntos, listarPecas, obterProjeto } from './
 import { ArvoreView } from './Arvore';
 import { MapaView } from './Mapa';
 import { COR_STATUS_PROJETO, NOME_STATUS_PROJETO } from './ProjetosPage';
-import { COD_OPS, NOME_PASTA, listaMateriais, progresso, type CodOp, type Pasta, type Projeto } from './regras';
+import { COD_OPS, NOME_PASTA, listaMateriais, progresso, rotuloMaterial, type CodOp, type Pasta, type Projeto } from './regras';
 
 const abas = [
   { id: 'arvore', rotulo: 'Árvore', icone: ListTree },
   { id: 'mapa', rotulo: 'Mapa', icone: Network },
   { id: 'bom', rotulo: 'Lista de materiais', icone: Table2 },
+  { id: 'kickoff', rotulo: 'Kick-off', icone: ClipboardList },
   { id: 'dados', rotulo: 'Dados', icone: Settings2 },
 ] as const;
 type Aba = (typeof abas)[number]['id'];
@@ -67,6 +69,7 @@ export function ProjetoPage() {
       {aba === 'arvore' && <ArvoreView projetoCodigo={projeto.codigo} conjuntos={conjuntos} pecas={pecas} selecionado={selecionado} onSelecionar={setSelecionado} />}
       {aba === 'mapa' && <MapaView projetoCodigo={projeto.codigo} conjuntos={conjuntos} pecas={pecas} onAbrir={(cid) => { setSelecionado(cid); setAba('arvore'); }} />}
       {aba === 'bom' && <ListaMateriais projeto={projeto} />}
+      {aba === 'kickoff' && <KickoffAba propostaId={projeto.proposta_id} statusProposta="Aprovado" somenteLeitura />}
       {aba === 'dados' && <DadosProjeto projeto={projeto} />}
     </div>
   );
@@ -86,10 +89,10 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
   const qtdTotal = linhas.reduce((s, l) => s + l.qtdTotal, 0);
 
   function exportarCsv() {
-    const cab = ['Código', 'Descrição', 'Conjunto', 'COD_OP', 'Material', 'Espessura', 'Qtd no conjunto', 'Qtd total', 'Peso un. (kg)', 'Peso total (kg)'];
+    const cab = ['Código', 'Descrição', 'Conjunto', 'COD_OP', 'COD_MAT', 'Material', 'Espessura', 'Qtd no conjunto', 'Qtd total', 'Peso un. (kg)', 'Peso total (kg)'];
     const num = (n: number | null) => (n == null ? '' : String(n).replace('.', ','));
     const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const csv = [cab, ...linhas.map((l) => [l.codigo, l.descricao, l.conjunto, l.cod_op.join('/'), l.material, num(l.espessura), num(l.quantidade), num(l.qtdTotal), num(l.peso_unit), num(l.pesoTotal)])]
+    const csv = [cab, ...linhas.map((l) => [l.codigo, l.descricao, l.conjunto, l.cod_op.join('/'), l.cod_mat ?? '', l.material, num(l.espessura), num(l.quantidade), num(l.qtdTotal), num(l.peso_unit), num(l.pesoTotal)])]
       .map((r) => r.map((c) => esc(String(c))).join(';')).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
@@ -127,7 +130,7 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
                   <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
                   <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-slate-500">{NOME_PASTA[l.pasta]}</div></td>
                   <td className="px-3 py-1.5"><div className="flex flex-wrap gap-0.5">{l.cod_op.map((o) => <span key={o} className={`rounded px-1 font-mono text-[10px] font-semibold text-white ${o === 'CM' ? 'bg-amber-500' : 'bg-roxo-500'}`}>{o}</span>)}</div></td>
-                  <td className="px-3 py-1.5">{l.material || '—'}</td>
+                  <td className="px-3 py-1.5">{rotuloMaterial(l) || '—'}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{l.espessura ?? '—'}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{Number(l.quantidade).toLocaleString('pt-BR')}</td>
                   <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{l.qtdTotal.toLocaleString('pt-BR')}</td>
