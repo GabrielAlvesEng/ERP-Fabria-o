@@ -70,14 +70,14 @@ export const SECOES: DefSecao[] = [
         { campo: 'descricao', rotulo: 'Chapa', tipo: 'material', largura: 'min-w-[240px]' },
         { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
         { campo: 'fator', rotulo: 'Peso (kg)', tipo: 'numero', largura: 'w-32' },
-        { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+        { campo: 'valor_unitario', rotulo: 'Preço por peso', tipo: 'numero', largura: 'w-32' },
       ] },
       { grupo: 'Perfis', adicionar: 'perfil', colunas: [
         { campo: 'material', rotulo: 'Material', tipo: 'catalogo', largura: 'w-44' },
         { campo: 'descricao', rotulo: 'Perfil', tipo: 'material', largura: 'min-w-[240px]' },
         { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
         { campo: 'fator', rotulo: 'Metros', tipo: 'numero', largura: 'w-32' },
-        { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+        { campo: 'valor_unitario', rotulo: 'Preço por metro', tipo: 'numero', largura: 'w-32' },
       ] },
       { grupo: 'Comerciais', adicionar: 'item comercial', colunas: [
         { campo: 'descricao', rotulo: 'Item comercial', tipo: 'material', largura: 'min-w-[280px]' },

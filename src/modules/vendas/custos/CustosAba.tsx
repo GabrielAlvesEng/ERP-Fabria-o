@@ -319,8 +319,15 @@ function TabelaLinhas({ linhas, colunas, secao, grupo, refs, listas, peso, edita
   );
 }
 
-const rotuloCatalogo = (m: MaterialCatalogo) => `${m.cod_mat} — ${m.nome}`;
-const codDoMaterial = (texto: string) => texto.match(/^([A-Z]{2}-\d{3})/i)?.[1].toUpperCase() ?? null;
+// Na tela o material aparece só pelo nome. Linhas antigas gravaram "IN-001 — AISI 304": o código é tirado na exibição.
+const rotuloCatalogo = (m: MaterialCatalogo) => m.nome;
+const semCodigoMaterial = (texto: string) => texto.replace(/^[A-Z]{2}-\d{3}\s*[—-]\s*/i, '');
+function codDoMaterial(texto: string, catalogo: MaterialCatalogo[]): string | null {
+  const cod = texto.match(/^([A-Z]{2}-\d{3})/i)?.[1].toUpperCase();
+  if (cod) return cod;
+  const nome = texto.trim().toLowerCase();
+  return nome ? catalogo.find((m) => m.nome.toLowerCase() === nome)?.cod_mat ?? null : null;
+}
 
 type Peso = { kg: number; perfisSemKgM: number };
 
@@ -333,7 +340,7 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, peso, edita
   const estilo = { transform: CSS.Transform.toString(transform), transition };
 
   // Itens da lista de preços do bloco; com material escolhido, os daquele material vêm primeiro (itens sem material continuam).
-  const codLinha = codDoMaterial(l.material);
+  const codLinha = codDoMaterial(l.material, listas.catalogo);
   const refsDoBloco = useMemo(() => {
     const doTipo = refs.filter((r) => !grupo || r.tipo === grupo);
     if (!codLinha) return doTipo;
@@ -409,8 +416,8 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, peso, edita
               <option>Sim</option><option>Não</option>
             </select>
           ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' || c.tipo === 'veiculo' ? (
-            <CampoEscolha valor={String(l[c.campo] ?? '')} opcoes={opcoes(c)} disabled={!editavel}
-              placeholder={c.tipo === 'catalogo' ? 'Ex.: IN-001' : c.tipo === 'material' ? 'Digite para buscar na lista de preços' : ''}
+            <CampoEscolha valor={c.tipo === 'catalogo' ? semCodigoMaterial(l.material) : String(l[c.campo] ?? '')} opcoes={opcoes(c)} disabled={!editavel}
+              placeholder={c.tipo === 'catalogo' ? 'Ex.: AISI 304' : c.tipo === 'material' ? 'Digite para buscar na lista de preços' : ''}
               onConfirmar={(v) => escolher(c, v)} />
           ) : c.rota ? (
             <div className="flex items-center gap-0.5">

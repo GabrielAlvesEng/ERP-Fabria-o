@@ -258,7 +258,10 @@ export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder
   const [ativo, setAtivo] = useState(0);
   const ref = useRef<HTMLInputElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
-  useEffect(() => setTexto(valor), [valor]);
+  // Último valor já gravado: ao clicar num item, o blur que vem logo depois não pode gravar o texto digitado por cima.
+  const gravado = useRef(valor);
+  const escolhido = useRef(false);
+  useEffect(() => { setTexto(valor); gravado.current = valor; }, [valor]);
   // A lista é fixa na tela: ao rolar a página, fecha (o campo continua focado).
   useEffect(() => {
     if (!pos) return;
@@ -278,7 +281,8 @@ export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder
   function confirmar(v: string) {
     setTexto(v);
     setPos(null);
-    if (v !== valor) onConfirmar(v);
+    if (v !== gravado.current) { gravado.current = v; onConfirmar(v); }
+    escolhido.current = true;
   }
 
   return (
@@ -290,7 +294,11 @@ export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder
         placeholder={placeholder}
         onFocus={abrir}
         onChange={(e) => { setTexto(e.target.value); if (!pos) abrir(); setAtivo(0); }}
-        onBlur={() => setTimeout(() => { if (document.activeElement !== ref.current) { setPos(null); if (texto !== valor) onConfirmar(texto); } }, 150)}
+        onBlur={(e) => {
+          const t = e.currentTarget.value;
+          if (escolhido.current) { escolhido.current = false; setPos(null); return; }
+          setTimeout(() => { if (document.activeElement !== ref.current) { confirmar(t); escolhido.current = false; } }, 150);
+        }}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') { e.preventDefault(); setAtivo((a) => Math.min(a + 1, filtradas.length - 1)); }
           else if (e.key === 'ArrowUp') { e.preventDefault(); setAtivo((a) => Math.max(a - 1, 0)); }
