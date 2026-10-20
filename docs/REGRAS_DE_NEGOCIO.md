@@ -50,6 +50,12 @@ Este arquivo registra o que foi **decidido** e o que está **pendente**. Não su
 32. **E-mail de envio:** parte da equipe usa Outlook do Microsoft 365 e parte usa Thunderbird. Assunto: "Proposta {código} FABRIAÇO - {título}" na R0 e "Proposta {código}-R{n} FABRIAÇO - {título}" nas revisões (ex.: Proposta 26-26-005-R1 FABRIAÇO - Tanques Diversos Inox). Texto padrão do Gabriel, com CC e os PDFs comercial e técnico anexados.
 33. **Engenharia autorizada:** o Gabriel pediu expressamente para fazer a parte de Engenharia (projetos com árvore de montagens) agora, antes da validação formal de Vendas. Entra como exemplar, seguindo os códigos da decisão 16.
 
+## Decisões confirmadas pelo Gabriel (20/10/2026, importação do SolidWorks)
+
+34. **Primeira importação** do JSON da macro (Bancada Moedor Aplicalis, 26-059-BMA) vai para o **projeto de teste 26-27-001**, só para validar.
+35. **Conjunto soldado** (weldment) é um nó próprio da árvore, com os corpos da lista de corte como peças numeradas `<código do soldado>.01`, `.02`… na ordem da lista de corte.
+36. **Os próximos modelos do SolidWorks serão nomeados com o código da proposta** (ex.: `26-26-005-00-00-000`). Arquivos antigos com `AA-NNN-SIGLA` continuam importáveis: o ERP usa o final do código CAD e guarda o código CAD original; nenhum arquivo é renomeado.
+
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
