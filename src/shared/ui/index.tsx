@@ -195,3 +195,51 @@ export function Cabecalho({ titulo, subtitulo, acoes }: { titulo: string; subtit
     </div>
   );
 }
+
+// Número no formato brasileiro (1.234,56). Mostra formatado; ao sair do campo, devolve o número.
+export function CampoNumero({ valor, onConfirmar, casas = 2, disabled, className, alinhar = 'direita' }: {
+  valor: number; onConfirmar: (n: number) => void; casas?: number; disabled?: boolean; className?: string; alinhar?: 'direita' | 'esquerda';
+}) {
+  const fmt = (n: number) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: casas });
+  const [texto, setTexto] = useState(fmt(valor));
+  const [focado, setFocado] = useState(false);
+  useEffect(() => { if (!focado) setTexto(fmt(valor)); }, [valor, focado]); // eslint-disable-line react-hooks/exhaustive-deps
+  function confirmar() {
+    setFocado(false);
+    const t = texto.trim();
+    const n = t === '' ? 0 : Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
+    if (Number.isNaN(n)) { setTexto(fmt(valor)); return; }
+    if (n !== Number(valor)) onConfirmar(n);
+    setTexto(fmt(n));
+  }
+  return (
+    <input
+      inputMode="decimal"
+      value={texto}
+      disabled={disabled}
+      onFocus={(e) => { setFocado(true); e.target.select(); }}
+      onChange={(e) => setTexto(e.target.value)}
+      onBlur={confirmar}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      className={cx('w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm tabular-nums outline-none hover:border-slate-300 focus:border-roxo-500 focus:bg-white disabled:hover:border-transparent dark:hover:border-marinho-500 dark:focus:bg-marinho-800', alinhar === 'direita' && 'text-right', className)}
+    />
+  );
+}
+
+// Texto editável em célula de tabela: salva ao sair do campo.
+export function CampoCelula({ valor, onConfirmar, disabled, lista, placeholder }: { valor: string; onConfirmar: (v: string) => void; disabled?: boolean; lista?: string; placeholder?: string }) {
+  const [texto, setTexto] = useState(valor);
+  useEffect(() => setTexto(valor), [valor]);
+  return (
+    <input
+      value={texto}
+      list={lista}
+      disabled={disabled}
+      placeholder={placeholder}
+      onChange={(e) => setTexto(e.target.value)}
+      onBlur={() => { if (texto !== valor) onConfirmar(texto); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none placeholder:text-slate-400 hover:border-slate-300 focus:border-roxo-500 focus:bg-white disabled:hover:border-transparent dark:hover:border-marinho-500 dark:focus:bg-marinho-800"
+    />
+  );
+}

@@ -12,8 +12,9 @@ import type { Arquivo, Proposta, StatusProposta } from '../types';
 import { rotuloRevisao, tipoTransicao } from './regras';
 import type { Pendente } from './PropostasPage';
 import { FollowupModal } from './TransicaoModais';
+import { CustosAba } from '../custos/CustosAba';
 
-const abas = ['Dados', 'Revisões e arquivos', 'Aprovação', 'Histórico'] as const;
+const abas = ['Dados', 'Custos', 'Revisões e arquivos', 'Aprovação', 'Histórico'] as const;
 const tiposArquivo: Record<Arquivo['tipo'], string> = { comercial: 'Proposta comercial', tecnica: 'Proposta técnica', documento_tecnico: 'Documento técnico', anexo: 'Anexo' };
 
 const proximos: Partial<Record<StatusProposta, StatusProposta[]>> = {
@@ -60,7 +61,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-marinho-900/40" onMouseDown={onFechar}>
-      <div className="flex h-full w-full max-w-2xl flex-col bg-white shadow-xl dark:bg-marinho-800" onMouseDown={(e) => e.stopPropagation()}>
+      <div className={`flex h-full w-full flex-col bg-white shadow-xl transition-[max-width] dark:bg-marinho-800 ${aba === 'Custos' ? 'max-w-6xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
         {!p ? <Vazio>Carregando…</Vazio> : (
           <>
             <div className="border-b border-slate-200 px-5 py-4 dark:border-marinho-700">
@@ -89,12 +90,13 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
               {erro && <div className="mt-2"><Aviso>{erro}</Aviso></div>}
             </div>
             <div className="flex gap-1 border-b border-slate-200 px-3 dark:border-marinho-700">
-              {abas.map((a) => (
+              {abas.filter((a) => a !== 'Custos' || pode('custos', 'ler')).map((a) => (
                 <button key={a} onClick={() => setAba(a)} className={`border-b-2 px-3 py-2 text-sm ${aba === a ? 'border-roxo-500 font-semibold text-roxo-600 dark:text-roxo-100' : 'border-transparent text-slate-500'}`}>{a}</button>
               ))}
             </div>
             <div className="flex-1 overflow-y-auto p-5">
               {aba === 'Dados' && <AbaDados p={p} />}
+              {aba === 'Custos' && <CustosAba proposta={p} />}
               {aba === 'Revisões e arquivos' && <AbaRevisoes p={p} />}
               {aba === 'Aprovação' && <AbaAprovacao p={p} />}
               {aba === 'Histórico' && <AbaHistorico id={p.id} />}

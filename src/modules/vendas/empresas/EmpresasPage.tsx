@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, Loader2, Pencil, Plus, RotateCcw, Search } from 'lucide-react';
+import { Ban, ChevronRight, Loader2, Pencil, Plus, RotateCcw, Search } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { consultarCNPJ } from '@/shared/lib/cnpj';
 import { apenasDigitos, cnpjValido, formatarCNPJ, mensagemErro } from '@/shared/lib/formato';
@@ -23,6 +23,7 @@ export function EmpresasPage() {
   const [busca, setBusca] = useState('');
   const [editando, setEditando] = useState<Partial<Empresa> | null>(null);
   const [erro, setErro] = useState('');
+  const [verDesativadas, setVerDesativadas] = useState(false);
   const { data: empresas = [], isLoading, error } = useQuery({ queryKey: ['empresas'], queryFn: listarEmpresas });
   const { data: contatos = [] } = useQuery({ queryKey: ['contatos'], queryFn: listarContatos });
 
@@ -91,13 +92,24 @@ export function EmpresasPage() {
 
       {desativadas.length > 0 && (
         <Cartao className="mt-5 p-0">
-          <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-marinho-700">
+          <button
+            type="button"
+            onClick={() => setVerDesativadas(!verDesativadas)}
+            aria-expanded={verDesativadas}
+            className={`flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-marinho-700/40 ${verDesativadas ? 'border-b border-slate-200 dark:border-marinho-700' : ''}`}
+          >
+            <ChevronRight size={16} className={`text-slate-400 transition-transform ${verDesativadas ? 'rotate-90' : ''}`} />
             <Ban size={16} className="text-slate-400" />
             <span className="font-semibold">Empresas desativadas</span>
             <Selo>{desativadas.length}</Selo>
-            <span className="text-xs text-slate-500">Não aparecem para novos contatos e propostas. O histórico continua preservado.</span>
-          </div>
-          {tabela(desativadas, true)}
+            <span className="hidden text-xs text-slate-500 sm:inline">{verDesativadas ? 'Clique para ocultar' : 'Clique para mostrar'}</span>
+          </button>
+          {verDesativadas && (
+            <>
+              <div className="px-4 pt-2 text-xs text-slate-500">Não aparecem para novos contatos e propostas. O histórico continua preservado.</div>
+              {tabela(desativadas, true)}
+            </>
+          )}
         </Cartao>
       )}
 

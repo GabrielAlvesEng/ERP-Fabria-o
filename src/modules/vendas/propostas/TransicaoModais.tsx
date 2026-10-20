@@ -38,22 +38,8 @@ function Form({ children, onSubmit }: { children: ReactNode; onSubmit: () => voi
   );
 }
 
-export function EnviarModal({ proposta, onFechar }: { proposta: Proposta; onFechar: () => void }) {
-  const [data, setData] = useState(hojeISO());
-  const [retorno, setRetorno] = useState('');
-  const { erro, m } = useAcao(() => moverProposta(proposta.id, 'Enviados', { data_envio: data, proximo_followup: retorno }), onFechar);
-  return (
-    <Modal aberto titulo={`Enviar ${proposta.codigo} R${proposta.revisao_atual}`} onFechar={onFechar}>
-      <Form onSubmit={() => m.mutate()}>
-        <Aviso tipo="info">Ao enviar, a revisão R{proposta.revisao_atual} fica congelada: dados e arquivos não podem mais ser alterados. Ajustes depois disso geram nova revisão.</Aviso>
-        {erro && <Aviso>{erro}</Aviso>}
-        <Campo rotulo="Data de envio"><CampoData value={data} onChange={setData} required /></Campo>
-        <Campo rotulo="Próximo follow-up (vazio = prazo padrão de 5 dias)"><CampoData value={retorno} onChange={setRetorno} /></Campo>
-        <Rodape onFechar={onFechar} ocupado={m.isPending} rotulo="Confirmar envio" />
-      </Form>
-    </Modal>
-  );
-}
+// O envio ao cliente (com e-mail, CC e anexos) fica em EnviarEmailModal.
+export { EnviarEmailModal as EnviarModal } from './EnviarEmailModal';
 
 export function AprovarModal({ proposta, onFechar }: { proposta: Proposta; onFechar: () => void }) {
   const [f, setF] = useState({ forma: 'PC', numero_documento: '', data_aprovacao: hojeISO(), valor_aprovado: String(proposta.valor), observacoes: '' });

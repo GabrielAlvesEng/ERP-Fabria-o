@@ -41,6 +41,15 @@ Este arquivo registra o que foi **decidido** e o que está **pendente**. Não su
 26. **CNPJ preenche a empresa:** ao digitar um CNPJ válido no cadastro, o sistema consulta a Receita Federal por serviços públicos gratuitos (BrasilAPI, depois CNPJ.ws, depois CNPJá) e preenche **só os campos vazios**. Só o CNPJ é enviado a esses serviços. Se todos falharem, o cadastro continua manual.
 27. **Campos de formulário:** datas sempre em DD/MM/AAAA com botão de calendário ao lado; checkboxes, selects e escolha de arquivo com visual próprio do sistema.
 
+## Decisões confirmadas pelo Gabriel (19/10/2026, custos, e-mail e Engenharia)
+
+28. **Empresas desativadas** ficam recolhidas (ocultas) e só aparecem ao clicar no título da lista.
+29. **Custos:** uma proposta pode ter **vários itens** (Item A, B…), cada um com sua planilha de custos e quantidade. Os custos pertencem à revisão (congelam no envio e são copiados na nova revisão).
+30. **Fórmulas de custo corrigidas** (substitui o comportamento da planilha "Item A - Plataforma.xlsx"): (a) Acessórios soma todas as linhas; (b) lucro e margem de negociação incidem sobre **todos** os custos, inclusive Acessórios; (c) imposto **por dentro**: preço unitário = (custos + lucro + negociação) ÷ (1 − imposto%). O modo "por fora" continua disponível por item, para conferência.
+31. **Quem vê custos:** todo o Comercial (e a Administração).
+32. **E-mail de envio:** parte da equipe usa Outlook do Microsoft 365 e parte usa Thunderbird. Assunto: "Proposta {código} FABRIAÇO - {título}" na R0 e "Proposta {código}-R{n} FABRIAÇO - {título}" nas revisões (ex.: Proposta 26-26-005-R1 FABRIAÇO - Tanques Diversos Inox). Texto padrão do Gabriel, com CC e os PDFs comercial e técnico anexados.
+33. **Engenharia autorizada:** o Gabriel pediu expressamente para fazer a parte de Engenharia (projetos com árvore de montagens) agora, antes da validação formal de Vendas. Entra como exemplar, seguindo os códigos da decisão 16.
+
 ## Regras do módulo Vendas (do Documento Mestre)
 
 Detalhes completos em `DOCUMENTO_MESTRE.md`, seção 8. Resumo:
