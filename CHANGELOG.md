@@ -50,3 +50,4 @@
 - Limites desta versão: reimportação de nova revisão do CAD ainda não existe (bloqueada pelo banco); itens sem COD_OP, como o rodízio, ficam em "Peças fabricadas" até alguém classificá-los.
 - Publicado no Netlify a partir de cópia limpa do Git (deploy `6ad794964d129e69b74355bb`); conferido que o site no ar contém o importador do SolidWorks e o conjunto soldado.
 - Planejamento da reimportação de revisão do CAD (etapa 2 do SolidWorks) em `docs/PLANEJAMENTO_SOLIDWORKS.md`, regras R1 a R8, aguardando aprovação.
+- Decisão 37: sem deploy no Netlify até o Gabriel liberar; trabalho e testes só em localhost.
