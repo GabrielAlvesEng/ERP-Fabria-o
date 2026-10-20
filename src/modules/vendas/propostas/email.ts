@@ -5,14 +5,14 @@ export function codigoComRevisao(codigo: string, revisao: number): string {
 }
 
 export function assuntoProposta(codigo: string, revisao: number, titulo: string): string {
-  return `Proposta ${codigoComRevisao(codigo, revisao)} FABRIAÇO - ${titulo}`;
+  return `Proposta ${codigoComRevisao(codigo, revisao)} FABRIAÇO - ${titulo.trim()}`;
 }
 
 export function corpoPadrao(contato: string, codigo: string, revisao: number, titulo: string): string {
   return [
-    `Prezado ${contato}`,
+    `Prezado ${contato.trim()}`,
     '',
-    `Espero que este e-mail os encontre bem. Conforme alinhado, estou encaminhando em anexo a proposta: ${codigoComRevisao(codigo, revisao)} - ${titulo}.`,
+    `Espero que este e-mail os encontre bem. Conforme alinhado, estou encaminhando em anexo a proposta: ${codigoComRevisao(codigo, revisao)} - ${titulo.trim()}.`,
     '',
     'Por favor, sinta-se à vontade para revisar o documento e entrar em contato caso tenha alguma dúvida ou precise de mais informações.',
     '',

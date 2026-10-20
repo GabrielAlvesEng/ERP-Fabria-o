@@ -30,3 +30,10 @@ describe('e-mail de envio', () => {
     expect(eml).toContain("filename*=UTF-8''Proposta%20T%C3%A9cnica.pdf");
   });
 });
+
+describe('títulos com espaços sobrando', () => {
+  it('ignora espaços nas pontas', () => {
+    expect(assuntoProposta('26-02-001', 0, 'Teste ')).toBe('Proposta 26-02-001 FABRIAÇO - Teste');
+    expect(corpoPadrao(' Moisés ', '26-02-001', 0, 'Teste ')).toContain('a proposta: 26-02-001 - Teste.');
+  });
+});
