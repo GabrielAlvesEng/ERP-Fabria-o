@@ -45,7 +45,7 @@ Avisos da própria macro: o rodízio está sem COD_OP; os 4 corpos da lista de c
 
 # Etapa 2 — Reimportação de nova revisão do CAD
 
-Versão 1, 20/10/2026. **Estado: aguardando aprovação do Gabriel.** Nada implementado.
+Versão 1, 20/10/2026. **Estado: aprovado (decisão 38) e implementado em 20/10/2026**, testado em localhost.
 
 ## Como funciona
 

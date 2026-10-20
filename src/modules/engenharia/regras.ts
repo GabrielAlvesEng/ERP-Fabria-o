@@ -41,6 +41,9 @@ export interface Conjunto {
   revisao: string;
   ordem: number;
   codigo_cad?: string;
+  chave_cad?: string | null;
+  dados_cad?: Record<string, unknown>;
+  removido_cad_em?: string | null;
 }
 
 export interface Peca {
@@ -58,6 +61,9 @@ export interface Peca {
   peso_unit: number | null;
   comprimento?: number | null;
   codigo_cad?: string;
+  chave_cad?: string | null;
+  dados_cad?: Record<string, unknown>;
+  removido_cad_em?: string | null;
   observacoes: string;
 }
 
@@ -98,12 +104,28 @@ export function pastaDaPeca(p: Pick<Peca, 'cod_op' | 'descricao'>): Pasta {
   return FIXADORES.test(p.descricao) ? 'fixador' : 'comercial';
 }
 
-export interface LinhaBom extends Peca { conjunto: string; qtdTotal: number; pesoTotal: number | null; pasta: Pasta }
+export interface LinhaBom extends Peca { conjunto: string; qtdTotal: number; pesoTotal: number | null; pasta: Pasta; removido: boolean }
 
-export function listaMateriais(pecas: Peca[], conjuntos: Conjunto[]): LinhaBom[] {
+// Removido do CAD (decisão 38, R1): a peça ou algum conjunto acima dela saiu do CAD.
+export function removidoNaArvore(conjuntoId: string, conjuntos: Conjunto[]): boolean {
+  const porId = new Map(conjuntos.map((c) => [c.id, c]));
+  let atual = porId.get(conjuntoId);
+  const vistos = new Set<string>();
+  while (atual && !vistos.has(atual.id)) {
+    if (atual.removido_cad_em) return true;
+    vistos.add(atual.id);
+    atual = atual.pai_id ? porId.get(atual.pai_id) : undefined;
+  }
+  return false;
+}
+
+export function listaMateriais(pecas: Peca[], conjuntos: Conjunto[], incluirRemovidos = false): LinhaBom[] {
   const porId = new Map(conjuntos.map((c) => [c.id, c]));
   return pecas
     .filter((p) => porId.has(p.conjunto_id))
+    .map((p) => ({ p, removido: Boolean(p.removido_cad_em) || removidoNaArvore(p.conjunto_id, conjuntos) }))
+    .filter(({ removido }) => incluirRemovidos || !removido)
+    .map(({ p, removido }) => ({ ...p, removido }))
     .map((p) => {
       const qtdTotal = Number(p.quantidade) * multiplicador(p.conjunto_id, conjuntos);
       return {

@@ -18,7 +18,7 @@ export function MapaView({ projetoCodigo, conjuntos, pecas, onAbrir }: { projeto
     const cor = { geral: 'border-t-marinho-500', submontagem: 'border-t-roxo-500', conjunto: 'border-t-petroleo-500', soldado: 'border-t-amber-500' }[n.tipo];
     return (
       <button onClick={() => onAbrir(n.id)}
-        className={`w-48 rounded-xl border-t-4 bg-white p-3 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-roxo-500 dark:bg-marinho-800 dark:ring-marinho-600 ${cor}`}>
+        className={`w-48 rounded-xl border-t-4 bg-white p-3 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-roxo-500 dark:bg-marinho-800 dark:ring-marinho-600 ${cor} ${n.removido_cad_em ? 'opacity-50 line-through' : ''}`} title={n.removido_cad_em ? 'Removido do CAD' : undefined}>
         <div className="flex items-center justify-between">
           <Icone size={15} className={COR_ICONE[n.tipo]} />
           <span className="inline-flex items-center gap-1 text-[10px] text-slate-500"><span className={`h-2 w-2 rounded-full ${COR_STATUS[n.status]}`} />{NOME_STATUS[n.status]}</span>

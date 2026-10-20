@@ -70,3 +70,14 @@ export async function excluirItem(tabela: 'conjunto' | 'peca', id: string): Prom
 export async function importarSolidworks(projetoId: string, plano: unknown): Promise<{ nos: number; pecas: number }> {
   return ok(await supabase.rpc('importar_solidworks', { p_projeto: projetoId, p_plano: plano })) as { nos: number; pecas: number };
 }
+
+// Nova revisão do CAD: o plano vem do comparador (revisaoCad.ts).
+export async function atualizarSolidworks(projetoId: string, plano: unknown): Promise<Record<string, number>> {
+  return ok(await supabase.rpc('atualizar_solidworks', { p_projeto: projetoId, p_plano: plano })) as Record<string, number>;
+}
+
+export interface ImportacaoCad { id: string; tipo: 'inicial' | 'revisao'; arquivo: string; codigo_cad: string; macro: string; resumo: Record<string, number>; criado_em: string; usuarios: { nome: string } | null }
+
+export async function listarImportacoesCad(projetoId: string): Promise<ImportacaoCad[]> {
+  return ok(await supabase.from('projeto_importacoes_cad').select('*, usuarios(nome)').eq('projeto_id', projetoId).order('criado_em', { ascending: false }));
+}

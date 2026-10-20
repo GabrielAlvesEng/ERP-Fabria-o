@@ -5,8 +5,8 @@ import { ArrowLeft, ClipboardList, Download, FileUp, ListTree, Network, Settings
 import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataHoraBR, mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, CampoData, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
-import { atualizarProjeto, listarConjuntos, listarPecas, obterProjeto } from './api';
+import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
+import { atualizarProjeto, listarConjuntos, listarImportacoesCad, listarPecas, obterProjeto } from './api';
 import { ArvoreView } from './Arvore';
 import { ImportarSolidworks } from './ImportarSolidworks';
 import { MapaView } from './Mapa';
@@ -49,11 +49,11 @@ export function ProjetoPage() {
           <div className="text-sm text-slate-500">{projeto.empresas?.nome_fantasia}</div>
         </div>
         <div className="flex flex-wrap items-end gap-4 text-sm">
-          {pode('engenharia', 'editar') && !projeto.importado_cad_em && (
-            <Botao variante="secundario" onClick={() => setImportando(true)}><FileUp size={15} /> Importar do SolidWorks</Botao>
+          {pode('engenharia', 'editar') && (
+            <Botao variante="secundario" onClick={() => setImportando(true)}><FileUp size={15} /> {projeto.importado_cad_em ? 'Atualizar do SolidWorks' : 'Importar do SolidWorks'}</Botao>
           )}
-          <Indicador rotulo="Conjuntos" valor={String(conjuntos.length)} />
-          <Indicador rotulo="Peças e itens" valor={String(pecas.length)} />
+          <Indicador rotulo="Conjuntos" valor={String(conjuntos.filter((c) => !c.removido_cad_em).length)} />
+          <Indicador rotulo="Peças e itens" valor={String(pecas.filter((p) => !p.removido_cad_em).length)} />
           <div>
             <div className="text-xs text-slate-500">Liberado</div>
             <div className="flex items-center gap-2">
@@ -91,7 +91,9 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
   const { data: pecas = [] } = useQuery({ queryKey: ['eng', projeto.id, 'pecas'], queryFn: () => listarPecas(projeto.id) });
   const [pasta, setPasta] = useState<Pasta | ''>('');
   const [op, setOp] = useState<CodOp | ''>('');
-  const linhas = useMemo(() => listaMateriais(pecas, conjuntos).filter((l) => (!pasta || l.pasta === pasta) && (!op || l.cod_op.includes(op))), [pecas, conjuntos, pasta, op]);
+  const [verRemovidos, setVerRemovidos] = useState(false);
+  const temRemovidos = pecas.some((p) => p.removido_cad_em) || conjuntos.some((c) => c.removido_cad_em);
+  const linhas = useMemo(() => listaMateriais(pecas, conjuntos, verRemovidos).filter((l) => (!pasta || l.pasta === pasta) && (!op || l.cod_op.includes(op))), [pecas, conjuntos, pasta, op, verRemovidos]);
   const pesoTotal = linhas.reduce((s, l) => s + (l.pesoTotal ?? 0), 0);
   const qtdTotal = linhas.reduce((s, l) => s + l.qtdTotal, 0);
 
@@ -119,6 +121,7 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
           <option value="">Todas as operações</option>
           {COD_OPS.map((o) => <option key={o} value={o}>{o}</option>)}
         </Selecao>
+        {temRemovidos && <Caixa marcado={verRemovidos} onChange={setVerRemovidos}>Mostrar removidos do CAD</Caixa>}
         <span className="ml-auto text-sm text-slate-500">{linhas.length} itens · {qtdTotal.toLocaleString('pt-BR')} unidades · {pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</span>
         <button onClick={exportarCsv} disabled={!linhas.length} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-roxo-600 hover:bg-roxo-50 disabled:opacity-40 dark:hover:bg-marinho-700"><Download size={15} /> Excel (CSV)</button>
       </div>
@@ -133,9 +136,9 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
             </thead>
             <tbody>
               {linhas.map((l) => (
-                <tr key={l.id} className="border-t border-slate-100 dark:border-marinho-700">
+                <tr key={l.id} className={`border-t border-slate-100 dark:border-marinho-700 ${l.removido ? 'text-slate-400 line-through' : ''}`}>
                   <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
-                  <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-slate-500">{NOME_PASTA[l.pasta]}</div></td>
+                  <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-slate-500 no-underline">{l.removido ? 'Removido do CAD' : NOME_PASTA[l.pasta]}</div></td>
                   <td className="px-3 py-1.5"><div className="flex flex-wrap gap-0.5">{l.cod_op.map((o) => <span key={o} className={`rounded px-1 font-mono text-[10px] font-semibold text-white ${o === 'CM' ? 'bg-amber-500' : 'bg-roxo-500'}`}>{o}</span>)}</div></td>
                   <td className="px-3 py-1.5">{rotuloMaterial(l) || '—'}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{l.espessura == null ? '—' : Number(l.espessura).toLocaleString('pt-BR')}</td>
@@ -200,6 +203,31 @@ function DadosCad({ projeto }: { projeto: Projeto }) {
           <div key={k} className="flex gap-2"><dt className="text-slate-500">{k}:</dt><dd className="font-medium">{v}</dd></div>
         ))}
       </dl>
+      <HistoricoCad projetoId={projeto.id} />
+    </div>
+  );
+}
+
+function HistoricoCad({ projetoId }: { projetoId: string }) {
+  const { data: historico = [] } = useQuery({ queryKey: ['eng', projetoId, 'importacoes'], queryFn: () => listarImportacoesCad(projetoId) });
+  if (!historico.length) return null;
+  const texto = (r: Record<string, number>) =>
+    [r.novos && `${r.novos} novo(s)`, r.alterados && `${r.alterados} alterado(s)`, r.removidos && `${r.removidos} removido(s)`, r.liberados_em_revisao && `${r.liberados_em_revisao} liberado(s) → em revisão`]
+      .filter(Boolean).join(', ') || 'sem mudanças';
+  return (
+    <div className="mt-3 border-t border-slate-200 pt-2 dark:border-marinho-600">
+      <div className="mb-1 font-semibold">Histórico de importações</div>
+      <ul className="space-y-1">
+        {historico.map((h) => (
+          <li key={h.id} className="flex flex-wrap gap-x-2">
+            <span className="tabular-nums text-slate-500">{dataHoraBR(h.criado_em)}</span>
+            <span className="font-medium">{h.tipo === 'inicial' ? 'Importação inicial' : 'Nova revisão'}</span>
+            <span>{texto(h.resumo)}</span>
+            {h.arquivo && <span className="font-mono text-[11px] text-slate-500">{h.arquivo}</span>}
+            <span className="text-slate-500">· {h.usuarios?.nome ?? '—'}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

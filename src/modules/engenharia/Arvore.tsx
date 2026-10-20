@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Box, Boxes, ChevronRight, Component, Copy, Flame, Folder, Nut, Package, Plus, Search, Trash2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { mensagemErro } from '@/shared/lib/formato';
+import { dataBR, mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, CampoCelula, CampoNumero, Selo } from '@/shared/ui';
 import { adicionarConjunto, adicionarPeca, atualizarConjunto, atualizarPeca, excluirItem, listarCatalogo } from './api';
 import {
@@ -66,7 +66,7 @@ export function ArvoreView({ projetoCodigo, conjuntos, pecas, selecionado, onSel
           </button>
           <Icone size={15} className={ativo ? 'text-white' : COR_ICONE[n.tipo]} />
           <span className={`font-mono text-[11px] ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{codigoCurto(n.codigo, projetoCodigo)}</span>
-          <span className="min-w-0 flex-1 truncate">{n.nome}</span>
+          <span className={`min-w-0 flex-1 truncate ${n.removido_cad_em ? 'line-through opacity-60' : ''}`} title={n.removido_cad_em ? 'Removido do CAD' : undefined}>{n.nome}</span>
           {Number(n.quantidade) !== 1 && <span className={`rounded px-1 text-[10px] font-semibold ${ativo ? 'bg-white/20' : 'bg-slate-200 text-slate-600 dark:bg-marinho-600 dark:text-slate-200'}`}>×{Number(n.quantidade).toLocaleString('pt-BR')}</span>}
           {(qtdPecas.get(n.id) ?? 0) > 0 && <span className={`text-[10px] ${ativo ? 'text-white/80' : 'text-slate-400'}`}>{qtdPecas.get(n.id)} pç</span>}
           <span className={`h-2 w-2 shrink-0 rounded-full ${COR_STATUS[n.status]}`} title={NOME_STATUS[n.status]} />
@@ -142,6 +142,12 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
                 <button title="Copiar código" onClick={() => { navigator.clipboard?.writeText(c.codigo); setCopiado(true); }} className="text-slate-400 hover:text-roxo-600"><Copy size={13} /></button>
                 {copiado && <span className="text-[11px] text-petroleo-600">copiado</span>}
               </div>
+              {c.removido_cad_em && (
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <Selo cor="vermelho">Removido do CAD em {dataBR(c.removido_cad_em)}</Selo>
+                  {editavel && <button className="text-xs text-roxo-600 hover:underline" onClick={() => tentar(() => atualizarConjunto(c.id, { removido_cad_em: null }))}>Restaurar</button>}
+                </div>
+              )}
               <div className="text-xs text-slate-500">{NOME_TIPO[c.tipo]} · aparece {mult.toLocaleString('pt-BR')}× no projeto{c.codigo_cad && c.codigo_cad !== c.codigo && <> · CAD <span className="font-mono">{c.codigo_cad}</span></>}</div>
               <div className="mt-1 text-lg font-semibold">
                 {editavel ? <CampoCelula valor={c.nome} onConfirmar={(v) => v.trim() && tentar(() => atualizarConjunto(c.id, { nome: v.trim() }))} /> : c.nome}
@@ -249,8 +255,8 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
                   </thead>
                   <tbody>
                     {lista.map((p) => (
-                      <tr key={p.id} className="border-t border-slate-100 dark:border-marinho-700">
-                        <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-slate-500" title={p.codigo}>{p.codigo.replace(/^\d{2}-\d{2,}-\d{3}-/, '')}</td>
+                      <tr key={p.id} className={`border-t border-slate-100 dark:border-marinho-700 ${p.removido_cad_em ? 'bg-red-50/60 text-slate-400 dark:bg-red-900/20' : ''}`} title={p.removido_cad_em ? `Removido do CAD em ${dataBR(p.removido_cad_em)}` : undefined}>
+                        <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-slate-500" title={p.codigo}>{p.codigo.replace(/^\d{2}-\d{2,}-\d{3}-/, '')}{p.removido_cad_em && <div className="font-sans text-[10px] font-semibold text-red-600">removido do CAD</div>}</td>
                         <td className="px-1"><CampoCelula valor={p.descricao} disabled={!editavel} onConfirmar={(v) => tentar(() => atualizarPeca(p.id, { descricao: v }))} /></td>
                         <td className="px-1"><CampoNumero valor={p.quantidade} casas={3} disabled={!editavel} onConfirmar={(n) => n > 0 && tentar(() => atualizarPeca(p.id, { quantidade: n }))} /></td>
                         <td className="px-1"><SeletorOps valor={p.cod_op} disabled={!editavel} onChange={(ops) => tentar(() => atualizarPeca(p.id, { cod_op: ops }))} /></td>
@@ -258,7 +264,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
                         <td className="px-1"><CampoNumero valor={p.espessura ?? 0} casas={2} disabled={!editavel} onConfirmar={(n) => tentar(() => atualizarPeca(p.id, { espessura: n || null }))} /></td>
                         <td className="px-1"><CampoNumero valor={p.peso_unit ?? 0} casas={3} disabled={!editavel} onConfirmar={(n) => tentar(() => atualizarPeca(p.id, { peso_unit: n || null }))} /></td>
                         <td className="px-2 text-right font-medium tabular-nums" title="Quantidade total no projeto">{(Number(p.quantidade) * mult).toLocaleString('pt-BR')}</td>
-                        <td>{editavel && <button onClick={() => tentar(() => excluirItem('peca', p.id))} className="rounded p-1 text-slate-300 hover:text-red-600" aria-label="Excluir peça"><Trash2 size={14} /></button>}</td>
+                        <td className="whitespace-nowrap">{editavel && p.removido_cad_em && <button onClick={() => tentar(() => atualizarPeca(p.id, { removido_cad_em: null }))} className="mr-1 rounded px-1 text-[11px] text-roxo-600 hover:underline" title="Removido do CAD: restaurar">Restaurar</button>}{editavel && <button onClick={() => tentar(() => excluirItem('peca', p.id))} className="rounded p-1 text-slate-300 hover:text-red-600" aria-label="Excluir peça"><Trash2 size={14} /></button>}</td>
                       </tr>
                     ))}
                   </tbody>

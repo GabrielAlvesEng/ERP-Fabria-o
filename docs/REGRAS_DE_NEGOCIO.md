@@ -56,6 +56,7 @@ Este arquivo registra o que foi **decidido** e o que está **pendente**. Não su
 35. **Conjunto soldado** (weldment) é um nó próprio da árvore, com os corpos da lista de corte como peças numeradas `<código do soldado>.01`, `.02`… na ordem da lista de corte.
 36. **Os próximos modelos do SolidWorks serão nomeados com o código da proposta** (ex.: `26-26-005-00-00-000`). Arquivos antigos com `AA-NNN-SIGLA` continuam importáveis: o ERP usa o final do código CAD e guarda o código CAD original; nenhum arquivo é renomeado.
 37. **Sem deploy no Netlify por enquanto (20/10/2026):** o Gabriel quer terminar e testar tudo em localhost antes. Nenhuma publicação no Netlify até ele liberar expressamente. O último deploy feito foi `6ad794964d129e69b74355bb` (importação do SolidWorks), antes deste pedido.
+38. **Reimportação de revisão do CAD (20/10/2026):** aprovadas as regras R1 a R8 de `docs/PLANEJAMENTO_SOLIDWORKS.md` (etapa 2): removidos do CAD ficam marcados e fora da lista de materiais; o CAD vence quando traz valor e o ERP mantém o valor quando o CAD vem vazio; códigos nunca mudam nem são reaproveitados; mudança de pai = removido + novo; conjunto Liberado alterado volta a Em revisão e sobe a revisão; itens criados à mão não são tocados; JSON de outra montagem é recusado.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
