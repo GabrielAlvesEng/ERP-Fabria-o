@@ -39,8 +39,16 @@ export interface Contato {
 
 export const STATUS = ['À enviar', 'Enviados', 'Follow-up', 'Aprovado', 'Reprovado', 'Finalizado', 'Emitido NF', 'Pago'] as const;
 export type StatusProposta = (typeof STATUS)[number];
-// Colunas do Kanban: a coluna Follow-up saiu (decisão 39). "Follow-up" continua aceito em propostas antigas.
-export const STATUS_KANBAN = STATUS.filter((s) => s !== 'Follow-up');
+// Etapas contadas no Dashboard: todas, menos Follow-up (decisão 39). "Follow-up" continua aceito em propostas antigas.
+export const STATUS_DASHBOARD = STATUS.filter((s) => s !== 'Follow-up');
+// Colunas do Kanban (decisão 47): as etapas do Financeiro aparecem dentro de Aprovado, com selo.
+export const STATUS_KANBAN: StatusProposta[] = ['À enviar', 'Enviados', 'Aprovado', 'Reprovado'];
+export const ETAPAS_FINANCEIRO: StatusProposta[] = ['Finalizado', 'Emitido NF', 'Pago'];
+// Coluna do Kanban em que a proposta aparece.
+export function colunaKanban(s: StatusProposta): StatusProposta {
+  if (s === 'Follow-up') return 'Enviados';
+  return ETAPAS_FINANCEIRO.includes(s) ? 'Aprovado' : s;
+}
 // Situações em que a proposta aguarda retorno do cliente (data de follow-up no card).
 export const AGUARDANDO_RETORNO: StatusProposta[] = ['Enviados', 'Follow-up'];
 

@@ -4,7 +4,7 @@ import { useAno } from '@/app/AnoContext';
 import { dataBR, hojeISO, moeda } from '@/shared/lib/formato';
 import { Cabecalho, Cartao, Selo, Vazio } from '@/shared/ui';
 import { listarContatos, listarPropostas } from '../api';
-import { AGUARDANDO_RETORNO, STATUS_KANBAN, type StatusProposta } from '../types';
+import { AGUARDANDO_RETORNO, STATUS_DASHBOARD, type StatusProposta } from '../types';
 import { followupVencido } from '../propostas/regras';
 
 const aprovadas = ['Aprovado', 'Finalizado', 'Emitido NF', 'Pago'];
@@ -21,7 +21,7 @@ export function DashboardPage() {
   const conversao = nAprov + nReprov ? Math.round((nAprov / (nAprov + nReprov)) * 100) : null;
   const vencidos = propostas.filter((p) => AGUARDANDO_RETORNO.includes(p.status) && followupVencido(p.proximo_followup, hoje));
   const contatosAno = contatos.filter((c) => c.contato_anos?.some((a) => a.ano === ano));
-  const maxQtd = Math.max(1, ...STATUS_KANBAN.map((s) => propostas.filter((p) => p.status === s).length));
+  const maxQtd = Math.max(1, ...STATUS_DASHBOARD.map((s) => propostas.filter((p) => p.status === s).length));
 
   const kpis = [
     { rotulo: 'Propostas no ano', valor: String(propostas.length) },
@@ -47,7 +47,7 @@ export function DashboardPage() {
         <Cartao>
           <div className="mb-3 font-semibold">Propostas por etapa</div>
           <div className="space-y-2">
-            {STATUS_KANBAN.map((s) => {
+            {STATUS_DASHBOARD.map((s) => {
               const n = propostas.filter((p) => p.status === s).length;
               return (
                 <div key={s} className="flex items-center gap-3 text-sm">

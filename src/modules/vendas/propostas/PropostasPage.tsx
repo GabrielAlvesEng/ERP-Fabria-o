@@ -8,7 +8,7 @@ import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
 import { Aviso, Botao, Cabecalho, Caixa, Entrada, Selecao, Selo } from '@/shared/ui';
 import { listarPropostas, moverProposta } from '../api';
-import { AGUARDANDO_RETORNO, STATUS_KANBAN, type Proposta, type StatusProposta } from '../types';
+import { AGUARDANDO_RETORNO, ETAPAS_FINANCEIRO, STATUS_KANBAN, colunaKanban, type Proposta, type StatusProposta } from '../types';
 import { followupVencido, rotuloRevisao, tipoTransicao } from './regras';
 import { NovaPropostaModal } from './NovaPropostaModal';
 import { PropostaDetalhe } from './PropostaDetalhe';
@@ -20,9 +20,9 @@ const corColuna: Record<StatusProposta, string> = {
   'Follow-up': 'border-t-amber-500',
   Aprovado: 'border-t-petroleo-500',
   Reprovado: 'border-t-red-500',
-  Finalizado: 'border-t-roxo-500',
-  'Emitido NF': 'border-t-roxo-600',
-  Pago: 'border-t-petroleo-600',
+  Finalizado: 'border-t-petroleo-500',
+  'Emitido NF': 'border-t-petroleo-500',
+  Pago: 'border-t-petroleo-500',
 };
 
 export type Pendente = { proposta: Proposta; para: StatusProposta; tipo: ReturnType<typeof tipoTransicao> };
@@ -76,7 +76,7 @@ export function PropostasPage() {
     setErro('');
     const proposta = propostas.find((p) => p.id === ev.active.id);
     const para = ev.over?.id as StatusProposta | undefined;
-    if (!proposta || !para || proposta.status === para) return;
+    if (!proposta || !para || colunaKanban(proposta.status) === para) return;
     const tipo = tipoTransicao(proposta.status, para);
     if (tipo === 'proibida') return setErro(`Não é permitido mover de "${proposta.status}" para "${para}".`);
     if (tipo === 'financeiro' && !pode('financeiro', 'editar')) return setErro(`Somente o Financeiro move para ${para}.`);
@@ -109,8 +109,8 @@ export function PropostasPage() {
         <DndContext sensors={sensors} onDragEnd={aoSoltar}>
           <div className="flex gap-3 overflow-x-auto pb-4">
             {STATUS_KANBAN.map((s) => (
-              // Propostas antigas em "Follow-up" aparecem em Enviados (decisão 39).
-              <Coluna key={s} status={s} propostas={filtradas.filter((p) => p.status === s || (s === 'Enviados' && p.status === 'Follow-up'))} hoje={hoje} onAbrir={setAberta} onFollowup={pode('vendas', 'editar') ? setFollowup : undefined} />
+              // Follow-up antigo aparece em Enviados (decisão 39); Finalizado, Emitido NF e Pago em Aprovado (decisão 47).
+              <Coluna key={s} status={s} propostas={filtradas.filter((p) => colunaKanban(p.status) === s)} hoje={hoje} onAbrir={setAberta} onFollowup={pode('vendas', 'editar') ? setFollowup : undefined} />
             ))}
           </div>
         </DndContext>
@@ -162,6 +162,7 @@ function Card({ p, hoje, onAbrir, onFollowup }: { p: Proposta; hoje: string; onA
         <span className="font-mono text-xs font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span>
         <span className="flex items-center gap-1">
           {vencido && <span title={`Retorno vencido em ${dataBR(p.proximo_followup)}: cobrar o contato`}><AlertTriangle size={16} className="text-amber-500" /></span>}
+          {ETAPAS_FINANCEIRO.includes(p.status) && <Selo cor="verde">{p.status === 'Emitido NF' ? 'NF emitida' : p.status}</Selo>}
           <Selo cor="azul">{rotuloRevisao(p.revisao_atual)}</Selo>
         </span>
       </div>
