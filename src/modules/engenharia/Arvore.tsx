@@ -222,7 +222,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
 
   return (
     <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700">
-      <div className="mb-2 flex items-center gap-2 font-semibold">Peças e itens deste {conjunto.tipo === 'geral' ? 'nível' : 'conjunto'} <Selo>{pecas.length}</Selo></div>
+      <div className="mb-2 flex items-center gap-2 font-semibold">Peças e itens {conjunto.tipo === 'geral' ? 'da montagem geral' : conjunto.tipo === 'submontagem' ? 'desta submontagem' : 'deste conjunto'} <Selo>{pecas.length}</Selo></div>
 
       {(['fabricada', 'fixador', 'comercial'] as Pasta[]).map((pasta) => {
         const lista = porPasta(pasta);
@@ -236,18 +236,18 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
             </button>
             {abertas[pasta] && (
               <div className="overflow-x-auto px-2 pb-2">
-                <table className="w-full min-w-[760px] text-sm">
+                <table className="w-full min-w-[820px] text-sm">
                   <thead className="text-left text-[11px] uppercase text-slate-500">
                     <tr>
-                      <th className="w-24 px-2 py-1">Código</th><th className="px-2 py-1">Descrição</th><th className="w-20 px-2 py-1 text-right">Qtd</th>
-                      <th className="w-56 px-2 py-1">COD_OP</th><th className="w-40 px-2 py-1">Material</th><th className="w-20 px-2 py-1 text-right">Esp.</th>
+                      <th className="w-24 px-2 py-1">Código</th><th className="min-w-[220px] px-2 py-1">Descrição</th><th className="w-20 px-2 py-1 text-right">Qtd</th>
+                      <th className="w-32 px-2 py-1">COD_OP</th><th className="w-40 px-2 py-1">Material</th><th className="w-20 px-2 py-1 text-right">Esp.</th>
                       <th className="w-24 px-2 py-1 text-right">Peso un. (kg)</th><th className="w-20 px-2 py-1 text-right">Total</th><th className="w-8" />
                     </tr>
                   </thead>
                   <tbody>
                     {lista.map((p) => (
                       <tr key={p.id} className="border-t border-slate-100 dark:border-marinho-700">
-                        <td className="px-2 py-1 font-mono text-[11px] text-slate-500" title={p.codigo}>…{p.codigo.slice(-10)}</td>
+                        <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-slate-500" title={p.codigo}>…{p.codigo.slice(-10)}</td>
                         <td className="px-1"><CampoCelula valor={p.descricao} disabled={!editavel} onConfirmar={(v) => tentar(() => atualizarPeca(p.id, { descricao: v }))} /></td>
                         <td className="px-1"><CampoNumero valor={p.quantidade} casas={3} disabled={!editavel} onConfirmar={(n) => n > 0 && tentar(() => atualizarPeca(p.id, { quantidade: n }))} /></td>
                         <td className="px-1"><SeletorOps valor={p.cod_op} disabled={!editavel} onChange={(ops) => tentar(() => atualizarPeca(p.id, { cod_op: ops }))} /></td>
@@ -281,18 +281,34 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
 }
 
 function SeletorOps({ valor, onChange, disabled }: { valor: CodOp[]; onChange: (ops: CodOp[]) => void; disabled?: boolean }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const aberto = pos !== null;
+  const setAberto = (v: boolean) => { if (!v) setPos(null); };
+  const ordenados = COD_OPS.filter((o) => valor.includes(o));
+  const chip = (op: CodOp, on: boolean) =>
+    `rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold ${on ? (op === 'CM' ? 'bg-amber-500 text-white' : 'bg-roxo-500 text-white') : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-marinho-700 dark:text-slate-300'}`;
   return (
-    <div className="flex flex-wrap gap-0.5">
-      {COD_OPS.map((op) => {
-        const on = valor.includes(op);
-        return (
-          <button key={op} type="button" disabled={disabled} title={NOME_OP[op]}
-            onClick={() => onChange(on ? valor.filter((v) => v !== op) : [...valor, op])}
-            className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold transition ${on ? (op === 'CM' ? 'bg-amber-500 text-white' : 'bg-roxo-500 text-white') : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-marinho-700 dark:text-slate-300'} ${disabled ? 'cursor-default' : ''}`}>
-            {op}
-          </button>
-        );
-      })}
+    <div className="relative">
+      <button type="button" disabled={disabled} onClick={(e) => { if (aberto) return setPos(null); const r = e.currentTarget.getBoundingClientRect(); setPos({ top: Math.min(r.bottom + 4, window.innerHeight - 280), left: Math.min(r.left, window.innerWidth - 240) }); }} title={ordenados.map((o) => NOME_OP[o]).join(', ') || 'Escolher operações'}
+        className={`flex min-h-[26px] flex-nowrap items-center gap-0.5 rounded-md border border-transparent px-1 py-0.5 ${disabled ? 'cursor-default' : 'hover:border-slate-300 dark:hover:border-marinho-500'}`}>
+        {ordenados.length ? ordenados.map((o) => <span key={o} className={chip(o, true)}>{o}</span>) : <span className="px-1 text-xs text-slate-400">{disabled ? '—' : '+ operação'}</span>}
+      </button>
+      {aberto && !disabled && (
+        <>
+          <div className="fixed inset-0 z-20" onMouseDown={() => setAberto(false)} />
+          <div style={{ top: pos!.top, left: pos!.left }} className="fixed z-30 w-56 rounded-lg bg-white p-2 shadow-lg ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-600">
+            {COD_OPS.map((op) => {
+              const on = valor.includes(op);
+              return (
+                <button key={op} type="button" onClick={() => onChange(on ? valor.filter((v) => v !== op) : [...valor, op])}
+                  className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-slate-50 dark:hover:bg-marinho-700">
+                  <span className={chip(op, on)}>{op}</span><span className="text-slate-600 dark:text-slate-300">{NOME_OP[op]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
