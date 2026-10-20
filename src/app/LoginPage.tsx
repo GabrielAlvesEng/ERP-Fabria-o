@@ -21,7 +21,7 @@ export function LoginPage() {
   async function recuperar() {
     setErro('');
     if (!email) return setErro('Informe o e-mail para recuperar a senha.');
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: new URL(import.meta.env.BASE_URL, window.location.origin).href });
     if (error) setErro(error.message);
     else setAviso('Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.');
   }
