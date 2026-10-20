@@ -11,3 +11,4 @@ importacao/
 *.local
 referencia/
 .netlify/
+*.tsbuildinfo
