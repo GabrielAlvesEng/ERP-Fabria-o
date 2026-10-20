@@ -7,11 +7,11 @@ function ok<T>(r: { data: T | null; error: unknown }): T {
   return r.data as T;
 }
 
-export interface RefMaterial { id: string; tipo: 'Chapas' | 'Perfis' | 'Comerciais'; descricao: string; unidade: string; preco: number }
+export interface RefMaterial { id: string; tipo: 'Chapas' | 'Perfis' | 'Comerciais'; descricao: string; unidade: string; preco: number; cod_mat: string | null; kg_m: number | null }
 
 export async function listarRefMateriais(): Promise<RefMaterial[]> {
   // A lista passa de 500 itens: busca tudo (limite padrão da API é 1000).
-  return ok(await supabase.from('ref_materiais').select('id, tipo, descricao, unidade, preco').eq('ativo', true).order('descricao').limit(5000));
+  return ok(await supabase.from('ref_materiais').select('id, tipo, descricao, unidade, preco, cod_mat, kg_m').eq('ativo', true).order('descricao').limit(5000));
 }
 
 export async function listarItens(revisaoId: string): Promise<CustoItem[]> {
@@ -66,6 +66,23 @@ export async function adicionarLinha(itemId: string, l: Partial<LinhaNova> & Pic
 
 export async function atualizarLinha(id: string, dados: Partial<CustoLinha>): Promise<CustoLinha> {
   return ok(await supabase.from('custo_linhas').update(dados).eq('id', id).select().single());
+}
+
+// Grava a nova ordem das linhas depois de arrastar (só as que mudaram).
+export async function reordenarLinhas(mudancas: { id: string; ordem: number }[]): Promise<void> {
+  const res = await Promise.all(mudancas.map((m) => supabase.from('custo_linhas').update({ ordem: m.ordem }).eq('id', m.id)));
+  res.forEach((r) => ok(r));
+}
+
+export interface RefMaoObra { etapa: string; funcao: string; valor_hora: number }
+export interface RefMaquina { nome: string; terceirizada: boolean; valor_hora: number }
+
+export async function listarRefMaoObraMaquinas(): Promise<{ maoObra: RefMaoObra[]; maquinas: RefMaquina[] }> {
+  const [mo, maq] = await Promise.all([
+    supabase.from('ref_mao_obra').select('etapa, funcao, valor_hora').eq('ativo', true).order('ordem'),
+    supabase.from('ref_maquinas').select('nome, terceirizada, valor_hora').eq('ativo', true).order('ordem'),
+  ]);
+  return { maoObra: ok(mo) ?? [], maquinas: ok(maq) ?? [] };
 }
 
 export async function removerLinha(id: string): Promise<void> {

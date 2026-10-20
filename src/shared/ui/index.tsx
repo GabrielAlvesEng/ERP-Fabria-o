@@ -243,3 +243,75 @@ export function CampoCelula({ valor, onConfirmar, disabled, lista, placeholder }
     />
   );
 }
+
+export interface OpcaoEscolha { valor: string; detalhe?: string }
+
+const semAcento = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+// Campo de escolha (decisão 41): a lista aparece logo abaixo da caixa, filtrando enquanto digita,
+// e aceita texto livre que não está na lista. Salva ao escolher, ao apertar Enter ou ao sair do campo.
+export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder, celula = true }: {
+  valor: string; opcoes: OpcaoEscolha[]; onConfirmar: (v: string) => void; disabled?: boolean; placeholder?: string; celula?: boolean;
+}) {
+  const [texto, setTexto] = useState(valor);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [ativo, setAtivo] = useState(0);
+  const ref = useRef<HTMLInputElement>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => setTexto(valor), [valor]);
+  // A lista é fixa na tela: ao rolar a página, fecha (o campo continua focado).
+  useEffect(() => {
+    if (!pos) return;
+    const fechar = (e: Event) => { if (!listaRef.current?.contains(e.target as Node)) setPos(null); };
+    window.addEventListener('scroll', fechar, true);
+    return () => window.removeEventListener('scroll', fechar, true);
+  }, [pos]);
+
+  const termo = semAcento(texto.trim());
+  const filtradas = (termo && texto !== valor ? opcoes.filter((o) => semAcento(`${o.valor} ${o.detalhe ?? ''}`).includes(termo)) : opcoes).slice(0, 60);
+
+  function abrir() {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setPos({ top: Math.min(r.bottom + 2, window.innerHeight - 260), left: Math.min(r.left, window.innerWidth - Math.max(r.width, 280) - 8), width: Math.max(r.width, 280) });
+    setAtivo(0);
+  }
+  function confirmar(v: string) {
+    setTexto(v);
+    setPos(null);
+    if (v !== valor) onConfirmar(v);
+  }
+
+  return (
+    <>
+      <input
+        ref={ref}
+        value={texto}
+        disabled={disabled}
+        placeholder={placeholder}
+        onFocus={abrir}
+        onChange={(e) => { setTexto(e.target.value); if (!pos) abrir(); setAtivo(0); }}
+        onBlur={() => setTimeout(() => { if (document.activeElement !== ref.current) { setPos(null); if (texto !== valor) onConfirmar(texto); } }, 150)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); setAtivo((a) => Math.min(a + 1, filtradas.length - 1)); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setAtivo((a) => Math.max(a - 1, 0)); }
+          else if (e.key === 'Enter') { e.preventDefault(); confirmar(pos && filtradas[ativo] && termo ? filtradas[ativo].valor : texto); ref.current?.blur(); }
+          else if (e.key === 'Escape') { setTexto(valor); setPos(null); }
+        }}
+        className={celula
+          ? 'w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none placeholder:text-slate-400 hover:border-slate-300 focus:border-roxo-500 focus:bg-white disabled:hover:border-transparent dark:hover:border-marinho-500 dark:focus:bg-marinho-800'
+          : campoBase}
+      />
+      {pos && !disabled && filtradas.length > 0 && (
+        <div ref={listaRef} style={{ top: pos.top, left: pos.left, width: pos.width }} className="fixed z-50 max-h-60 overflow-y-auto rounded-lg bg-white p-1 shadow-lg ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-600">
+          {filtradas.map((o, i) => (
+            <button key={o.valor} type="button" onMouseDown={(e) => { e.preventDefault(); confirmar(o.valor); ref.current?.blur(); }} onMouseEnter={() => setAtivo(i)}
+              className={cx('flex w-full items-baseline justify-between gap-2 rounded px-2 py-1 text-left text-sm', i === ativo ? 'bg-roxo-50 text-roxo-700 dark:bg-roxo-700/30 dark:text-roxo-100' : 'hover:bg-slate-50 dark:hover:bg-marinho-700')}>
+              <span className="truncate">{o.valor}</span>
+              {o.detalhe && <span className="shrink-0 text-[11px] text-slate-500">{o.detalhe}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}

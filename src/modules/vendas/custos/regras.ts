@@ -29,27 +29,22 @@ export interface CustoLinha {
   valor_unitario: number;
   total: number;
   ordem: number;
+  material: string;
 }
 
-export type CampoLinha = 'grupo' | 'descricao' | 'detalhe' | 'detalhe2' | 'quantidade' | 'fator' | 'valor_unitario';
+export type CampoLinha = 'grupo' | 'descricao' | 'detalhe' | 'detalhe2' | 'quantidade' | 'fator' | 'valor_unitario' | 'material';
 
 export interface Coluna {
   campo: CampoLinha;
   rotulo: string;
-  tipo: 'texto' | 'numero' | 'material' | 'tipoMaterial' | 'simnao';
+  tipo: 'texto' | 'numero' | 'material' | 'catalogo' | 'escolha' | 'simnao';
   largura?: string;
 }
 
 export const SECOES: { id: Secao; letra: string; titulo: string; colunas: Coluna[] }[] = [
   {
     id: 'materiais', letra: 'A', titulo: 'Materiais',
-    colunas: [
-      { campo: 'grupo', rotulo: 'Tipo', tipo: 'tipoMaterial', largura: 'w-32' },
-      { campo: 'descricao', rotulo: 'Descrição', tipo: 'material' },
-      { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
-      { campo: 'fator', rotulo: 'Und / Peso / Mts', tipo: 'numero', largura: 'w-32' },
-      { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
-    ],
+    colunas: [], // Materiais usam COLUNAS_MATERIAIS, um bloco por grupo (decisão 41).
   },
   {
     id: 'acessorios', letra: 'B', titulo: 'Acessórios',
@@ -61,8 +56,8 @@ export const SECOES: { id: Secao; letra: string; titulo: string; colunas: Coluna
   {
     id: 'mao_obra', letra: 'C', titulo: 'Mão de obra',
     colunas: [
-      { campo: 'grupo', rotulo: 'Etapa', tipo: 'texto', largura: 'w-36' },
-      { campo: 'descricao', rotulo: 'Função', tipo: 'texto' },
+      { campo: 'grupo', rotulo: 'Etapa', tipo: 'escolha', largura: 'w-36' },
+      { campo: 'descricao', rotulo: 'Função', tipo: 'escolha' },
       { campo: 'valor_unitario', rotulo: 'Valor hora', tipo: 'numero', largura: 'w-28' },
       { campo: 'quantidade', rotulo: 'Horas', tipo: 'numero', largura: 'w-24' },
     ],
@@ -70,7 +65,7 @@ export const SECOES: { id: Secao; letra: string; titulo: string; colunas: Coluna
   {
     id: 'maquinas', letra: 'D', titulo: 'Máquinas',
     colunas: [
-      { campo: 'descricao', rotulo: 'Máquina', tipo: 'texto' },
+      { campo: 'descricao', rotulo: 'Máquina', tipo: 'escolha' },
       { campo: 'detalhe', rotulo: 'Terceirizada', tipo: 'simnao', largura: 'w-28' },
       { campo: 'valor_unitario', rotulo: 'Valor hora', tipo: 'numero', largura: 'w-28' },
       { campo: 'quantidade', rotulo: 'Horas', tipo: 'numero', largura: 'w-24' },
@@ -113,6 +108,43 @@ export const SECOES: { id: Secao; letra: string; titulo: string; colunas: Coluna
     ],
   },
 ];
+
+// Materiais em blocos (decisão 41): sem coluna Tipo; Comerciais só com a quantidade de itens.
+export type GrupoMaterial = 'Chapas' | 'Perfis' | 'Comerciais';
+export const GRUPOS_MATERIAIS: GrupoMaterial[] = ['Chapas', 'Perfis', 'Comerciais'];
+export const COLUNAS_MATERIAIS: Record<GrupoMaterial, Coluna[]> = {
+  Chapas: [
+    { campo: 'material', rotulo: 'Material', tipo: 'catalogo', largura: 'w-44' },
+    { campo: 'descricao', rotulo: 'Chapa', tipo: 'material', largura: 'min-w-[240px]' },
+    { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+    { campo: 'fator', rotulo: 'Peso (kg)', tipo: 'numero', largura: 'w-32' },
+    { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+  ],
+  Perfis: [
+    { campo: 'material', rotulo: 'Material', tipo: 'catalogo', largura: 'w-44' },
+    { campo: 'descricao', rotulo: 'Perfil', tipo: 'material', largura: 'min-w-[240px]' },
+    { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+    { campo: 'fator', rotulo: 'Metros', tipo: 'numero', largura: 'w-32' },
+    { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+  ],
+  Comerciais: [
+    { campo: 'descricao', rotulo: 'Item comercial', tipo: 'material', largura: 'min-w-[280px]' },
+    { campo: 'quantidade', rotulo: 'Qtd', tipo: 'numero', largura: 'w-20' },
+    { campo: 'valor_unitario', rotulo: 'Preço unitário', tipo: 'numero', largura: 'w-32' },
+  ],
+};
+
+// Nova ordem depois de arrastar: a linha sai da posição antiga e entra na nova; devolve só as que mudaram.
+export function reordenar<T extends { id: string; ordem: number }>(lista: T[], deId: string, paraId: string): { id: string; ordem: number }[] {
+  const ids = lista.map((l) => l.id);
+  const de = ids.indexOf(deId);
+  const para = ids.indexOf(paraId);
+  if (de < 0 || para < 0 || de === para) return [];
+  ids.splice(para, 0, ids.splice(de, 1)[0]);
+  const base = Math.min(...lista.map((l) => l.ordem));
+  const antes = new Map(lista.map((l) => [l.id, l.ordem]));
+  return ids.map((id, i) => ({ id, ordem: base + i })).filter((x) => antes.get(x.id) !== x.ordem);
+}
 
 export function totalLinha(l: Pick<CustoLinha, 'quantidade' | 'fator' | 'valor_unitario'>): number {
   return Math.round(Number(l.quantidade) * Number(l.fator) * Number(l.valor_unitario) * 100) / 100;
@@ -173,7 +205,7 @@ export function proximaLetra(usadas: string[]): string {
 // Linhas iniciais de um item novo (o mesmo modelo da planilha de hoje).
 export type LinhaNova = Omit<CustoLinha, 'id' | 'item_id' | 'total'>;
 export function modeloLinhas(maoObra: { etapa: string; funcao: string; valor_hora: number }[], maquinas: { nome: string; terceirizada: boolean; valor_hora: number }[]): LinhaNova[] {
-  const base = { grupo: '', descricao: '', detalhe: '', detalhe2: '', unidade: '', quantidade: 0, fator: 1, valor_unitario: 0 };
+  const base = { grupo: '', descricao: '', detalhe: '', detalhe2: '', unidade: '', quantidade: 0, fator: 1, valor_unitario: 0, material: '' };
   const linhas: LinhaNova[] = [];
   let o = 0;
   const add = (secao: Secao, l: Partial<LinhaNova>) => linhas.push({ ...base, ...l, secao, ordem: o++ });

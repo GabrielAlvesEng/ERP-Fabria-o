@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { modeloLinhas, pesoChapa, proximaLetra, resumoItem, type CustoLinha, type Secao } from './regras';
+import { modeloLinhas, pesoChapa, proximaLetra, reordenar, resumoItem, type CustoLinha, type Secao } from './regras';
 
 const linha = (secao: Secao, quantidade: number, fator: number, valor_unitario: number): CustoLinha => ({
   id: Math.random().toString(), item_id: 'i', secao, grupo: '', descricao: '', detalhe: '', detalhe2: '', unidade: '',
-  quantidade, fator, valor_unitario, total: 0, ordem: 0,
+  quantidade, fator, valor_unitario, total: 0, ordem: 0, material: '',
 });
 
 // Números da planilha "Item A - Plataforma.xlsx".
@@ -52,5 +52,18 @@ describe('apoio', () => {
     expect(m.filter((l) => l.secao === 'acessorios')).toHaveLength(6);
     expect(m.find((l) => l.secao === 'maquinas')?.detalhe).toBe('Sim');
     expect(m.filter((l) => l.secao === 'fretes')).toHaveLength(4);
+  });
+});
+
+describe('reordenar linhas (arrastar)', () => {
+  const l = (id: string, ordem: number) => ({ id, ordem });
+  it('move para baixo e devolve só as que mudaram', () => {
+    expect(reordenar([l('a', 1), l('b', 2), l('c', 3)], 'a', 'c')).toEqual([{ id: 'b', ordem: 1 }, { id: 'c', ordem: 2 }, { id: 'a', ordem: 3 }]);
+  });
+  it('move para cima', () => {
+    expect(reordenar([l('a', 5), l('b', 6), l('c', 7)], 'c', 'a')).toEqual([{ id: 'c', ordem: 5 }, { id: 'a', ordem: 6 }, { id: 'b', ordem: 7 }]);
+  });
+  it('sem mudança', () => {
+    expect(reordenar([l('a', 1)], 'a', 'a')).toEqual([]);
   });
 });

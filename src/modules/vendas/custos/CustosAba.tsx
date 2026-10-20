@@ -1,16 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, Lock, Plus, Scale, Trash2 } from 'lucide-react';
+import { ChevronRight, GripVertical, Lock, Plus, Scale, Trash2 } from 'lucide-react';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { listarCatalogo } from '@/modules/engenharia/api';
+import type { MaterialCatalogo } from '@/modules/engenharia/regras';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro, moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, CampoCelula, CampoNumero, Campo, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import { Aviso, Botao, CampoCelula, CampoEscolha, CampoNumero, Campo, Entrada, Modal, Selecao, Selo, Vazio, type OpcaoEscolha } from '@/shared/ui';
 import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
 import {
-  adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarRefMateriais, removerLinha, type RefMaterial,
+  adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarRefMaoObraMaquinas, listarRefMateriais, removerLinha, reordenarLinhas,
+  type RefMaoObra, type RefMaquina, type RefMaterial,
 } from './api';
-import { SECOES, pesoChapa, resumoItem, totalLinha, totalSecao, type CustoItem, type CustoLinha, type Secao } from './regras';
+import {
+  COLUNAS_MATERIAIS, GRUPOS_MATERIAIS, SECOES, pesoChapa, reordenar, resumoItem, totalLinha, totalSecao,
+  type Coluna, type CustoItem, type CustoLinha, type GrupoMaterial, type Secao,
+} from './regras';
 
 const celula = 'px-1 py-1 align-middle';
 
@@ -27,6 +36,8 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
   const { data: itens = [] } = useQuery({ queryKey: ['custos', 'itens', rev?.id], queryFn: () => listarItens(rev!.id), enabled: Boolean(rev) });
   const { data: linhas = [] } = useQuery({ queryKey: ['custos', 'linhas', rev?.id, itens.map((i) => i.id).join()], queryFn: () => listarLinhas(itens.map((i) => i.id)), enabled: itens.length > 0 });
   const { data: refs = [] } = useQuery({ queryKey: ['ref_materiais'], queryFn: listarRefMateriais, staleTime: 5 * 60_000 });
+  const { data: catalogo = [] } = useQuery({ queryKey: ['catalogo_materiais'], queryFn: listarCatalogo, staleTime: 10 * 60_000 });
+  const { data: refMo } = useQuery({ queryKey: ['ref_mo_maquinas'], queryFn: listarRefMaoObraMaquinas, staleTime: 10 * 60_000 });
   const [itemId, setItemId] = useState<string | null>(null);
   const item = itens.find((i) => i.id === itemId) ?? itens[0];
 
@@ -98,6 +109,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
           item={item}
           linhas={linhas.filter((l) => l.item_id === item.id)}
           refs={refs}
+          listas={{ catalogo, maoObra: refMo?.maoObra ?? [], maquinas: refMo?.maquinas ?? [] }}
           editavel={editavel}
           onErro={(e) => setErro(mensagemErro(e))}
           onLinha={trocarLinha}
@@ -109,8 +121,10 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
   );
 }
 
-function ItemCustos({ item, linhas, refs, editavel, onErro, onLinha, onRecarregar, onExcluido }: {
-  item: CustoItem; linhas: CustoLinha[]; refs: RefMaterial[]; editavel: boolean;
+interface Listas { catalogo: MaterialCatalogo[]; maoObra: RefMaoObra[]; maquinas: RefMaquina[] }
+
+function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onRecarregar, onExcluido }: {
+  item: CustoItem; linhas: CustoLinha[]; refs: RefMaterial[]; listas: Listas; editavel: boolean;
   onErro: (e: unknown) => void; onLinha: (l: CustoLinha) => void; onRecarregar: () => void; onExcluido: () => void;
 }) {
   const [it, setIt] = useState(item);
@@ -128,8 +142,16 @@ function ItemCustos({ item, linhas, refs, editavel, onErro, onLinha, onRecarrega
     onLinha({ ...l, ...dados, total: totalLinha({ ...l, ...dados }) });
     try { onLinha(await atualizarLinha(l.id, dados)); } catch (e) { onErro(e); onRecarregar(); }
   }
-  async function novaLinha(secao: Secao) {
-    try { await adicionarLinha(item.id, { secao, grupo: secao === 'materiais' ? 'Chapas' : '', ordem: linhas.length + 1 }); onRecarregar(); setAbertas((a) => ({ ...a, [secao]: true })); } catch (e) { onErro(e); }
+  async function novaLinha(secao: Secao, grupo = '') {
+    const ordem = Math.max(0, ...linhas.map((l) => l.ordem)) + 1;
+    try { await adicionarLinha(item.id, { secao, grupo, ordem }); onRecarregar(); setAbertas((a) => ({ ...a, [secao]: true })); } catch (e) { onErro(e); }
+  }
+  async function mover(lista: CustoLinha[], deId: string, paraId: string) {
+    const mudancas = reordenar(lista, deId, paraId);
+    if (!mudancas.length) return;
+    mudancas.forEach((m) => { const l = lista.find((x) => x.id === m.id); if (l) onLinha({ ...l, ordem: m.ordem }); });
+    try { await reordenarLinhas(mudancas); } catch (e) { onErro(e); }
+    onRecarregar();
   }
   async function apagarLinha(l: CustoLinha) {
     try { await removerLinha(l.id); onRecarregar(); } catch (e) { onErro(e); }
@@ -167,26 +189,34 @@ function ItemCustos({ item, linhas, refs, editavel, onErro, onLinha, onRecarrega
                 <span className="ml-auto font-semibold tabular-nums">{moeda(r.porSecao[s.id])}</span>
               </button>
               {aberta && (
-                <div className="overflow-x-auto border-t border-slate-100 px-2 pb-2 dark:border-marinho-700">
-                  <table className="w-full min-w-[640px] text-sm">
-                    <thead className="text-left text-[11px] uppercase text-slate-500">
-                      <tr>
-                        {s.colunas.map((c) => <th key={c.campo} className={`px-2 py-1.5 font-medium ${c.largura ?? ''} ${c.tipo === 'numero' ? 'text-right' : ''}`}>{c.rotulo}</th>)}
-                        <th className="w-32 px-2 py-1.5 text-right font-medium">Total</th>
-                        <th className="w-8" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {doS.map((l) => (
-                        <LinhaCusto key={l.id} linha={l} secao={s.id} refs={refs} editavel={editavel} onSalvar={(d) => salvarLinha(l, d)} onRemover={() => apagarLinha(l)} />
-                      ))}
-                      {doS.length === 0 && <tr><td colSpan={s.colunas.length + 2} className="px-2 py-3 text-center text-xs text-slate-500">Sem linhas.</td></tr>}
-                    </tbody>
-                  </table>
-                  {editavel && (
-                    <button onClick={() => novaLinha(s.id)} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-roxo-600 hover:bg-roxo-50 dark:hover:bg-marinho-700">
-                      <Plus size={13} /> Adicionar linha
-                    </button>
+                <div className="border-t border-slate-100 px-2 pb-2 dark:border-marinho-700">
+                  {s.id === 'materiais' ? GRUPOS_MATERIAIS.map((g) => {
+                    const doG = doS.filter((l) => l.grupo === g);
+                    return (
+                      <div key={g} className="mt-2">
+                        <div className="flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {g} <Selo>{doG.length}</Selo>
+                          <span className="ml-auto font-semibold normal-case tabular-nums text-slate-700 dark:text-slate-200">{moeda(doG.reduce((t, l) => t + totalLinha(l), 0))}</span>
+                        </div>
+                        <TabelaLinhas linhas={doG} colunas={COLUNAS_MATERIAIS[g]} secao={s.id} grupo={g} refs={refs} listas={listas} editavel={editavel}
+                          onSalvar={salvarLinha} onRemover={apagarLinha} onMover={(de, para) => mover(doG, de, para)} />
+                        {editavel && (
+                          <button onClick={() => novaLinha('materiais', g)} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-roxo-600 hover:bg-roxo-50 dark:hover:bg-marinho-700">
+                            <Plus size={13} /> Adicionar {g === 'Chapas' ? 'chapa' : g === 'Perfis' ? 'perfil' : 'item comercial'}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }) : (
+                    <>
+                      <TabelaLinhas linhas={doS} colunas={s.colunas} secao={s.id} refs={refs} listas={listas} editavel={editavel}
+                        onSalvar={salvarLinha} onRemover={apagarLinha} onMover={(de, para) => mover(doS, de, para)} />
+                      {editavel && (
+                        <button onClick={() => novaLinha(s.id)} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-roxo-600 hover:bg-roxo-50 dark:hover:bg-marinho-700">
+                          <Plus size={13} /> Adicionar linha
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -246,22 +276,101 @@ function CampoPct({ rotulo, valor, onConfirmar, editavel, casas = 2 }: { rotulo:
   );
 }
 
-function LinhaCusto({ linha: l, secao, refs, editavel, onSalvar, onRemover }: {
-  linha: CustoLinha; secao: Secao; refs: RefMaterial[]; editavel: boolean; onSalvar: (d: Partial<CustoLinha>) => void; onRemover: () => void;
+// Tabela de linhas de uma seção (ou de um bloco de Materiais), com a alça ⋮⋮ para arrastar (decisão 41).
+function TabelaLinhas({ linhas, colunas, secao, grupo, refs, listas, editavel, onSalvar, onRemover, onMover }: {
+  linhas: CustoLinha[]; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; refs: RefMaterial[]; listas: Listas; editavel: boolean;
+  onSalvar: (l: CustoLinha, d: Partial<CustoLinha>) => void; onRemover: (l: CustoLinha) => void; onMover: (de: string, para: string) => void;
 }) {
-  const cfg = SECOES.find((s) => s.id === secao)!;
-  const [calc, setCalc] = useState(false);
-  const listaId = `ref-${l.grupo || 'todos'}`;
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const ordenadas = [...linhas].sort((a, b) => a.ordem - b.ordem);
+  const aoSoltar = (e: DragEndEvent) => { if (e.over && e.active.id !== e.over.id) onMover(String(e.active.id), String(e.over.id)); };
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={aoSoltar}>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] text-sm">
+        <thead className="text-left text-[11px] uppercase text-slate-500">
+          <tr>
+            <th className="w-6" />
+            {colunas.map((c) => <th key={c.campo} className={`px-2 py-1.5 font-medium ${c.largura ?? ''} ${c.tipo === 'numero' ? 'text-right' : ''}`}>{c.rotulo}</th>)}
+            <th className="w-32 px-2 py-1.5 text-right font-medium">Total</th>
+            <th className="w-8" />
+          </tr>
+        </thead>
+          <SortableContext items={ordenadas.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+            <tbody>
+              {ordenadas.map((l) => (
+                <LinhaCusto key={l.id} linha={l} colunas={colunas} secao={secao} grupo={grupo} refs={refs} listas={listas} editavel={editavel}
+                  onSalvar={(d) => onSalvar(l, d)} onRemover={() => onRemover(l)} />
+              ))}
+              {ordenadas.length === 0 && <tr><td colSpan={colunas.length + 3} className="px-2 py-3 text-center text-xs text-slate-500">Sem linhas.</td></tr>}
+            </tbody>
+          </SortableContext>
+      </table>
+    </div>
+    </DndContext>
+  );
+}
 
-  function escolherMaterial(desc: string) {
-    const ref = refs.find((r) => r.descricao === desc && (!l.grupo || r.tipo === l.grupo));
-    if (ref) onSalvar({ descricao: desc, unidade: ref.unidade, ...(Number(ref.preco) > 0 ? { valor_unitario: Number(ref.preco) } : {}) });
-    else onSalvar({ descricao: desc });
+const rotuloCatalogo = (m: MaterialCatalogo) => `${m.cod_mat} — ${m.nome}`;
+const codDoMaterial = (texto: string) => texto.match(/^([A-Z]{2}-\d{3})/i)?.[1].toUpperCase() ?? null;
+
+function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, editavel, onSalvar, onRemover }: {
+  linha: CustoLinha; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; refs: RefMaterial[]; listas: Listas; editavel: boolean;
+  onSalvar: (d: Partial<CustoLinha>) => void; onRemover: () => void;
+}) {
+  const [calc, setCalc] = useState(false);
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: l.id, disabled: !editavel });
+  const estilo = { transform: CSS.Transform.toString(transform), transition };
+
+  // Itens da lista de preços do bloco; com material escolhido, os daquele material vêm primeiro (itens sem material continuam).
+  const codLinha = codDoMaterial(l.material);
+  const refsDoBloco = useMemo(() => {
+    const doTipo = refs.filter((r) => !grupo || r.tipo === grupo);
+    if (!codLinha) return doTipo;
+    return [...doTipo.filter((r) => r.cod_mat === codLinha), ...doTipo.filter((r) => !r.cod_mat)];
+  }, [refs, grupo, codLinha]);
+
+  function opcoes(c: Coluna): OpcaoEscolha[] {
+    if (c.tipo === 'catalogo') return listas.catalogo.map((m) => ({ valor: rotuloCatalogo(m), detalhe: m.categoria.replace(/^\d+ - /, '') }));
+    if (c.tipo === 'material') return refsDoBloco.map((r) => ({ valor: r.descricao, detalhe: Number(r.preco) > 0 ? `${moeda(r.preco)}${r.unidade ? '/' + r.unidade : ''}` : undefined }));
+    if (secao === 'mao_obra' && c.campo === 'grupo') return [...new Set(listas.maoObra.map((m) => m.etapa))].map((v) => ({ valor: v }));
+    if (secao === 'mao_obra') return listas.maoObra.filter((m) => !l.grupo || m.etapa === l.grupo).map((m) => ({ valor: m.funcao, detalhe: `${moeda(m.valor_hora)}/h` }));
+    if (secao === 'maquinas') return listas.maquinas.map((m) => ({ valor: m.nome, detalhe: `${moeda(m.valor_hora)}/h` }));
+    return [];
+  }
+
+  function escolher(c: Coluna, v: string) {
+    if (c.tipo === 'material') {
+      const ref = refs.find((r) => r.descricao === v && (!grupo || r.tipo === grupo));
+      if (!ref) return onSalvar({ descricao: v });
+      const cat = ref.cod_mat ? listas.catalogo.find((m) => m.cod_mat === ref.cod_mat) : undefined;
+      return onSalvar({
+        descricao: v, unidade: ref.unidade,
+        ...(Number(ref.preco) > 0 ? { valor_unitario: Number(ref.preco) } : {}),
+        ...(!l.material && cat ? { material: rotuloCatalogo(cat) } : {}),
+      });
+    }
+    if (secao === 'mao_obra' && c.campo === 'descricao') {
+      const ref = listas.maoObra.find((m) => m.funcao === v && (!l.grupo || m.etapa === l.grupo));
+      return onSalvar({ descricao: v, ...(ref ? { valor_unitario: Number(ref.valor_hora), ...(l.grupo ? {} : { grupo: ref.etapa }) } : {}) });
+    }
+    if (secao === 'maquinas') {
+      const ref = listas.maquinas.find((m) => m.nome === v);
+      return onSalvar({ descricao: v, ...(ref ? { valor_unitario: Number(ref.valor_hora), detalhe: ref.terceirizada ? 'Sim' : 'Não' } : {}) });
+    }
+    onSalvar({ [c.campo]: v });
   }
 
   return (
-    <tr className="border-t border-slate-100 dark:border-marinho-700">
-      {cfg.colunas.map((c) => (
+    <tr ref={setNodeRef} style={estilo} className={`border-t border-slate-100 dark:border-marinho-700 ${isDragging ? 'relative z-10 bg-white shadow-md dark:bg-marinho-800' : ''}`}>
+      <td className="w-6 px-0.5">
+        {editavel && (
+          <button ref={setActivatorNodeRef} {...attributes} {...listeners} type="button" title="Arrastar para mudar a posição" className="cursor-grab touch-none rounded p-0.5 text-slate-300 hover:text-slate-600 active:cursor-grabbing dark:text-slate-500">
+            <GripVertical size={14} />
+          </button>
+        )}
+      </td>
+      {colunas.map((c) => (
         <td key={c.campo} className={celula}>
           {c.tipo === 'numero' ? (
             <div className="flex items-center gap-1">
@@ -269,29 +378,21 @@ function LinhaCusto({ linha: l, secao, refs, editavel, onSalvar, onRemover }: {
               {secao === 'materiais' && c.campo === 'fator' && (
                 <>
                   <span className="w-7 text-[11px] text-slate-500">{l.unidade}</span>
-                  {editavel && l.grupo === 'Chapas' && (
+                  {editavel && grupo === 'Chapas' && (
                     <button title="Calcular peso da chapa" onClick={() => setCalc(true)} className="rounded p-1 text-slate-400 hover:bg-roxo-50 hover:text-roxo-600 dark:hover:bg-marinho-700"><Scale size={14} /></button>
                   )}
                 </>
               )}
             </div>
-          ) : c.tipo === 'tipoMaterial' ? (
-            <select value={l.grupo} disabled={!editavel} onChange={(e) => onSalvar({ grupo: e.target.value })}
-              className="w-full cursor-pointer rounded-md border border-transparent bg-transparent px-1 py-1 text-sm outline-none hover:border-slate-300 focus:border-roxo-500 dark:bg-marinho-800">
-              {['Chapas', 'Perfis', 'Comerciais'].map((t) => <option key={t}>{t}</option>)}
-            </select>
           ) : c.tipo === 'simnao' ? (
             <select value={l.detalhe || 'Não'} disabled={!editavel} onChange={(e) => onSalvar({ detalhe: e.target.value })}
               className="w-full cursor-pointer rounded-md border border-transparent bg-transparent px-1 py-1 text-sm outline-none hover:border-slate-300 focus:border-roxo-500 dark:bg-marinho-800">
               <option>Sim</option><option>Não</option>
             </select>
-          ) : c.tipo === 'material' ? (
-            <>
-              <CampoCelula valor={l.descricao} lista={listaId} disabled={!editavel} placeholder="Digite para buscar na lista de preços" onConfirmar={escolherMaterial} />
-              <datalist id={listaId}>
-                {refs.filter((r) => !l.grupo || r.tipo === l.grupo).map((r) => <option key={r.id} value={r.descricao} />)}
-              </datalist>
-            </>
+          ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' ? (
+            <CampoEscolha valor={String(l[c.campo] ?? '')} opcoes={opcoes(c)} disabled={!editavel}
+              placeholder={c.tipo === 'catalogo' ? 'Ex.: IN-001' : c.tipo === 'material' ? 'Digite para buscar na lista de preços' : ''}
+              onConfirmar={(v) => escolher(c, v)} />
           ) : (
             <CampoCelula valor={String(l[c.campo] ?? '')} disabled={!editavel} onConfirmar={(v) => onSalvar({ [c.campo]: v })} />
           )}
