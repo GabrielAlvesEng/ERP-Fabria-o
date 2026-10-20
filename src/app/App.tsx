@@ -9,6 +9,9 @@ import { DashboardPage } from '@/modules/vendas/dashboard/DashboardPage';
 import { EmpresasPage } from '@/modules/vendas/empresas/EmpresasPage';
 import { ContatosPage } from '@/modules/vendas/contatos/ContatosPage';
 import { PropostasPage } from '@/modules/vendas/propostas/PropostasPage';
+import { EngenhariaLayout } from '@/modules/engenharia/EngenhariaLayout';
+import { ProjetosPage } from '@/modules/engenharia/ProjetosPage';
+import { ProjetoPage } from '@/modules/engenharia/ProjetoPage';
 
 export function App() {
   const { session, carregando } = useAuth();
@@ -32,6 +35,10 @@ export function App() {
             <Route path="empresas" element={<EmpresasPage />} />
             <Route path="contatos" element={<ContatosPage />} />
             <Route path="propostas" element={<PropostasPage />} />
+          </Route>
+          <Route path="/engenharia" element={<EngenhariaLayout />}>
+            <Route index element={<ProjetosPage />} />
+            <Route path="projetos/:id" element={<ProjetoPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/vendas" replace />} />
         </Route>

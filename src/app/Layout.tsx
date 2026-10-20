@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, LogOut, Moon, Sun } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
-const menu = [{ to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness }];
+const modulos = [
+  { to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness, modulo: 'vendas' },
+  { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia' },
+];
 
 export function Layout() {
-  const { session, sair } = useAuth();
+  const { session, sair, pode } = useAuth();
+  const menu = modulos.filter((m) => pode(m.modulo, 'ler'));
   const { ano, setAno } = useAno();
   const [tema, setTema] = useState<Tema>(lerTema);
   useEffect(() => aplicarTema(tema), [tema]);

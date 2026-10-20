@@ -21,7 +21,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 |---|--------|--------|
 | 0 | Base do projeto (estrutura, Supabase novo, login, permissões, tema) | A definir junto com o planejamento de Vendas |
 | 1 | **Vendas** (Empresas, Contatos, Propostas, Kanban, Kick-off) | **Em planejamento, aguardando aprovação** |
-| 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | Não iniciado |
+| 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Exemplar em andamento** (autorizado pelo Gabriel em 20/10/2026, decisão 33): projetos, árvore, peças e lista de materiais. SolidWorks ainda não |
 | 3 | Compras e Financeiro (aprovação e pagamento) | Não iniciado |
 | 4 | Almoxarifado | Não iniciado |
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |
@@ -34,4 +34,4 @@ A ordem dos módulos 2 a 8 será revista quando o fluxograma completo da empresa
 
 ## Próxima etapa autorizada
 
-Exemplar funcional de Vendas autorizado (decisão 23) e escrito. Falta: aplicar as migrations no Supabase do Gabriel (após confirmar o Project Ref), rodar a importação de 2026, criar o usuário geral, testar no navegador e publicar o repositório no GitHub. Depois, o Gabriel valida o exemplar e responde as perguntas [DECIDIR] restantes.
+Vendas (com Custos e e-mail) e o exemplar de Engenharia estão no banco e no código. Falta: teste visual das telas novas com o Gabriel logado, publicação no Netlify e validação dele. Pendências abertas: integração SolidWorks (importação da árvore), catálogo COD_MAT, kick-off, exclusão de proposta com senha, Outlook web (Microsoft 365) para o e-mail.
