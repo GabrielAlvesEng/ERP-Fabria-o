@@ -7,11 +7,34 @@ function ok<T>(r: { data: T | null; error: unknown }): T {
   return r.data as T;
 }
 
-export interface RefMaterial { id: string; tipo: 'Chapas' | 'Perfis' | 'Comerciais'; descricao: string; unidade: string; preco: number; cod_mat: string | null; kg_m: number | null }
+// Biblioteca de Materiais e Predefinições usadas na aba Custos (decisões 48 a 50).
+export interface RefChapa { id: string; cod_mat: string; tipo_id: string; descricao: string; peso_kg: number; valor_kg: number | null }
+export interface RefPerfil { id: string; cod_mat: string | null; descricao: string; kg_m: number | null; preco_modo: 'm' | 'kg'; valor: number }
+export interface RefItem { id: string; grupo: 'Comerciais' | 'Fixadores' | 'Consumíveis'; descricao: string; material: string; unidade: string; valor: number }
+export interface RefServico { id: string; servico: string; valor: number; fornecedor: string }
+export interface RefMaoObra { etapa: string; funcao: string; valor_hora: number }
+export interface RefMaquina { nome: string; valor_hora: number }
+export interface Referencias {
+  chapas: RefChapa[]; precosChapa: { cod_mat: string; tipo_id: string; valor_kg: number }[]; perfis: RefPerfil[]; itens: RefItem[];
+  servicos: RefServico[]; maoObra: RefMaoObra[]; maquinas: RefMaquina[];
+}
 
-export async function listarRefMateriais(): Promise<RefMaterial[]> {
-  // A lista passa de 500 itens: busca tudo (limite padrão da API é 1000).
-  return ok(await supabase.from('ref_materiais').select('id, tipo, descricao, unidade, preco, cod_mat, kg_m').eq('ativo', true).order('descricao').limit(5000));
+export async function listarReferencias(): Promise<Referencias> {
+  const [ch, pc, pf, it, sv, mo, maq] = await Promise.all([
+    supabase.from('bib_chapas').select('id, cod_mat, tipo_id, descricao, peso_kg, valor_kg').eq('ativo', true).order('descricao').limit(5000),
+    supabase.from('bib_chapa_precos').select('cod_mat, tipo_id, valor_kg'),
+    supabase.from('bib_perfis').select('id, cod_mat, descricao, kg_m, preco_modo, valor').eq('ativo', true).order('descricao').limit(5000),
+    supabase.from('bib_itens').select('id, grupo, descricao, material, unidade, valor').eq('ativo', true).order('descricao').limit(5000),
+    supabase.from('fornecedor_servicos').select('id, servico, valor, unidade, fornecedores!inner(nome, ativo)').eq('ativo', true).eq('unidade', 'hora').eq('fornecedores.ativo', true),
+    supabase.from('ref_mao_obra').select('etapa, funcao, valor_hora').eq('ativo', true).order('ordem'),
+    supabase.from('ref_maquinas').select('nome, valor_hora').eq('ativo', true).eq('terceirizada', false).order('ordem'),
+  ]);
+  type Sv = { id: string; servico: string; valor: number; fornecedores: { nome: string } | { nome: string }[] };
+  return {
+    chapas: ok(ch) ?? [], precosChapa: ok(pc) ?? [], perfis: ok(pf) ?? [], itens: ok(it) ?? [],
+    servicos: ((ok(sv) ?? []) as unknown as Sv[]).map((x) => ({ id: x.id, servico: x.servico, valor: Number(x.valor), fornecedor: Array.isArray(x.fornecedores) ? x.fornecedores[0]?.nome ?? '' : x.fornecedores.nome })),
+    maoObra: ok(mo) ?? [], maquinas: ok(maq) ?? [],
+  };
 }
 
 export async function listarItens(revisaoId: string): Promise<CustoItem[]> {
@@ -27,7 +50,7 @@ export async function criarItem(revisaoId: string, letrasUsadas: string[], descr
   const [{ data: padrao }, { data: mo }, { data: maq }] = await Promise.all([
     supabase.from('configuracoes').select('valor').eq('chave', 'custos_padrao').maybeSingle(),
     supabase.from('ref_mao_obra').select('etapa, funcao, valor_hora').eq('ativo', true).order('ordem'),
-    supabase.from('ref_maquinas').select('nome, terceirizada, valor_hora').eq('ativo', true).order('ordem'),
+    supabase.from('ref_maquinas').select('nome, valor_hora').eq('ativo', true).eq('terceirizada', false).order('ordem'),
   ]);
   const p = (padrao?.valor ?? {}) as Partial<CustoItem>;
   const item = ok<CustoItem>(
@@ -72,17 +95,6 @@ export async function atualizarLinha(id: string, dados: Partial<CustoLinha>): Pr
 export async function reordenarLinhas(mudancas: { id: string; ordem: number }[]): Promise<void> {
   const res = await Promise.all(mudancas.map((m) => supabase.from('custo_linhas').update({ ordem: m.ordem }).eq('id', m.id)));
   res.forEach((r) => ok(r));
-}
-
-export interface RefMaoObra { etapa: string; funcao: string; valor_hora: number }
-export interface RefMaquina { nome: string; terceirizada: boolean; valor_hora: number }
-
-export async function listarRefMaoObraMaquinas(): Promise<{ maoObra: RefMaoObra[]; maquinas: RefMaquina[] }> {
-  const [mo, maq] = await Promise.all([
-    supabase.from('ref_mao_obra').select('etapa, funcao, valor_hora').eq('ativo', true).order('ordem'),
-    supabase.from('ref_maquinas').select('nome, terceirizada, valor_hora').eq('ativo', true).order('ordem'),
-  ]);
-  return { maoObra: ok(mo) ?? [], maquinas: ok(maq) ?? [] };
 }
 
 export async function removerLinha(id: string): Promise<void> {

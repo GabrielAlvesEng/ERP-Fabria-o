@@ -12,3 +12,4 @@ importacao/
 referencia/
 .netlify/
 *.tsbuildinfo
+.harness/

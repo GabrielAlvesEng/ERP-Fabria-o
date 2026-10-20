@@ -42,16 +42,25 @@ describe('totais por linha (iguais ao gatilho do banco)', () => {
     expect(totalLinha(linha('acabamentos', 4, 1, 180, { grupo: 'Pintura por tinta', adicional: 500 }))).toBe(1220);
     expect(totalLinha(linha('acabamentos', 250, 1, 6.5, { grupo: 'Galvanização a fogo' }))).toBe(1625);
   });
-  it('frota: veículo próprio e frete terceirizado', () => {
+  it('viagem: veículo próprio (igual à frota antiga) e veículo alugado', () => {
+    expect(totalLinha(linha('viagem', 2, 180, 0, { grupo: 'Veículo próprio', consumo: 4, combustivel: 6.2, adicional: 35.4 }))).toBe(628.8);
     expect(totalLinha(linha('frota', 2, 180, 0, { grupo: 'Veículo próprio', consumo: 4, combustivel: 6.2, adicional: 35.4 }))).toBe(628.8);
-    expect(totalLinha(linha('frota', 2, 1, 1500, { grupo: 'Frete terceirizado' }))).toBe(3000);
+    // 3 diárias × 250 + 600 km ÷ 10 km/l × 6 + 80 de pedágio (mesmo teste do banco)
+    expect(totalLinha(linha('viagem', 3, 600, 250, { grupo: 'Veículo alugado', consumo: 10, combustivel: 6, adicional: 80 }))).toBe(1190);
   });
-  it('comercial ignora o fator', () => {
+  it('frete terceirizado e hospedagem ignoram o fator', () => {
+    expect(totalLinha(linha('frete', 2, 7, 1500))).toBe(3000);
+    expect(totalLinha(linha('viagem', 4, 9, 200, { grupo: 'Hospedagem' }))).toBe(800);
+    expect(totalLinha(linha('viagem', 3, 5, 40, { grupo: 'Alimentação' }))).toBe(600);
+  });
+  it('comerciais, fixadores e consumíveis ignoram o fator', () => {
     expect(totalLinha(linha('materiais', 3, 5, 10, { grupo: 'Comerciais' }))).toBe(30);
+    expect(totalLinha(linha('materiais', 3, 5, 10, { grupo: 'Fixadores' }))).toBe(30);
+    expect(totalLinha(linha('materiais', 3, 5, 10, { grupo: 'Consumíveis' }))).toBe(30);
   });
   it('peso dos materiais para galvanização', () => {
     const ls = [linha('materiais', 2, 150, 30, { grupo: 'Chapas' }), linha('materiais', 4, 6, 50, { grupo: 'Perfis', descricao: 'Tubo 1' }), linha('materiais', 1, 6, 50, { grupo: 'Perfis', descricao: 'Sem kg' })];
-    expect(pesoMateriais(ls, (d) => (d === 'Tubo 1' ? 1.5 : null))).toEqual({ kg: 336, perfisSemKgM: 1 });
+    expect(pesoMateriais(ls, (x) => (x.descricao === 'Tubo 1' ? 1.5 : null))).toEqual({ kg: 336, perfisSemKgM: 1 });
   });
 });
 
@@ -66,10 +75,11 @@ describe('apoio', () => {
     expect(proximaLetra(['A', 'C'])).toBe('B');
   });
   it('modelo de item novo traz as linhas padrão', () => {
-    const m = modeloLinhas([{ etapa: 'Fabricação', funcao: 'Soldador', valor_hora: 120 }], [{ nome: 'Dobradeira', terceirizada: true, valor_hora: 180 }]);
-    expect(m.filter((l) => l.secao === 'acessorios')).toHaveLength(0);
-    expect(m.find((l) => l.secao === 'maquinas')?.detalhe).toBe('Sim');
-    expect(m.filter((l) => l.secao === 'frota' && l.grupo === 'Frete terceirizado')).toHaveLength(4);
+    const m = modeloLinhas([{ etapa: 'Fabricação', funcao: 'Soldador', valor_hora: 120 }], [{ nome: 'Guilhotina', valor_hora: 100 }]);
+    expect(m.filter((l) => ['acessorios', 'frota', 'alimentacao', 'hospedagem'].includes(l.secao))).toHaveLength(0);
+    expect(m.find((l) => l.secao === 'maquinas')?.detalhe).toBe('Não'); // só maquinário próprio (decisão 50)
+    expect(m.filter((l) => l.secao === 'frete')).toHaveLength(4);
+    expect(m.filter((l) => l.secao === 'viagem').map((l) => l.grupo)).toEqual(['Alimentação', 'Hospedagem']);
   });
 });
 

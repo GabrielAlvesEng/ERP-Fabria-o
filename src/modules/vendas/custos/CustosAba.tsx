@@ -13,13 +13,14 @@ import { Aviso, Botao, CampoCelula, CampoEscolha, CampoNumero, Campo, Entrada, M
 import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
 import {
-  adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarRefMaoObraMaquinas, listarRefMateriais, listarVeiculosECombustivel, removerLinha, reordenarLinhas,
-  type RefMaoObra, type RefMaquina, type RefMaterial, type RefVeiculo,
+  adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarReferencias, listarVeiculosECombustivel, removerLinha, reordenarLinhas,
+  type Referencias, type RefVeiculo,
 } from './api';
 import {
   LINK_QUALP, SECOES, linkMapa, pesoChapa, pesoMateriais, reordenar, resumoItem, secoesVisiveis, totalLinha, totalSecao,
   type Bloco, type Coluna, type CustoItem, type CustoLinha, type DefSecao, type GrupoMaterial, type Secao,
 } from './regras';
+import { precosPerfil } from '@/modules/biblioteca/regras';
 
 const celula = 'px-1 py-1 align-middle';
 
@@ -35,9 +36,8 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
 
   const { data: itens = [] } = useQuery({ queryKey: ['custos', 'itens', rev?.id], queryFn: () => listarItens(rev!.id), enabled: Boolean(rev) });
   const { data: linhas = [] } = useQuery({ queryKey: ['custos', 'linhas', rev?.id, itens.map((i) => i.id).join()], queryFn: () => listarLinhas(itens.map((i) => i.id)), enabled: itens.length > 0 });
-  const { data: refs = [] } = useQuery({ queryKey: ['ref_materiais'], queryFn: listarRefMateriais, staleTime: 5 * 60_000 });
+  const { data: refs = REF_VAZIA } = useQuery({ queryKey: ['ref_custos'], queryFn: listarReferencias, staleTime: 5 * 60_000 });
   const { data: catalogo = [] } = useQuery({ queryKey: ['catalogo_materiais'], queryFn: listarCatalogo, staleTime: 10 * 60_000 });
-  const { data: refMo } = useQuery({ queryKey: ['ref_mo_maquinas'], queryFn: listarRefMaoObraMaquinas, staleTime: 10 * 60_000 });
   const { data: frota } = useQuery({ queryKey: ['ref_veiculos'], queryFn: listarVeiculosECombustivel, staleTime: 10 * 60_000 });
   const [itemId, setItemId] = useState<string | null>(null);
   const item = itens.find((i) => i.id === itemId) ?? itens[0];
@@ -109,8 +109,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
           key={item.id}
           item={item}
           linhas={linhas.filter((l) => l.item_id === item.id)}
-          refs={refs}
-          listas={{ catalogo, maoObra: refMo?.maoObra ?? [], maquinas: refMo?.maquinas ?? [], veiculos: frota?.veiculos ?? [], combustivelPadrao: frota?.combustivelPadrao ?? null }}
+          listas={{ catalogo, refs, veiculos: frota?.veiculos ?? [], combustivelPadrao: frota?.combustivelPadrao ?? null }}
           editavel={editavel}
           onErro={(e) => setErro(mensagemErro(e))}
           onLinha={trocarLinha}
@@ -130,17 +129,23 @@ function blocosDaSecao(s: DefSecao, linhas: CustoLinha[]): Bloco[] | null {
   return temOutros ? [...s.blocos, { grupo: OUTROS, adicionar: '', colunas: [{ campo: 'grupo', rotulo: 'Grupo', tipo: 'texto', largura: 'w-36' }, ...s.blocos[0].colunas] }] : s.blocos;
 }
 
-interface Listas { catalogo: MaterialCatalogo[]; maoObra: RefMaoObra[]; maquinas: RefMaquina[]; veiculos: RefVeiculo[]; combustivelPadrao: number | null }
+const REF_VAZIA: Referencias = { chapas: [], precosChapa: [], perfis: [], itens: [], servicos: [], maoObra: [], maquinas: [] };
+interface Listas { catalogo: MaterialCatalogo[]; refs: Referencias; veiculos: RefVeiculo[]; combustivelPadrao: number | null }
 
-function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onRecarregar, onExcluido }: {
-  item: CustoItem; linhas: CustoLinha[]; refs: RefMaterial[]; listas: Listas; editavel: boolean;
+function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarregar, onExcluido }: {
+  item: CustoItem; linhas: CustoLinha[]; listas: Listas; editavel: boolean;
   onErro: (e: unknown) => void; onLinha: (l: CustoLinha) => void; onRecarregar: () => void; onExcluido: () => void;
 }) {
   const [it, setIt] = useState(item);
   useEffect(() => setIt(item), [item]);
   const [abertas, setAbertas] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(SECOES.map((s) => [s.id, s.id === 'materiais' || totalSecao(linhas, s.id) > 0])));
-  const kgPorMetro = useMemo(() => { const m = new Map(refs.filter((x) => x.tipo === 'Perfis' && x.kg_m).map((x) => [x.descricao, Number(x.kg_m)])); return (d: string) => m.get(d) ?? null; }, [refs]);
+  // kg/m dos perfis da biblioteca (pelo item escolhido ou pela descrição), para o peso da galvanização e zincagem.
+  const kgPorMetro = useMemo(() => {
+    const porId = new Map(listas.refs.perfis.filter((x) => x.kg_m).map((x) => [x.id, Number(x.kg_m)]));
+    const porDesc = new Map(listas.refs.perfis.filter((x) => x.kg_m).map((x) => [x.descricao, Number(x.kg_m)]));
+    return (l: CustoLinha) => (l.bib_id ? porId.get(l.bib_id) : undefined) ?? porDesc.get(l.descricao) ?? null;
+  }, [listas.refs.perfis]);
   const peso = useMemo(() => pesoMateriais(linhas, kgPorMetro), [linhas, kgPorMetro]);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const r = resumoItem(it, linhas);
@@ -155,7 +160,8 @@ function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onR
   }
   async function novaLinha(secao: Secao, grupo = '') {
     const ordem = Math.max(0, ...linhas.map((l) => l.ordem)) + 1;
-    const padrao = secao === 'frota' && grupo === 'Veículo próprio' ? { quantidade: 1, combustivel: listas.combustivelPadrao }
+    const padrao = secao === 'viagem' && (grupo === 'Veículo próprio' || grupo === 'Veículo alugado') ? { quantidade: 1, fator: 0, combustivel: listas.combustivelPadrao }
+      : secao === 'maquinas' ? { detalhe: 'Não' }
       : secao === 'acabamentos' && grupo === 'Acabamento em inox' ? { quantidade: 1 } : {};
     try { await adicionarLinha(item.id, { secao, grupo, ordem, ...padrao }); onRecarregar(); setAbertas((a) => ({ ...a, [secao]: true })); } catch (e) { onErro(e); }
   }
@@ -206,7 +212,7 @@ function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onR
                           {b.grupo === OUTROS ? 'Outros (grupo antigo)' : b.grupo} <Selo>{doG.length}</Selo>
                           <span className="ml-auto font-semibold normal-case tabular-nums text-slate-700 dark:text-slate-200">{moeda(doG.reduce((t, l) => t + totalLinha(l), 0))}</span>
                         </div>
-                        <TabelaLinhas linhas={doG} colunas={b.colunas} secao={s.id} grupo={b.grupo as GrupoMaterial} refs={refs} listas={listas} peso={peso} editavel={editavel}
+                        <TabelaLinhas linhas={doG} colunas={b.colunas} secao={s.id} grupo={b.grupo as GrupoMaterial} listas={listas} peso={peso} editavel={editavel}
                           onSalvar={salvarLinha} onRemover={apagarLinha} onMover={(de, para) => mover(doG, de, para)} />
                         {editavel && b.grupo !== OUTROS && (
                           <button onClick={() => novaLinha(s.id, b.grupo)} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-roxo-600 hover:bg-roxo-50 dark:hover:bg-marinho-700">
@@ -217,7 +223,7 @@ function ItemCustos({ item, linhas, refs, listas, editavel, onErro, onLinha, onR
                     );
                   }) : (
                     <>
-                      <TabelaLinhas linhas={doS} colunas={s.colunas} secao={s.id} refs={refs} listas={listas} peso={peso} editavel={editavel}
+                      <TabelaLinhas linhas={doS} colunas={s.colunas} secao={s.id} listas={listas} peso={peso} editavel={editavel}
                         onSalvar={salvarLinha} onRemover={apagarLinha} onMover={(de, para) => mover(doS, de, para)} />
                       {editavel && !s.legado && (
                         <button onClick={() => novaLinha(s.id)} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-roxo-600 hover:bg-roxo-50 dark:hover:bg-marinho-700">
@@ -285,8 +291,8 @@ function CampoPct({ rotulo, valor, onConfirmar, editavel, casas = 2 }: { rotulo:
 }
 
 // Tabela de linhas de uma seção (ou de um bloco de Materiais), com a alça ⋮⋮ para arrastar (decisão 41).
-function TabelaLinhas({ linhas, colunas, secao, grupo, refs, listas, peso, editavel, onSalvar, onRemover, onMover }: {
-  linhas: CustoLinha[]; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; refs: RefMaterial[]; listas: Listas; peso: Peso; editavel: boolean;
+function TabelaLinhas({ linhas, colunas, secao, grupo, listas, peso, editavel, onSalvar, onRemover, onMover }: {
+  linhas: CustoLinha[]; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; listas: Listas; peso: Peso; editavel: boolean;
   onSalvar: (l: CustoLinha, d: Partial<CustoLinha>) => void; onRemover: (l: CustoLinha) => void; onMover: (de: string, para: string) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -307,7 +313,7 @@ function TabelaLinhas({ linhas, colunas, secao, grupo, refs, listas, peso, edita
           <SortableContext items={ordenadas.map((l) => l.id)} strategy={verticalListSortingStrategy}>
             <tbody>
               {ordenadas.map((l) => (
-                <LinhaCusto key={l.id} linha={l} colunas={colunas} secao={secao} grupo={grupo} refs={refs} listas={listas} peso={peso} editavel={editavel}
+                <LinhaCusto key={l.id} linha={l} colunas={colunas} secao={secao} grupo={grupo} listas={listas} peso={peso} editavel={editavel}
                   onSalvar={(d) => onSalvar(l, d)} onRemover={() => onRemover(l)} />
               ))}
               {ordenadas.length === 0 && <tr><td colSpan={colunas.length + 3} className="px-2 py-3 text-center text-xs text-slate-500">Sem linhas.</td></tr>}
@@ -331,54 +337,74 @@ function codDoMaterial(texto: string, catalogo: MaterialCatalogo[]): string | nu
 
 type Peso = { kg: number; perfisSemKgM: number };
 
-function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, peso, editavel, onSalvar, onRemover }: {
-  linha: CustoLinha; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; refs: RefMaterial[]; listas: Listas; peso: Peso; editavel: boolean;
+function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, onSalvar, onRemover }: {
+  linha: CustoLinha; colunas: Coluna[]; secao: Secao; grupo?: GrupoMaterial; listas: Listas; peso: Peso; editavel: boolean;
   onSalvar: (d: Partial<CustoLinha>) => void; onRemover: () => void;
 }) {
   const [calc, setCalc] = useState(false);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: l.id, disabled: !editavel });
   const estilo = { transform: CSS.Transform.toString(transform), transition };
 
-  // Itens da lista de preços do bloco; com material escolhido, os daquele material vêm primeiro (itens sem material continuam).
+  // Itens da Biblioteca de Materiais do bloco; com material escolhido, os daquele material vêm primeiro (decisão 48).
+  const refs = listas.refs;
   const codLinha = codDoMaterial(l.material, listas.catalogo);
-  const refsDoBloco = useMemo(() => {
-    const doTipo = refs.filter((r) => !grupo || r.tipo === grupo);
-    if (!codLinha) return doTipo;
-    return [...doTipo.filter((r) => r.cod_mat === codLinha), ...doTipo.filter((r) => !r.cod_mat)];
-  }, [refs, grupo, codLinha]);
+  const nomeMaterial = (cod: string | null) => listas.catalogo.find((m) => m.cod_mat === cod)?.nome ?? '';
+  const valorKgChapa = (c: Referencias['chapas'][number]) =>
+    c.valor_kg != null ? Number(c.valor_kg) : Number(refs.precosChapa.find((p) => p.cod_mat === c.cod_mat && p.tipo_id === c.tipo_id)?.valor_kg ?? 0);
+  const primeiroDoMaterial = <T extends { cod_mat: string | null }>(lista: T[]) =>
+    codLinha ? [...lista.filter((x) => x.cod_mat === codLinha), ...lista.filter((x) => x.cod_mat !== codLinha)] : lista;
+  const servicoRotulo = (s: Referencias['servicos'][number]) => `${s.servico} — ${s.fornecedor}`;
 
   function opcoes(c: Coluna): OpcaoEscolha[] {
     if (c.tipo === 'catalogo') return listas.catalogo.map((m) => ({ valor: rotuloCatalogo(m), detalhe: m.categoria.replace(/^\d+ - /, '') }));
-    if (c.tipo === 'material') return refsDoBloco.map((r) => ({ valor: r.descricao, detalhe: Number(r.preco) > 0 ? `${moeda(r.preco)}${r.unidade ? '/' + r.unidade : ''}` : undefined }));
-    if (secao === 'mao_obra' && c.campo === 'grupo') return [...new Set(listas.maoObra.map((m) => m.etapa))].map((v) => ({ valor: v }));
-    if (secao === 'mao_obra') return listas.maoObra.filter((m) => !l.grupo || m.etapa === l.grupo).map((m) => ({ valor: m.funcao, detalhe: `${moeda(m.valor_hora)}/h` }));
-    if (secao === 'maquinas') return listas.maquinas.map((m) => ({ valor: m.nome, detalhe: `${moeda(m.valor_hora)}/h` }));
+    if (c.tipo === 'material' && grupo === 'Chapas')
+      return primeiroDoMaterial(refs.chapas).map((x) => ({ valor: x.descricao, detalhe: `${Number(x.peso_kg).toLocaleString('pt-BR')} kg · ${moeda(valorKgChapa(x))}/kg` }));
+    if (c.tipo === 'material' && grupo === 'Perfis')
+      return primeiroDoMaterial(refs.perfis).map((x) => {
+        const p = precosPerfil(x.preco_modo, Number(x.valor), x.kg_m == null ? null : Number(x.kg_m));
+        return { valor: x.descricao, detalhe: p.porMetro ? `${moeda(p.porMetro)}/m` : x.kg_m ? `${Number(x.kg_m).toLocaleString('pt-BR')} kg/m` : undefined };
+      });
+    if (c.tipo === 'material') return refs.itens.filter((x) => x.grupo === grupo).map((x) => ({ valor: x.descricao, detalhe: Number(x.valor) > 0 ? `${moeda(x.valor)}/${x.unidade}` : undefined }));
+    if (secao === 'mao_obra' && c.campo === 'grupo') return [...new Set(refs.maoObra.map((m) => m.etapa))].map((v) => ({ valor: v }));
+    if (secao === 'mao_obra') return refs.maoObra.filter((m) => !l.grupo || m.etapa === l.grupo).map((m) => ({ valor: m.funcao, detalhe: `${moeda(m.valor_hora)}/h` }));
+    if (secao === 'maquinas' && l.detalhe === 'Sim') return refs.servicos.map((x) => ({ valor: servicoRotulo(x), detalhe: `${moeda(x.valor)}/h` }));
+    if (secao === 'maquinas') return refs.maquinas.map((m) => ({ valor: m.nome, detalhe: `${moeda(m.valor_hora)}/h` }));
     if (c.tipo === 'veiculo') return listas.veiculos.map((v) => ({ valor: v.nome, detalhe: `${Number(v.consumo_km_l).toLocaleString('pt-BR')} km/l` }));
     return [];
   }
 
   function escolher(c: Coluna, v: string) {
     if (c.tipo === 'material') {
-      const ref = refs.find((r) => r.descricao === v && (!grupo || r.tipo === grupo));
-      if (!ref) return onSalvar({ descricao: v });
-      const cat = ref.cod_mat ? listas.catalogo.find((m) => m.cod_mat === ref.cod_mat) : undefined;
-      return onSalvar({
-        descricao: v, unidade: ref.unidade,
-        ...(Number(ref.preco) > 0 ? { valor_unitario: Number(ref.preco) } : {}),
-        ...(!l.material && cat ? { material: rotuloCatalogo(cat) } : {}),
-      });
+      if (grupo === 'Chapas') {
+        const x = refs.chapas.find((r) => r.descricao === v);
+        if (!x) return onSalvar({ descricao: v, bib_id: null });
+        return onSalvar({ descricao: v, bib_id: x.id, fator: Number(x.peso_kg), unidade: 'Kg', valor_unitario: valorKgChapa(x), material: nomeMaterial(x.cod_mat) || l.material });
+      }
+      if (grupo === 'Perfis') {
+        const x = refs.perfis.find((r) => r.descricao === v);
+        if (!x) return onSalvar({ descricao: v, bib_id: null });
+        const p = precosPerfil(x.preco_modo, Number(x.valor), x.kg_m == null ? null : Number(x.kg_m));
+        return onSalvar({ descricao: v, bib_id: x.id, unidade: 'Mts', ...(p.porMetro ? { valor_unitario: p.porMetro } : {}), material: nomeMaterial(x.cod_mat) || l.material });
+      }
+      const x = refs.itens.find((r) => r.descricao === v && r.grupo === grupo);
+      if (!x) return onSalvar({ descricao: v, bib_id: null });
+      return onSalvar({ descricao: v, bib_id: x.id, unidade: x.unidade, ...(Number(x.valor) > 0 ? { valor_unitario: Number(x.valor) } : {}) });
     }
     if (secao === 'mao_obra' && c.campo === 'descricao') {
-      const ref = listas.maoObra.find((m) => m.funcao === v && (!l.grupo || m.etapa === l.grupo));
+      const ref = refs.maoObra.find((m) => m.funcao === v && (!l.grupo || m.etapa === l.grupo));
       return onSalvar({ descricao: v, ...(ref ? { valor_unitario: Number(ref.valor_hora), ...(l.grupo ? {} : { grupo: ref.etapa }) } : {}) });
     }
     if (c.tipo === 'veiculo') {
       const ref = listas.veiculos.find((x) => x.nome === v);
       return onSalvar({ descricao: v, ...(ref ? { consumo: Number(ref.consumo_km_l) } : {}) });
     }
+    if (secao === 'maquinas' && l.detalhe === 'Sim') {
+      const ref = refs.servicos.find((x) => servicoRotulo(x) === v);
+      return onSalvar(ref ? { descricao: ref.servico, detalhe2: ref.fornecedor, valor_unitario: ref.valor } : { descricao: v });
+    }
     if (secao === 'maquinas') {
-      const ref = listas.maquinas.find((m) => m.nome === v);
-      return onSalvar({ descricao: v, ...(ref ? { valor_unitario: Number(ref.valor_hora), detalhe: ref.terceirizada ? 'Sim' : 'Não' } : {}) });
+      const ref = refs.maquinas.find((m) => m.nome === v);
+      return onSalvar({ descricao: v, detalhe2: '', ...(ref ? { valor_unitario: Number(ref.valor_hora) } : {}) });
     }
     onSalvar({ [c.campo]: v });
   }
@@ -411,13 +437,15 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, refs, listas, peso, edita
               )}
             </div>
           ) : c.tipo === 'simnao' ? (
-            <select value={l.detalhe || 'Não'} disabled={!editavel} onChange={(e) => onSalvar({ detalhe: e.target.value })}
+            <select value={l.detalhe || 'Não'} disabled={!editavel} onChange={(e) => onSalvar({ detalhe: e.target.value, ...(e.target.value === 'Não' ? { detalhe2: '' } : {}) })}
               className="w-full cursor-pointer rounded-md border border-transparent bg-transparent px-1 py-1 text-sm outline-none hover:border-slate-300 focus:border-roxo-500 dark:bg-marinho-800">
               <option>Sim</option><option>Não</option>
             </select>
+          ) : c.tipo === 'leitura' ? (
+            <span className="px-2 text-sm text-slate-500" title={secao === 'maquinas' ? 'Escolha o serviço de um fornecedor (Terceirizada = Sim)' : undefined}>{String(l[c.campo] ?? '') || '—'}</span>
           ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' || c.tipo === 'veiculo' ? (
             <CampoEscolha valor={c.tipo === 'catalogo' ? semCodigoMaterial(l.material) : String(l[c.campo] ?? '')} opcoes={opcoes(c)} disabled={!editavel}
-              placeholder={c.tipo === 'catalogo' ? 'Ex.: AISI 304' : c.tipo === 'material' ? 'Digite para buscar na lista de preços' : ''}
+              placeholder={c.tipo === 'catalogo' ? 'Ex.: AISI 304' : c.tipo === 'material' ? 'Digite para buscar na biblioteca' : secao === 'maquinas' ? (l.detalhe === 'Sim' ? 'Serviço do fornecedor' : 'Máquina própria') : ''}
               onConfirmar={(v) => escolher(c, v)} />
           ) : c.rota ? (
             <div className="flex items-center gap-0.5">

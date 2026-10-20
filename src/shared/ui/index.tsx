@@ -262,20 +262,27 @@ export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder
   const gravado = useRef(valor);
   const escolhido = useRef(false);
   useEffect(() => { setTexto(valor); gravado.current = valor; }, [valor]);
-  // A lista é fixa na tela: ao rolar a página, fecha (o campo continua focado).
+  // A lista é fixa na tela: ao rolar a página, acompanha o campo; fecha só se o campo sair da tela.
+  const aberta = pos != null;
   useEffect(() => {
-    if (!pos) return;
-    const fechar = (e: Event) => { if (!listaRef.current?.contains(e.target as Node)) setPos(null); };
-    window.addEventListener('scroll', fechar, true);
-    return () => window.removeEventListener('scroll', fechar, true);
-  }, [pos]);
+    if (!aberta) return;
+    const seguir = (e: Event) => {
+      if (listaRef.current?.contains(e.target as Node)) return;
+      const r = ref.current?.getBoundingClientRect();
+      if (!r || r.bottom < 0 || r.top > window.innerHeight) return setPos(null);
+      setPos(posicao(r));
+    };
+    window.addEventListener('scroll', seguir, true);
+    return () => window.removeEventListener('scroll', seguir, true);
+  }, [aberta]);
 
   const termo = semAcento(texto.trim());
   const filtradas = (termo && texto !== valor ? opcoes.filter((o) => semAcento(`${o.valor} ${o.detalhe ?? ''}`).includes(termo)) : opcoes).slice(0, 60);
 
+  const posicao = (r: DOMRect) => ({ top: Math.min(r.bottom + 2, window.innerHeight - 260), left: Math.min(r.left, window.innerWidth - Math.max(r.width, 280) - 8), width: Math.max(r.width, 280) });
   function abrir() {
     const r = ref.current?.getBoundingClientRect();
-    if (r) setPos({ top: Math.min(r.bottom + 2, window.innerHeight - 260), left: Math.min(r.left, window.innerWidth - Math.max(r.width, 280) - 8), width: Math.max(r.width, 280) });
+    if (r) setPos(posicao(r));
     setAtivo(0);
   }
   function confirmar(v: string) {
