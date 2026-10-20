@@ -1,3 +1,4 @@
+import { Marca } from './Layout';
 import { useState, type FormEvent } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { Aviso, Botao, Campo, Entrada } from '@/shared/ui';
@@ -27,11 +28,14 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-marinho-800 via-marinho-700 to-roxo-700 p-4">
-      <form onSubmit={entrar} className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-7 shadow-xl dark:bg-marinho-800">
-        <div>
-          <h1 className="text-xl font-bold text-marinho-700 dark:text-white">ERP Fabriaço</h1>
-          <p className="text-sm text-slate-500">Entre com seu usuário</p>
+    <div className="flex min-h-screen items-center justify-center bg-pagina p-4">
+      <form onSubmit={entrar} className="w-full max-w-sm space-y-4 rounded-xl bg-superficie p-7 shadow-sm ring-1 ring-borda">
+        <div className="space-y-3">
+          <Marca />
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-texto">Entrar no ERP</h1>
+            <p className="text-sm text-suave">Use seu e-mail e senha.</p>
+          </div>
         </div>
         {erro && <Aviso>{erro}</Aviso>}
         {aviso && <Aviso tipo="info">{aviso}</Aviso>}

@@ -54,3 +54,21 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 ## Catálogo COD_MAT (`20261020000011_catalogo_cod_mat.sql`)
 
 - `catalogo_materiais` (cod_mat AA-000, nome, nome completo, nome no SolidWorks, categoria, densidade a preencher) com 124 materiais; `projeto_pecas.cod_mat` → catálogo
+
+## Biblioteca de Materiais e Predefinições (`20261021000018_biblioteca_predefinicoes.sql`, carga `20261021000019_biblioteca_carga.sql`)
+
+- `catalogo_materiais.densidade` preenchida (g/cm³) e com restrição > 0.
+- `bib_tipos` (grupo Chapas/Perfis, nome, formato do cálculo de peso), `bib_pesos_perfil` (kg/m de catálogo por tipo e bitola, aço carbono).
+- `bib_chapa_precos` (valor/kg por material + tipo), `bib_chapas` (material, tipo, espessura texto e mm, largura, comprimento, peso e se é manual, valor/kg próprio ou nulo = herdado, descrição única).
+- `bib_perfis` (material, tipo, medidas como digitadas e em mm, parede, kg/m e se é manual, modo de preço m/kg, valor, descrição única, `origem_ref` na lista antiga).
+- `bib_itens` (Comerciais, Fixadores, Consumíveis: descrição, material, unidade, valor).
+- `fornecedores` e `fornecedor_servicos` (serviço, unidade hora/kg/m²/metro/peça, valor).
+- `ref_maquinas`: só as próprias ficam ativas; `ref_materiais.migrado` marca o que passou para a biblioteca.
+- RLS: leitura para `custos.ler` ou `admin.editar`; inserção e edição só `admin.editar`; sem exclusão física; auditoria em todas.
+- Regras de peso e descrição em `src/modules/biblioteca/regras.ts` (com testes); a carga foi gerada por `scripts/gerar_carga_biblioteca.ts` com as mesmas regras.
+
+## Custos: Frete terceirizado e Viagem (`20261021000020_custos_viagem_frete.sql`)
+
+- `custo_linhas.secao` aceita `frete` e `viagem` (as antigas continuam para revisões enviadas); `custo_linhas.bib_id` guarda o item da biblioteca escolhido.
+- `ajustar_linha_custo` com as fórmulas de veículo alugado, frete, hospedagem e fixadores/consumíveis.
+- `converter_secoes_antigas(revisão)` converte um rascunho para as seções atuais sem mudar valores; `copiar_custos` chama ao criar nova revisão.

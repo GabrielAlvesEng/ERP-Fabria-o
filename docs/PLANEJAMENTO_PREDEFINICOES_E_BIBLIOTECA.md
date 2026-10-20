@@ -1,6 +1,6 @@
 # Predefinições, Biblioteca de Materiais e ajustes de Custos/Kanban
 
-Versão 1, 20/10/2026. **Estado: entrega 0 feita; entregas 1 a 5 aguardando aprovação do Gabriel.**
+Versão 1, 20/10/2026. **Estado: entregas 0 a 4 feitas e testadas; entrega 5 (redesign etapa 1) feita com marca provisória, aguardando os arquivos da Logo Moderna. Recomendações implementadas (decisões 47 a 51), aguardando confirmação do Gabriel.**
 
 Pedido do Gabriel em 20/10/2026 (segunda rodada de ajustes de Vendas + biblioteca de materiais). Vários itens mudam regras aprovadas (decisões 12, 22, 41, 42); cada mudança vai para `docs/REGRAS_DE_NEGOCIO.md` como decisão nova, sem apagar a antiga.
 

@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-.dark { color-scheme: dark; }
-body { @apply bg-slate-100 text-slate-800 dark:bg-marinho-900 dark:text-slate-100 antialiased; }
+/* Tokens do tema (redesign, decisão 51). Claro: página cinza muito claro, superfícies brancas. Escuro: grafite. */
+:root {
+  color-scheme: light;
+  --pagina: 246 246 249;
+  --superficie: 255 255 255;
+  --borda: 228 228 234;
+  --texto: 24 24 28;
+  --suave: 100 100 112;
+}
+.dark {
+  color-scheme: dark;
+  --pagina: 14 14 16;
+  --superficie: 24 24 28;
+  --borda: 45 45 52;
+  --texto: 236 236 240;
+  --suave: 160 160 171;
+}
+
+body { @apply bg-pagina text-texto antialiased; font-feature-settings: 'cv11', 'ss01'; }
+/* Números alinhados em valores, tabelas e códigos. */
+table, .tabular-nums { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}

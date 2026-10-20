@@ -4,23 +4,25 @@ import { CalendarDays, Check, ChevronDown, Paperclip, X } from 'lucide-react';
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
 type Variante = 'primario' | 'secundario' | 'perigo' | 'fantasma';
+// Botão do redesign (decisão 51): primary (roxo), secondary (branco com borda), ghost e danger; tamanhos md 36px e sm 30px.
 const variantes: Record<Variante, string> = {
-  primario: 'bg-roxo-500 text-white hover:bg-roxo-600',
-  secundario: 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 dark:bg-marinho-700 dark:text-slate-100 dark:ring-marinho-500',
-  perigo: 'bg-red-600 text-white hover:bg-red-700',
-  fantasma: 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-marinho-700',
+  primario: 'bg-roxo-500 text-white shadow-sm hover:bg-roxo-600 dark:hover:bg-roxo-400',
+  secundario: 'bg-superficie text-texto shadow-sm ring-1 ring-borda hover:bg-pagina dark:hover:bg-marinho-700',
+  perigo: 'bg-red-600 text-white shadow-sm hover:bg-red-700',
+  fantasma: 'text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700',
 };
+const tamanhos = { md: 'h-9 px-3.5 text-sm', sm: 'h-[30px] px-2.5 text-xs' } as const;
 
-export function Botao({ variante = 'primario', className, ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: Variante }) {
+export function Botao({ variante = 'primario', tamanho = 'md', className, ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: Variante; tamanho?: keyof typeof tamanhos }) {
   return (
     <button
       {...p}
-      className={cx('inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50', variantes[variante], className)}
+      className={cx('inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-roxo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-superficie disabled:cursor-not-allowed disabled:opacity-50', tamanhos[tamanho], variantes[variante], className)}
     />
   );
 }
 
-const campoBase = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-roxo-500 focus:ring-2 focus:ring-roxo-100 dark:border-marinho-500 dark:bg-marinho-800 dark:focus:ring-roxo-700/40';
+const campoBase = 'w-full rounded-lg border border-slate-300 bg-superficie px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-roxo-500 focus:ring-2 focus:ring-roxo-100 dark:border-marinho-500 dark:focus:border-roxo-300 dark:focus:ring-roxo-700/40';
 
 export function Campo({ rotulo, erro, children, className }: { rotulo: string; erro?: string; children: ReactNode; className?: string }) {
   return (
@@ -136,7 +138,7 @@ export function CampoArquivo({ arquivo, onChange, accept }: { arquivo: File | nu
 }
 
 export function Cartao({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx('rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700', className)}>{children}</div>;
+  return <div className={cx('rounded-xl bg-superficie p-5 shadow-sm ring-1 ring-borda', className)}>{children}</div>;
 }
 
 export function Selo({ children, cor = 'cinza' }: { children: ReactNode; cor?: 'cinza' | 'roxo' | 'verde' | 'vermelho' | 'amarelo' | 'azul' }) {
@@ -188,8 +190,8 @@ export function Cabecalho({ titulo, subtitulo, acoes }: { titulo: string; subtit
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold text-marinho-700 dark:text-white">{titulo}</h1>
-        {subtitulo && <p className="text-sm text-slate-500 dark:text-slate-400">{subtitulo}</p>}
+        <h1 className="text-2xl font-semibold tracking-tight text-texto">{titulo}</h1>
+        {subtitulo && <p className="mt-0.5 text-sm text-suave">{subtitulo}</p>}
       </div>
       <div className="flex flex-wrap gap-2">{acoes}</div>
     </div>
