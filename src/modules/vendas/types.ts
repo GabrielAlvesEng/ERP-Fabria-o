@@ -39,6 +39,10 @@ export interface Contato {
 
 export const STATUS = ['À enviar', 'Enviados', 'Follow-up', 'Aprovado', 'Reprovado', 'Finalizado', 'Emitido NF', 'Pago'] as const;
 export type StatusProposta = (typeof STATUS)[number];
+// Colunas do Kanban: a coluna Follow-up saiu (decisão 39). "Follow-up" continua aceito em propostas antigas.
+export const STATUS_KANBAN = STATUS.filter((s) => s !== 'Follow-up');
+// Situações em que a proposta aguarda retorno do cliente (data de follow-up no card).
+export const AGUARDANDO_RETORNO: StatusProposta[] = ['Enviados', 'Follow-up'];
 
 export interface Proposta {
   id: string;
@@ -55,6 +59,7 @@ export interface Proposta {
   data_emissao: string;
   prazo_previsto: string;
   validade: string | null;
+  validade_dias: number | null;
   condicoes_comerciais: string;
   proximo_followup: string | null;
   observacoes: string;

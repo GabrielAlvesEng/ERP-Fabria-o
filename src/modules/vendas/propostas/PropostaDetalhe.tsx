@@ -9,7 +9,7 @@ import {
   moverProposta, obterAprovacao, obterProposta, removerArquivo,
 } from '../api';
 import type { Arquivo, Proposta, StatusProposta } from '../types';
-import { rotuloRevisao, tipoTransicao } from './regras';
+import { rotuloRevisao, tipoTransicao, validadeAte } from './regras';
 import type { Pendente } from './PropostasPage';
 import { FollowupModal } from './TransicaoModais';
 import { CustosAba } from '../custos/CustosAba';
@@ -21,7 +21,7 @@ const tiposArquivo: Record<Arquivo['tipo'], string> = { comercial: 'Proposta com
 
 const proximos: Partial<Record<StatusProposta, StatusProposta[]>> = {
   'À enviar': ['Enviados'],
-  Enviados: ['Follow-up', 'Aprovado', 'Reprovado', 'À enviar'],
+  Enviados: ['Aprovado', 'Reprovado', 'À enviar'],
   'Follow-up': ['Enviados', 'Aprovado', 'Reprovado', 'À enviar'],
   Reprovado: ['À enviar'],
   Aprovado: ['Finalizado'],
@@ -130,7 +130,7 @@ function AbaDados({ p }: { p: Proposta }) {
     mutationFn: () =>
       atualizarRascunho(p.id, {
         titulo: f.titulo, descricao: f.descricao, valor: Number(numeroBR(String(f.valor)) || 0), prazo_previsto: f.prazo_previsto,
-        validade: f.validade || null, condicoes_comerciais: f.condicoes_comerciais, observacoes: f.observacoes, data_emissao: f.data_emissao,
+        validade_dias: f.validade_dias || null, condicoes_comerciais: f.condicoes_comerciais, observacoes: f.observacoes, data_emissao: f.data_emissao,
       }),
     onSuccess: () => {
       setMsg('Salvo. Edição em À enviar não gera revisão.');
@@ -152,7 +152,13 @@ function AbaDados({ p }: { p: Proposta }) {
         <Campo rotulo="Valor (R$)"><Entrada value={String(f.valor)} onChange={set('valor')} disabled={!editavel} /></Campo>
         <Campo rotulo="Data de emissão"><CampoData value={f.data_emissao} onChange={(v) => setF({ ...f, data_emissao: v })} disabled={!editavel} /></Campo>
         <Campo rotulo="Prazo previsto"><Entrada value={f.prazo_previsto} onChange={set('prazo_previsto')} disabled={!editavel} /></Campo>
-        <Campo rotulo="Validade"><CampoData value={f.validade} onChange={(v) => setF({ ...f, validade: v || null })} disabled={!editavel} /></Campo>
+        <Campo rotulo="Validade (dias)">
+          <div className="flex items-center gap-2">
+            <Entrada type="number" min={1} max={3650} className="w-24" value={f.validade_dias ?? ''} disabled={!editavel}
+              onChange={(e) => setF({ ...f, validade_dias: e.target.value ? Math.max(1, Math.round(Number(e.target.value))) : null })} />
+            <span className="text-xs text-slate-500">{validadeAte(f.data_emissao, f.validade_dias)}</span>
+          </div>
+        </Campo>
         <Campo rotulo="Condições comerciais" className="sm:col-span-2"><AreaTexto value={f.condicoes_comerciais} onChange={set('condicoes_comerciais')} disabled={!editavel} /></Campo>
         <Campo rotulo="Observações" className="sm:col-span-2"><AreaTexto value={f.observacoes} onChange={set('observacoes')} disabled={!editavel} /></Campo>
         <div className="text-sm text-slate-500 sm:col-span-2">
@@ -282,3 +288,4 @@ function AbaHistorico({ id }: { id: string }) {
     </ol>
   );
 }
+

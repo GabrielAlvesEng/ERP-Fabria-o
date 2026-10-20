@@ -10,6 +10,10 @@ describe('transições do Kanban', () => {
     expect(tipoTransicao('Enviados', 'Aprovado')).toBe('aprovar');
     expect(tipoTransicao('Follow-up', 'Reprovado')).toBe('reprovar');
   });
+  it('sem coluna Follow-up (decisão 39): não se move para ela; antigas voltam para Enviados', () => {
+    expect(tipoTransicao('Enviados', 'Follow-up')).toBe('proibida');
+    expect(tipoTransicao('Follow-up', 'Enviados')).toBe('simples');
+  });
   it('voltar para À enviar cria revisão', () => {
     expect(tipoTransicao('Enviados', 'À enviar')).toBe('reabrir');
     expect(tipoTransicao('Reprovado', 'À enviar')).toBe('reabrir');

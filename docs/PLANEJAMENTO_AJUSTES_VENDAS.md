@@ -1,6 +1,6 @@
 # Planejamento: ajustes em Vendas (pedido de 20/10/2026)
 
-Versão 1, 20/10/2026. **Estado: aguardando aprovação do Gabriel.** Nada implementado.
+Versão 1, 20/10/2026. **Estado: aprovado com todas as recomendações (decisões 39 a 44).** Em implementação: entrega 1.
 Pedido original: `docs/PEDIDO_AJUSTES_VENDAS_20261020.md`. Tudo será feito e testado só em localhost (decisão 37).
 
 Itens marcados **[MUDA REGRA]** alteram uma decisão já aprovada; ao aprovar, a decisão antiga fica registrada como substituída. **[DECIDIR]** são perguntas; cada uma traz a minha recomendação.

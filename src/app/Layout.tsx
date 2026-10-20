@@ -4,6 +4,7 @@ import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, LogOut, Moon, Shield
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
+import { RetornosSino } from '@/modules/vendas/RetornosSino';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 const modulos = [
@@ -62,6 +63,7 @@ export function Layout() {
             <button className="rounded p-1 hover:bg-slate-100 dark:hover:bg-marinho-700" onClick={() => setAno(ano + 1)} aria-label="Próximo ano"><ChevronRight size={16} /></button>
           </div>
           <div className="flex items-center gap-2">
+            <RetornosSino />
             <button onClick={() => setTema(tema === 'claro' ? 'escuro' : 'claro')} className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-marinho-700" aria-label="Alternar tema">
               {tema === 'claro' ? <Moon size={18} /> : <Sun size={18} />}
             </button>

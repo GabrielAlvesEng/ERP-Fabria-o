@@ -135,3 +135,16 @@ export async function abrirArquivo(caminho: string): Promise<void> {
   const r = ok(await supabase.storage.from('vendas').createSignedUrl(caminho, 120));
   window.open((r as { signedUrl: string }).signedUrl, '_blank', 'noopener');
 }
+
+// Código sugerido para a nova proposta (decisão 44): não consome número; o banco confirma ao criar.
+export async function sugerirCodigoProposta(contatoId: string, ano: number): Promise<string> {
+  return ok(await supabase.rpc('sugerir_codigo_proposta', { p_contato: contatoId, p_ano: ano })) as string;
+}
+
+// Retornos de follow-up vencidos (qualquer ano), para o sino de Vendas (decisão 40).
+export type RetornoVencido = Pick<Proposta, 'id' | 'codigo' | 'titulo' | 'proximo_followup' | 'responsavel_id' | 'empresas' | 'contatos'>;
+
+export async function listarRetornosVencidos(hoje: string): Promise<RetornoVencido[]> {
+  return ok<unknown>(await supabase.from('propostas').select('id, codigo, titulo, proximo_followup, responsavel_id, empresas(nome_fantasia), contatos!propostas_contato_id_fkey(nome)')
+    .in('status', ['Enviados', 'Follow-up']).lte('proximo_followup', hoje).order('proximo_followup')) as RetornoVencido[];
+}

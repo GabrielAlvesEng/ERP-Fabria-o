@@ -1,17 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { AlarmClock, Plus, Search } from 'lucide-react';
+import { AlertTriangle, MessageSquarePlus, Plus, Search } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
 import { Aviso, Botao, Cabecalho, Caixa, Entrada, Selecao, Selo } from '@/shared/ui';
 import { listarPropostas, moverProposta } from '../api';
-import { STATUS, type Proposta, type StatusProposta } from '../types';
+import { AGUARDANDO_RETORNO, STATUS_KANBAN, type Proposta, type StatusProposta } from '../types';
 import { followupVencido, rotuloRevisao, tipoTransicao } from './regras';
 import { NovaPropostaModal } from './NovaPropostaModal';
 import { PropostaDetalhe } from './PropostaDetalhe';
-import { AprovarModal, EnviarModal, ReabrirModal, ReprovarModal, VoltarAdminModal } from './TransicaoModais';
+import { AprovarModal, EnviarModal, FollowupModal, ReabrirModal, ReprovarModal, VoltarAdminModal } from './TransicaoModais';
 
 const corColuna: Record<StatusProposta, string> = {
   'À enviar': 'border-t-slate-400',
@@ -36,6 +37,13 @@ export function PropostasPage() {
   const [nova, setNova] = useState(false);
   const [aberta, setAberta] = useState<string | null>(null);
   const [pendente, setPendente] = useState<Pendente | null>(null);
+  const [followup, setFollowup] = useState<Proposta | null>(null);
+  // Abrir uma proposta direto pelo sino de retornos (?abrir=<id>).
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = params.get('abrir');
+    if (id) { setAberta(id); setParams({}, { replace: true }); }
+  }, [params, setParams]);
   const [erro, setErro] = useState('');
   const hoje = hojeISO();
 
@@ -45,7 +53,7 @@ export function PropostasPage() {
     const t = busca.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     return propostas.filter((p) => {
       const txt = `${p.codigo} ${p.titulo} ${p.empresas?.nome_fantasia ?? ''} ${p.contatos?.nome ?? ''}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-      return (!t || txt.includes(t)) && (!empresa || p.empresa_id === empresa) && (!soVencidos || (['Enviados', 'Follow-up'].includes(p.status) && followupVencido(p.proximo_followup, hoje)));
+      return (!t || txt.includes(t)) && (!empresa || p.empresa_id === empresa) && (!soVencidos || (AGUARDANDO_RETORNO.includes(p.status) && followupVencido(p.proximo_followup, hoje)));
     });
   }, [propostas, busca, empresa, soVencidos, hoje]);
 
@@ -100,8 +108,9 @@ export function PropostasPage() {
       {isLoading ? <div className="text-sm text-slate-500">Carregando…</div> : (
         <DndContext sensors={sensors} onDragEnd={aoSoltar}>
           <div className="flex gap-3 overflow-x-auto pb-4">
-            {STATUS.map((s) => (
-              <Coluna key={s} status={s} propostas={filtradas.filter((p) => p.status === s)} hoje={hoje} onAbrir={setAberta} />
+            {STATUS_KANBAN.map((s) => (
+              // Propostas antigas em "Follow-up" aparecem em Enviados (decisão 39).
+              <Coluna key={s} status={s} propostas={filtradas.filter((p) => p.status === s || (s === 'Enviados' && p.status === 'Follow-up'))} hoje={hoje} onAbrir={setAberta} onFollowup={pode('vendas', 'editar') ? setFollowup : undefined} />
             ))}
           </div>
         </DndContext>
@@ -113,12 +122,13 @@ export function PropostasPage() {
       {pendente?.tipo === 'aprovar' && <AprovarModal proposta={pendente.proposta} onFechar={fecharPendente} />}
       {pendente?.tipo === 'reprovar' && <ReprovarModal proposta={pendente.proposta} onFechar={fecharPendente} />}
       {pendente?.tipo === 'reabrir' && <ReabrirModal proposta={pendente.proposta} onFechar={fecharPendente} />}
+      {followup && <FollowupModal proposta={followup} onFechar={() => setFollowup(null)} />}
       {pendente?.tipo === 'voltar_admin' && <VoltarAdminModal proposta={pendente.proposta} para={pendente.para} onFechar={fecharPendente} />}
     </>
   );
 }
 
-function Coluna({ status, propostas, hoje, onAbrir }: { status: StatusProposta; propostas: Proposta[]; hoje: string; onAbrir: (id: string) => void }) {
+function Coluna({ status, propostas, hoje, onAbrir, onFollowup }: { status: StatusProposta; propostas: Proposta[]; hoje: string; onAbrir: (id: string) => void; onFollowup?: (p: Proposta) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const total = propostas.reduce((s, p) => s + Number(p.valor), 0);
   return (
@@ -129,15 +139,16 @@ function Coluna({ status, propostas, hoje, onAbrir }: { status: StatusProposta; 
       </div>
       <div className="px-2 pb-2 text-xs text-slate-500">{moeda(total)}</div>
       <div className="flex min-h-24 flex-col gap-2">
-        {propostas.map((p) => <Card key={p.id} p={p} hoje={hoje} onAbrir={onAbrir} />)}
+        {propostas.map((p) => <Card key={p.id} p={p} hoje={hoje} onAbrir={onAbrir} onFollowup={onFollowup} />)}
       </div>
     </div>
   );
 }
 
-function Card({ p, hoje, onAbrir }: { p: Proposta; hoje: string; onAbrir: (id: string) => void }) {
+function Card({ p, hoje, onAbrir, onFollowup }: { p: Proposta; hoje: string; onAbrir: (id: string) => void; onFollowup?: (p: Proposta) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: p.id });
-  const vencido = ['Enviados', 'Follow-up'].includes(p.status) && followupVencido(p.proximo_followup, hoje);
+  const aguardando = AGUARDANDO_RETORNO.includes(p.status);
+  const vencido = aguardando && followupVencido(p.proximo_followup, hoje);
   return (
     <div
       ref={setNodeRef}
@@ -145,21 +156,34 @@ function Card({ p, hoje, onAbrir }: { p: Proposta; hoje: string; onAbrir: (id: s
       {...attributes}
       onClick={() => onAbrir(p.id)}
       style={transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined}
-      className={`cursor-grab rounded-xl bg-white p-3 text-sm shadow-sm ring-1 ring-slate-200 hover:ring-roxo-500 active:cursor-grabbing dark:bg-marinho-700 dark:ring-marinho-500 ${isDragging ? 'z-50 opacity-80 shadow-lg' : ''}`}
+      className={`cursor-grab rounded-xl bg-white p-3 text-sm shadow-sm ring-1 ring-slate-200 hover:ring-roxo-500 active:cursor-grabbing dark:bg-marinho-700 dark:ring-marinho-500 ${vencido ? 'ring-2 ring-amber-400 dark:ring-amber-500' : ''} ${isDragging ? 'z-50 opacity-80 shadow-lg' : ''}`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span>
-        <Selo cor="azul">{rotuloRevisao(p.revisao_atual)}</Selo>
+        <span className="flex items-center gap-1">
+          {vencido && <span title={`Retorno vencido em ${dataBR(p.proximo_followup)}: cobrar o contato`}><AlertTriangle size={16} className="text-amber-500" /></span>}
+          <Selo cor="azul">{rotuloRevisao(p.revisao_atual)}</Selo>
+        </span>
       </div>
       <div className="mt-1 line-clamp-2 font-medium">{p.titulo}</div>
       <div className="mt-1 text-xs text-slate-500 dark:text-slate-300">{p.empresas?.nome_fantasia} · {p.contatos?.nome}</div>
       <div className="mt-2 flex items-center justify-between text-xs">
         <span className="font-semibold">{moeda(p.valor)}</span>
-        {vencido ? (
-          <span className="inline-flex items-center gap-1 font-semibold text-amber-600"><AlarmClock size={13} /> {dataBR(p.proximo_followup)}</span>
-        ) : p.proximo_followup && ['Enviados', 'Follow-up'].includes(p.status) ? (
-          <span className="text-slate-500">Retorno {dataBR(p.proximo_followup)}</span>
-        ) : null}
+        {aguardando && (
+          <span className="inline-flex items-center gap-1">
+            {p.proximo_followup && (
+              <span className={`rounded px-1.5 py-0.5 ${vencido ? 'bg-amber-100 font-semibold text-amber-700 dark:bg-amber-900/50 dark:text-amber-200' : 'bg-slate-100 text-slate-500 dark:bg-marinho-600 dark:text-slate-300'}`}>
+                Retorno {dataBR(p.proximo_followup)}
+              </span>
+            )}
+            {onFollowup && (
+              <button type="button" title="Registrar follow-up" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onFollowup(p); }}
+                className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-roxo-600 dark:hover:bg-marinho-600">
+                <MessageSquarePlus size={14} />
+              </button>
+            )}
+          </span>
+        )}
       </div>
     </div>
   );

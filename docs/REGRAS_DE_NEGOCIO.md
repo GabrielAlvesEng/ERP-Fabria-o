@@ -58,6 +58,17 @@ Este arquivo registra o que foi **decidido** e o que está **pendente**. Não su
 37. **Sem deploy no Netlify por enquanto (20/10/2026):** o Gabriel quer terminar e testar tudo em localhost antes. Nenhuma publicação no Netlify até ele liberar expressamente. O último deploy feito foi `6ad794964d129e69b74355bb` (importação do SolidWorks), antes deste pedido.
 38. **Reimportação de revisão do CAD (20/10/2026):** aprovadas as regras R1 a R8 de `docs/PLANEJAMENTO_SOLIDWORKS.md` (etapa 2): removidos do CAD ficam marcados e fora da lista de materiais; o CAD vence quando traz valor e o ERP mantém o valor quando o CAD vem vazio; códigos nunca mudam nem são reaproveitados; mudança de pai = removido + novo; conjunto Liberado alterado volta a Em revisão e sobe a revisão; itens criados à mão não são tocados; JSON de outra montagem é recusado.
 
+## Decisões confirmadas pelo Gabriel (20/10/2026, ajustes de Vendas)
+
+Aprovado o planejamento `docs/PLANEJAMENTO_AJUSTES_VENDAS.md` com todas as recomendações. Decisões que **substituem** regras anteriores estão marcadas.
+
+39. **Kanban sem coluna Follow-up** (*substitui* o Documento Mestre 8.4/8.6, que tinha a coluna Follow-up, e o fluxo "mover para Follow-up registra o follow-up"). O follow-up vira uma data no card de Enviados; no dia ou depois, o card mostra um ícone de alerta. Registrar follow-up fica no detalhe e num atalho do card.
+40. **Notificação de retorno:** sino na barra superior para todo o setor de Vendas; notificação do Windows (navegador) uma vez por dia por proposta, só para o responsável da proposta, enquanto o ERP estiver aberto. E-mail automático fica para depois.
+41. **Materiais nos custos:** blocos Chapas, Perfis e Comerciais (sem coluna Tipo); comerciais só com quantidade; coluna Material vinda do catálogo COD_MAT; lista de preços ganha Material; arrastar para reordenar; campos de escolha com lista abaixo e texto livre. kg/m dos perfis entra aos poucos na lista de preços.
+42. **Acabamentos no lugar de Acessórios** (*substitui* a decisão 30-a sobre Acessórios). As linhas de Acessórios existentes vão para Comerciais com o mesmo valor; revisões enviadas ficam como estão. Mão de obra em Administrativo, Fabricação e Instalação. Deslocamento e Fretes viram "Frota e fretes" com km e pedágio digitados e botão "Abrir rota no Qualp" (API depois). Hospedagem sem cidade.
+43. **Imposto sempre por dentro** (*substitui* a decisão 30-c, que mantinha a opção "por fora"). "Lucro" passa a se chamar **Margem** e a margem de negociação, **Negociação**.
+44. **Código da proposta semi-automático** (*substitui* as decisões 8 e 18 no ponto "atribuído automaticamente"; o formato AA-CC-NNN continua). O ERP sugere o código e permite editar o código inteiro antes de salvar; bloqueia código repetido (inclusive de proposta excluída) ou fora do formato; avisa se o CC não for o do contato no ano. A sequência continua do maior número usado. **Validade da proposta em dias**, com a data calculada a partir da emissão.
+
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
