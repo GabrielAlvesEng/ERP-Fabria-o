@@ -40,3 +40,53 @@ Avisos da própria macro: o rodízio está sem COD_OP; os 4 corpos da lista de c
 1. **Onde importar este arquivo?** (a) no projeto de teste 26-27-001, só para validar; ou (b) criar agora a proposta/projeto real da Bancada Moedor Aplicalis (SYMRISE) e importar nele.
 2. **Conjunto soldado** como nó próprio da árvore, com os corpos como peças `….01`, `….02`: ok?
 3. **Os próximos modelos** já serão nomeados com o código da proposta (ex.: `26-26-005-00-00-000`), ou o CAD vai continuar com `AA-NNN-SIGLA`? Isso define se o ERP mostra os dois códigos sempre ou só nesta transição.
+
+---
+
+# Etapa 2 — Reimportação de nova revisão do CAD
+
+Versão 1, 20/10/2026. **Estado: aguardando aprovação do Gabriel.** Nada implementado.
+
+## Como funciona
+
+1. No projeto já importado, o botão vira **"Atualizar do SolidWorks"**. Escolhe-se o JSON novo da mesma montagem.
+2. O ERP compara o JSON com a árvore atual e mostra uma **prévia de diferenças**, com cores:
+   - **Novo** (verde): existe no CAD e não no ERP. Recebe o próximo código livre.
+   - **Alterado** (âmbar): mostra campo a campo o antes → depois (nome/descrição, quantidade, COD_OP, COD_MAT, espessura, peso, comprimento).
+   - **Removido do CAD** (vermelho): estava no ERP e não está mais no CAD.
+   - **Sem mudança** (cinza, recolhido).
+3. Confirmar aplica tudo de uma vez, numa transação. Se algo falhar, nada é gravado.
+4. Cada importação fica num **histórico** do projeto (data, usuário, arquivo, versão da macro, resumo: X novos, Y alterados, Z removidos). A primeira importação também entra nele.
+
+## Como o ERP reconhece "o mesmo item"
+
+- Pela **chave do CAD** guardada na primeira importação (arquivo + configuração; nos corpos de conjunto soldado, a referência persistente do corpo na lista de corte) **dentro do mesmo pai**.
+- Se a chave não bater (arquivo renomeado ou movido de pasta), tenta pelo **código CAD** (ex.: 26-059-BMA-00-00-001) no mesmo pai.
+- Sem chave e sem código iguais, é tratado como novo + removido.
+
+## Regras propostas (recomendação)
+
+| # | Situação | Recomendação |
+|---|---|---|
+| R1 | Item **removido do CAD** | Não apagar. Fica marcado "Removido do CAD (data)", riscado na árvore, **fora da lista de materiais** (com filtro para mostrar). Quem tem permissão pode excluir de vez (exclusão lógica) ou restaurar. |
+| R2 | Campo editado no ERP e diferente no CAD | **O CAD vence** quando traz valor. Se o CAD vier **vazio** e o ERP tiver valor (ex.: COD_OP do rodízio classificado no ERP), **mantém o do ERP** e mostra aviso. |
+| R3 | Códigos | Itens existentes **mantêm o código do ERP** sempre. Novos recebem o próximo livre. Códigos de removidos **nunca são reaproveitados** (o banco já garante). |
+| R4 | Item que **mudou de pai** no CAD (ex.: peça passou de um conjunto para outro) | Tratado como **removido no pai antigo + novo no pai novo**, com novo código, porque o código do ERP indica onde a peça está. A prévia avisa "provável mudança de lugar". |
+| R5 | Conjunto **Liberado** que recebeu mudanças | Volta para **"Em revisão"** e a revisão sobe (R0 → R1). Conjuntos sem mudança não são tocados. |
+| R6 | Itens **criados à mão** no ERP (sem chave do CAD) | Não são tocados pela reimportação. |
+| R7 | JSON de outra montagem (código CAD da raiz diferente) | Recusado, com mensagem. |
+| R8 | Avisos da macro (sem COD_OP, sem código próprio) | Mostrados na prévia, como na primeira importação. |
+
+## O que muda no banco (migration nova, pequena)
+
+- Colunas `removido_cad_em` em conjuntos e peças.
+- Tabela `projeto_importacoes_cad` (histórico).
+- Função `atualizar_solidworks(projeto, plano)` que aplica novos, alterados e removidos, sobe a revisão dos liberados alterados e grava o histórico. A função atual `importar_solidworks` continua só para a primeira importação.
+
+## Teste
+
+Gerar uma 2ª versão do JSON da bancada **inventada a partir do original** (ex.: rodízio 4 → 6, uma chapa com espessura nova, um corpo removido, um corpo novo) e aplicar no 26-27-001, conferindo prévia, árvore, lista de materiais e histórico. Se você tiver uma revisão real exportada pela macro, uso ela.
+
+## Limite que continua
+
+Quando o módulo de Compras existir, mudanças em itens que já foram para requisição de compra precisarão de um fluxo próprio. Isso fica para Compras.
