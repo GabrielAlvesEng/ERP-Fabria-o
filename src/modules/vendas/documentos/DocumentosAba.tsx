@@ -7,11 +7,12 @@ import { mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Vazio } from '@/shared/ui';
 import { enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
 import type { Proposta } from '@/modules/vendas/types';
-import { dadosDaProposta, lerDocumentos, lerPadroes, salvarDocumento } from './api';
+import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadroes, salvarDocumento } from './api';
 import { EditorDocumento } from './EditorDocumento';
-import { aplicarTextosIA, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
+import { aplicarTextosIA, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
 
 const Previa = lazy(() => import('./Previa'));
+const SEM_IMAGENS: Record<string, string> = {};
 
 // Aba Documentos da proposta (decisão 61): proposta técnica e comercial com textos editáveis, prévia A4 e PDF.
 export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
@@ -57,6 +58,12 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   }, [docs, editavel, rev]);
   const alterar = (d: Documento) => { pendente.current[tipo] = d; setDocs((x) => ({ ...x, [tipo]: d })); };
 
+  // Imagens usadas nos dois documentos, baixadas uma vez (o PDF é montado no navegador).
+  const caminhos = useMemo(() => [...new Set([docs.tecnica, docs.comercial].flatMap((d) => (d ? imagensDoDocumento(d) : [])))].sort(), [docs]);
+  const { data: urlsBaixadas } = useQuery({ queryKey: ['proposta_documentos_imagens', caminhos.join('|')], queryFn: () => carregarImagens(caminhos), enabled: caminhos.length > 0, staleTime: Infinity });
+  const urls = urlsBaixadas ?? SEM_IMAGENS;
+  const imagens = useMemo(() => (rev && editavel ? { enviar: (f: File) => enviarImagem(p.id, rev.id, f), urls } : undefined), [rev, editavel, p.id, urls]);
+
   const itensResumo = useMemo(() => dados?.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) ?? [], [dados]);
 
   async function gerarPdf(anexar: boolean) {
@@ -64,7 +71,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
     setMsg(null); setGerando(true);
     try {
       const { gerarBlob } = await import('./Previa');
-      const blob = await gerarBlob(doc, dados, padroes.empresa);
+      const blob = await gerarBlob(doc, dados, padroes.empresa, urls);
       const nome = nomeArquivo(p.codigo, p.revisao_atual, p.titulo, tipo);
       if (anexar) {
         await enviarArquivoRevisao(p.id, rev.id, tipo, new File([blob], nome, { type: 'application/pdf' }));
@@ -143,10 +150,10 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
       {msg && <Aviso tipo={msg.tipo === 'info' ? 'info' : undefined}>{msg.texto}</Aviso>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className={verPrevia ? 'hidden lg:block' : ''}>
-          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} />
+          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} />
         </div>
         <div className={`lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:block'}`}>
-          {dados ? <Suspense fallback={<Vazio>Carregando a prévia…</Vazio>}><Previa doc={doc} dados={dados} empresa={padroes.empresa} /></Suspense> : <Vazio>Carregando os dados da proposta…</Vazio>}
+          {dados ? <Suspense fallback={<Vazio>Carregando a prévia…</Vazio>}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} /></Suspense> : <Vazio>Carregando os dados da proposta…</Vazio>}
         </div>
       </div>
     </div>

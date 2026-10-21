@@ -113,7 +113,7 @@ function Selo({ valor }: { valor: string }) {
   return <View style={{ alignSelf: 'flex-start', backgroundColor: cor[0], borderRadius: 8, paddingVertical: 2, paddingHorizontal: 7 }}><Text style={{ fontSize: 7, fontWeight: 600, color: cor[1] }}>{valor}</Text></View>;
 }
 
-function ConteudoSecao({ secao, v, d, empresa, comercial, topo }: { secao: Secao; v: Variaveis; d: DadosProposta; empresa: DadosEmpresaFabriaco; comercial: boolean; topo: ReactNode }) {
+function ConteudoSecao({ secao, v, d, empresa, comercial, topo, imagens }: { secao: Secao; v: Variaveis; d: DadosProposta; empresa: DadosEmpresaFabriaco; comercial: boolean; topo: ReactNode; imagens: Record<string, string> }) {
   switch (secao.tipo) {
     case 'texto':
       return secao.texto.trim() ? <TextoRico texto={secao.texto} v={v} topo={topo} /> : <View wrap={false}>{topo}<Text style={{ color: C.suave }}>(seção a preencher)</Text></View>;
@@ -140,6 +140,16 @@ function ConteudoSecao({ secao, v, d, empresa, comercial, topo }: { secao: Secao
           {comDestaque && (comIntro ? destaque : <View wrap={false}>{topo}{destaque}</View>)}
           {secao.cartoes.map((c, i) => (i === 0 && !comIntro && !comDestaque ? <View key={i} wrap={false}>{topo}{cartao(c, i)}</View> : cartao(c, i)))}
           {!comIntro && !comDestaque && !secao.cartoes.length && <View wrap={false}>{topo}</View>}
+          {(secao.figuras ?? []).some((f) => imagens[f.caminho]) && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 2 }}>
+              {(secao.figuras ?? []).filter((f) => imagens[f.caminho]).map((f, i) => (
+                <View key={i} wrap={false} style={{ width: '48.5%', borderWidth: 0.5, borderColor: C.borda, borderRadius: 8, padding: 8, marginBottom: 8, alignItems: 'center' }}>
+                  <Image src={imagens[f.caminho]} style={{ height: 150, objectFit: 'contain' }} />
+                  {f.legenda.trim() ? <Text style={{ fontSize: 7, color: C.suave, marginTop: 5, textAlign: 'center' }}>{f.legenda}</Text> : null}
+                </View>
+              ))}
+            </View>
+          )}
           {secao.fecho.trim() && <TextoRico texto={secao.fecho} v={v} />}
         </View>
       );
@@ -215,7 +225,7 @@ const dataExtenso = (iso: string) => {
 };
 const dataCurta = (iso: string) => (iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : new Date()).toLocaleDateString('pt-BR');
 
-function Capa({ doc, d, empresa }: { doc: Documento; d: DadosProposta; empresa: DadosEmpresaFabriaco }) {
+function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; empresa: DadosEmpresaFabriaco; imagens: Record<string, string> }) {
   const comercial = doc.tipo === 'comercial';
   return (
     <Page size="A4" style={{ fontFamily: 'Geist', backgroundColor: C.navy, color: '#ffffff' }}>
@@ -249,6 +259,11 @@ function Capa({ doc, d, empresa }: { doc: Documento; d: DadosProposta; empresa: 
           </View>
         ))}
       </View>
+      {doc.capa.imagem && imagens[doc.capa.imagem] ? (
+        <View style={{ marginTop: 18, height: 250, backgroundColor: '#ffffff', borderRadius: 10, padding: 10, alignItems: 'center', justifyContent: 'center' }}>
+          <Image src={imagens[doc.capa.imagem]} style={{ maxHeight: 230, maxWidth: '100%', objectFit: 'contain' }} />
+        </View>
+      ) : null}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 0.5, borderTopColor: '#2f3757', paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
         <View><Text style={{ fontSize: 9, fontWeight: 700 }}>FABRIAÇO BRASIL</Text><Text style={{ fontSize: 7.5, color: '#aeb3c9', marginTop: 2 }}>{empresa.cidade}</Text></View>
         <View style={{ alignItems: 'flex-end' }}>
@@ -261,14 +276,14 @@ function Capa({ doc, d, empresa }: { doc: Documento; d: DadosProposta; empresa: 
   );
 }
 
-export function DocumentoPdf({ doc, dados: d, empresa }: { doc: Documento; dados: DadosProposta; empresa: DadosEmpresaFabriaco }) {
+export function DocumentoPdf({ doc, dados: d, empresa, imagens = {} }: { doc: Documento; dados: DadosProposta; empresa: DadosEmpresaFabriaco; imagens?: Record<string, string> }) {
   const comercial = doc.tipo === 'comercial';
   const v: Variaveis = { cliente: d.cliente.nome, local: d.cliente.local, validade_dias: String(d.validadeDias || 30) };
   const total = d.itens.reduce((a, i) => a + i.valor, 0);
   const rotuloRev = d.revisao === 0 ? 'R0 · Inicial' : `R${d.revisao}`;
   return (
     <Document title={`${comercial ? 'Proposta Comercial' : 'Proposta Técnica'} ${d.codigo}-R${d.revisao}`} author="Fabriaço Brasil" language="pt-BR">
-      <Capa doc={doc} d={d} empresa={empresa} />
+      <Capa doc={doc} d={d} empresa={empresa} imagens={imagens} />
       <Page size="A4" style={s.pagina}>
         {!comercial && (
           <View style={s.topo} fixed>
@@ -330,7 +345,7 @@ export function DocumentoPdf({ doc, dados: d, empresa }: { doc: Documento; dados
         )}
 
         {numerar(doc.secoes).map(({ secao, numero }) => (
-          <ConteudoSecao key={secao.id} secao={secao} v={v} d={d} empresa={empresa} comercial={comercial}
+          <ConteudoSecao key={secao.id} secao={secao} v={v} d={d} empresa={empresa} comercial={comercial} imagens={imagens}
             topo={<TituloSecao numero={numero} titulo={secao.titulo} comercial={comercial} />} />
         ))}
 

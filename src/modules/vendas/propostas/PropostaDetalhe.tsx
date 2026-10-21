@@ -18,7 +18,7 @@ import { KickoffAba } from '../kickoff/KickoffAba';
 import { ExcluirModal } from './ExcluirModal';
 
 const abas = ['Dados', 'Custos', 'Documentos', 'Revisões e arquivos', 'Aprovação', 'Kick-off', 'Histórico'] as const;
-const tiposArquivo: Record<Arquivo['tipo'], string> = { comercial: 'Proposta comercial', tecnica: 'Proposta técnica', documento_tecnico: 'Documento técnico', anexo: 'Anexo' };
+const tiposArquivo: Record<Arquivo['tipo'], string> = { comercial: 'Proposta comercial', tecnica: 'Proposta técnica', documento_tecnico: 'Documento técnico', anexo: 'Anexo', imagem_documento: 'Imagem do documento' };
 
 const proximos: Partial<Record<StatusProposta, StatusProposta[]>> = {
   'À enviar': ['Enviados'],

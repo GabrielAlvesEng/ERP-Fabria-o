@@ -5,11 +5,13 @@ import type { DadosEmpresaFabriaco, Documento } from './modelo';
 
 // Carregado sob demanda (o gerador de PDF é pesado): prévia A4 e geração do arquivo.
 
-export const gerarBlob = (doc: Documento, dados: DadosProposta, empresa: DadosEmpresaFabriaco) =>
-  pdf(<DocumentoPdf doc={doc} dados={dados} empresa={empresa} />).toBlob();
+export const gerarBlob = (doc: Documento, dados: DadosProposta, empresa: DadosEmpresaFabriaco, imagens: Record<string, string> = {}) =>
+  pdf(<DocumentoPdf doc={doc} dados={dados} empresa={empresa} imagens={imagens} />).toBlob();
 
 // Prévia: refaz o PDF 700 ms depois da última alteração e mostra no visualizador do navegador.
-export default function Previa({ doc, dados, empresa }: { doc: Documento; dados: DadosProposta; empresa: DadosEmpresaFabriaco }) {
+const SEM_IMAGENS: Record<string, string> = {};
+
+export default function Previa({ doc, dados, empresa, imagens = SEM_IMAGENS }: { doc: Documento; dados: DadosProposta; empresa: DadosEmpresaFabriaco; imagens?: Record<string, string> }) {
   const [url, setUrl] = useState<string | null>(null);
   const [gerando, setGerando] = useState(true);
   const [erro, setErro] = useState('');
@@ -18,7 +20,7 @@ export default function Previa({ doc, dados, empresa }: { doc: Documento; dados:
     setGerando(true);
     const t = setTimeout(async () => {
       try {
-        const blob = await gerarBlob(doc, dados, empresa);
+        const blob = await gerarBlob(doc, dados, empresa, imagens);
         if (cancelado) return;
         setErro('');
         setUrl((antigo) => { if (antigo) URL.revokeObjectURL(antigo); return URL.createObjectURL(blob); });
@@ -29,7 +31,7 @@ export default function Previa({ doc, dados, empresa }: { doc: Documento; dados:
       }
     }, 700);
     return () => { cancelado = true; clearTimeout(t); };
-  }, [doc, dados, empresa]);
+  }, [doc, dados, empresa, imagens]);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
   return (

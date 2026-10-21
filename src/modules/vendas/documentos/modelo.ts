@@ -7,11 +7,12 @@ export type TipoDocumento = 'tecnica' | 'comercial';
 export type Marca3 = 'Sim' | 'Não' | 'N/A';
 
 export interface Cartao { titulo: string; texto: string }
+export interface Figura { caminho: string; legenda: string }
 export interface LinhaMatriz { texto: string; cliente: boolean; fabriaco: boolean }
 
 export type Secao = { id: string; titulo: string; ativo: boolean } & (
   | { tipo: 'texto'; texto: string; dica?: string }
-  | { tipo: 'cartoes'; intro: string; cartoes: Cartao[]; fecho: string; marcador: 'numero' | 'letra'; destaque?: string; dica?: string }
+  | { tipo: 'cartoes'; intro: string; cartoes: Cartao[]; fecho: string; marcador: 'numero' | 'letra'; destaque?: string; dica?: string; figuras?: Figura[] }
   | { tipo: 'dados_empresas' }
   | { tipo: 'competencias'; itens: { nome: string; valor: Marca3 }[] }
   | { tipo: 'matriz'; itens: LinhaMatriz[] }
@@ -23,7 +24,7 @@ export type TipoSecao = Secao['tipo'];
 
 export interface Documento {
   tipo: TipoDocumento;
-  capa: { linha1: string; linha2: string; subtitulo: string };
+  capa: { linha1: string; linha2: string; subtitulo: string; imagem?: string };
   visao: { objeto: string; solucao: string; unidade: string }; // técnica: cartões do "Visão do documento"
   abertura: string; // comercial: parágrafo do "Olá, {contato}"
   explicacao?: string; // o que o vendedor escreveu para a IA (não sai no PDF)
@@ -295,3 +296,7 @@ export function aplicarTextosIA(doc: Documento, t: TextosIA): Documento {
     secoes,
   };
 }
+
+// Caminhos das imagens usadas no documento (capa e figuras), para baixar antes de montar o PDF.
+export const imagensDoDocumento = (d: Documento): string[] =>
+  [d.capa.imagem, ...d.secoes.flatMap((s) => (s.tipo === 'cartoes' ? (s.figuras ?? []).map((f) => f.caminho) : []))].filter((c): c is string => Boolean(c));

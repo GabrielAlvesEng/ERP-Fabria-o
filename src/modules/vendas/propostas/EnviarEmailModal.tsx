@@ -20,7 +20,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
   const { data: contatos = [] } = useQuery({ queryKey: ['contatos'], queryFn: listarContatos });
   const { data: revisoes = [] } = useQuery({ queryKey: ['proposta', proposta.id, 'revisoes', proposta.revisao_atual, proposta.status], queryFn: () => listarRevisoes(proposta.id) });
   const rev = revisoes.find((r) => r.numero === proposta.revisao_atual);
-  const { data: arquivos = [] } = useQuery({ queryKey: ['proposta', proposta.id, 'arquivos', rev?.id], queryFn: () => listarArquivos([rev!.id]), enabled: Boolean(rev) });
+  const { data: arquivos = [] } = useQuery({ queryKey: ['proposta', proposta.id, 'arquivos', rev?.id], queryFn: () => listarArquivos([rev!.id]).then((l) => l.filter((a) => a.tipo !== 'imagem_documento')), enabled: Boolean(rev) });
   const { data: assinaturaSalva } = useQuery({ queryKey: ['minha_assinatura', session?.user.id], queryFn: () => minhaAssinatura(session!.user.id), enabled: Boolean(session) });
 
   const contato = contatos.find((c) => c.id === proposta.contato_id);

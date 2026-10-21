@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { AreaTexto, Botao, Caixa, Campo, Entrada, Selecao } from '@/shared/ui';
 import { numerar, type Cartao, type Documento, type Marca3, type Secao } from './modelo';
 
+export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<string, string> }
+
 // Editor das seções do documento (decisão 61): usado na aba Documentos da proposta e em Administração → Modelos de proposta.
-export function EditorDocumento({ doc, onChange, editavel, itens = [] }: {
-  doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: { letra: string; descricao: string }[];
+export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens }: {
+  doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: { letra: string; descricao: string }[]; imagens?: Imagens;
 }) {
   const [aberta, setAberta] = useState<string | null>(null);
   const numeros = Object.fromEntries(numerar(doc.secoes).map((n) => [n.secao.id, n.numero]));
@@ -24,6 +26,12 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [] }: {
         <div className="grid gap-2 sm:grid-cols-2">
           <Campo rotulo="Título · 1ª linha (assunto)"><Entrada value={doc.capa.linha1} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, linha1: e.target.value } })} placeholder="Ex.: Vedação Pneumática" /></Campo>
           <Campo rotulo="Título · 2ª linha (equipamento)"><Entrada value={doc.capa.linha2} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, linha2: e.target.value } })} placeholder="Ex.: Rosca MP" /></Campo>
+          {imagens && (
+            <div className="sm:col-span-2">
+              <div className="mb-1 text-xs font-medium text-suave">Imagem principal (capa)</div>
+              <EscolherImagem imagens={imagens} caminho={doc.capa.imagem} onEscolher={(c) => onChange({ ...doc, capa: { ...doc.capa, imagem: c } })} onRemover={() => onChange({ ...doc, capa: { ...doc.capa, imagem: undefined } })} />
+            </div>
+          )}
           <Campo rotulo="Subtítulo" className="sm:col-span-2"><AreaTexto rows={2} value={doc.capa.subtitulo} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, subtitulo: e.target.value } })} placeholder="Ex.: Fornecimento, fabricação e instalação de novo cabeçote removível…" /></Campo>
           {doc.tipo === 'tecnica' ? (
             <>
@@ -50,14 +58,14 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [] }: {
               {aberta === s.id ? 'Fechar' : 'Editar'}
             </button>
           </div>
-          {aberta === s.id && <div className="border-t border-borda p-3"><CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} /></div>}
+          {aberta === s.id && <div className="border-t border-borda p-3"><CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} /></div>}
         </div>
       ))}
     </fieldset>
   );
 }
 
-function CorpoSecao({ s, onChange, itens }: { s: Secao; onChange: (s: Secao) => void; itens: { letra: string; descricao: string }[] }) {
+function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: Secao) => void; itens: { letra: string; descricao: string }[]; imagens?: Imagens }) {
   switch (s.tipo) {
     case 'texto':
       return <AreaTexto rows={Math.min(18, Math.max(5, s.texto.split('\n').length + 2))} value={s.texto} placeholder={s.dica} onChange={(e) => onChange({ ...s, texto: e.target.value })} />;
@@ -78,6 +86,19 @@ function CorpoSecao({ s, onChange, itens }: { s: Secao; onChange: (s: Secao) => 
             </div>
           ))}
           <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, cartoes: [...s.cartoes, { titulo: '', texto: '' }] })}><Plus size={14} /> Adicionar cartão</Botao>
+          {imagens && s.id === 'escopo' && (
+            <div className="space-y-2 rounded-lg bg-pagina p-2 ring-1 ring-borda">
+              <div className="text-xs font-medium text-suave">Imagens (duas por linha, depois das etapas)</div>
+              {(s.figuras ?? []).map((f, i) => (
+                <div key={f.caminho} className="flex items-center gap-2">
+                  {imagens.urls[f.caminho] ? <img src={imagens.urls[f.caminho]} alt="" className="h-12 w-16 shrink-0 rounded object-cover ring-1 ring-borda" /> : <div className="h-12 w-16 shrink-0 rounded bg-superficie ring-1 ring-borda" />}
+                  <Entrada value={f.legenda} placeholder="Legenda (ex.: Vista do conjunto)" onChange={(e) => onChange({ ...s, figuras: (s.figuras ?? []).map((x, j) => (j === i ? { ...x, legenda: e.target.value } : x)) })} />
+                  <button type="button" onClick={() => onChange({ ...s, figuras: (s.figuras ?? []).filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Tirar do documento"><Trash2 size={14} /></button>
+                </div>
+              ))}
+              <EscolherImagem imagens={imagens} rotulo="Adicionar imagem" onEscolher={(c) => onChange({ ...s, figuras: [...(s.figuras ?? []), { caminho: c, legenda: '' }] })} />
+            </div>
+          )}
           <Campo rotulo="Fechamento"><AreaTexto rows={2} value={s.fecho} onChange={(e) => onChange({ ...s, fecho: e.target.value })} /></Campo>
           {s.dica && <p className="text-xs text-suave">{s.dica}</p>}
         </div>
@@ -152,4 +173,32 @@ function CorpoSecao({ s, onChange, itens }: { s: Secao; onChange: (s: Secao) => 
         </div>
       );
   }
+}
+
+// Envia a imagem (reduzida) para a revisão e devolve o caminho. Tirar do documento não apaga o arquivo:
+// revisões anteriores podem usar a mesma imagem; a Lixeira apaga tudo ao excluir a proposta de vez.
+function EscolherImagem({ imagens, caminho, onEscolher, onRemover, rotulo }: {
+  imagens: Imagens; caminho?: string; onEscolher: (c: string) => void; onRemover?: () => void; rotulo?: string;
+}) {
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
+  async function escolher(f: File | undefined) {
+    if (!f) return;
+    setErro(''); setEnviando(true);
+    try { onEscolher(await imagens.enviar(f)); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    setEnviando(false);
+  }
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        {caminho && (imagens.urls[caminho] ? <img src={imagens.urls[caminho]} alt="" className="h-16 w-24 rounded object-contain ring-1 ring-borda" /> : <div className="h-16 w-24 rounded bg-superficie ring-1 ring-borda" />)}
+        <label className="inline-flex h-[30px] cursor-pointer items-center gap-1.5 rounded-lg border border-borda bg-superficie px-2.5 text-xs font-medium hover:border-roxo-300">
+          <ImagePlus size={14} /> {enviando ? 'Enviando…' : rotulo ?? (caminho ? 'Trocar imagem' : 'Escolher imagem')}
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={enviando} onChange={(e) => { escolher(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+        {caminho && onRemover && <button type="button" onClick={onRemover} className="text-xs text-suave hover:text-red-600">Tirar da capa</button>}
+      </div>
+      {erro && <div className="mt-1 text-xs text-red-600">{erro}</div>}
+    </div>
+  );
 }

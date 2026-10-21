@@ -153,3 +153,8 @@
   - Na tela: campo "Explique a proposta" e botão "Gerar textos com IA". As respostas são encaixadas nas seções por `aplicarTextosIA`, com 1 teste novo (112 no total).
   - Conferido no navegador com resposta simulada: o envio leva só explicação, título, cliente, local e itens; capa e escopo foram preenchidos e salvos.
   - **A chamada real à OpenAI não foi testada** (exige o login do Gabriel). A chave expira em 7 dias: depois disso será preciso gerar outra e atualizar o segredo.
+- Migration `20261021000030_documentos_cascata.sql` colada pelo Gabriel no SQL Editor e conferida no banco (exclusão em cascata ativa). Migrations 0029 e 0030 registradas no histórico.
+- **Gerador de propostas, entrega 4: imagens (decisão 61):**
+  - Migration `20261021000031_imagens_documento.sql` aplicada: tipo `imagem_documento` em `proposta_arquivos`.
+  - Imagem principal na capa e imagens com legenda no Escopo. A foto é reduzida no navegador antes do envio, e as imagens são baixadas para montar o PDF. No e-mail elas não aparecem como anexo.
+  - Conferido no navegador com dados simulados: imagem de 1200×800 reduzida para 13 KB, registro do arquivo, miniatura, legenda salva, e PDF com a imagem na capa e no escopo conferido em imagem. 112 testes e build ok.

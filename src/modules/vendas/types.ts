@@ -91,7 +91,7 @@ export interface Revisao {
 export interface Arquivo {
   id: string;
   revisao_id: string;
-  tipo: 'tecnica' | 'comercial' | 'anexo' | 'documento_tecnico';
+  tipo: 'tecnica' | 'comercial' | 'anexo' | 'documento_tecnico' | 'imagem_documento';
   caminho: string;
   nome: string;
   tamanho: number;

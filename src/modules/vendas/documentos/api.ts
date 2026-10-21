@@ -60,3 +60,37 @@ export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoP
     itens: itens.map((it) => ({ letra: it.letra, descricao: it.descricao, valor: resumoItem(it, linhas.filter((l) => l.item_id === it.id)).precoTotal })),
   };
 }
+
+// Imagens do documento (capa e escopo): reduzidas no navegador (até 1600 px, JPEG) para o PDF não ficar pesado,
+// guardadas como arquivo da revisão (tipo imagem_documento) no espaço privado de Vendas.
+async function reduzirImagem(arquivo: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(arquivo);
+  const escala = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * escala); canvas.height = Math.round(bitmap.height * escala);
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return new Promise((ok, falha) => canvas.toBlob((b) => (b ? ok(b) : falha(new Error('Não foi possível ler a imagem.'))), 'image/jpeg', 0.85));
+}
+
+export async function enviarImagem(propostaId: string, revisaoId: string, arquivo: File): Promise<string> {
+  if (!arquivo.type.startsWith('image/')) throw new Error('Escolha uma imagem (JPG, PNG ou WEBP).');
+  const blob = await reduzirImagem(arquivo);
+  const nome = arquivo.name.replace(/\.[^.]+$/, '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_').slice(0, 60);
+  const caminho = `propostas/${propostaId}/${revisaoId}/imagem_${Date.now()}_${nome}.jpg`;
+  ok(await supabase.storage.from('vendas').upload(caminho, blob, { contentType: 'image/jpeg' }));
+  ok(await supabase.from('proposta_arquivos').insert({ revisao_id: revisaoId, tipo: 'imagem_documento', caminho, nome: `${nome}.jpg`, tamanho: blob.size }));
+  return caminho;
+}
+
+// Baixa as imagens e devolve como data URL (o PDF é montado no navegador, sem depender de link temporário).
+export async function carregarImagens(caminhos: string[]): Promise<Record<string, string>> {
+  const pares = await Promise.all(caminhos.map(async (c) => {
+    const { data, error } = await supabase.storage.from('vendas').download(c);
+    if (error || !data) return [c, ''] as const;
+    const url = await new Promise<string>((ok2) => { const r = new FileReader(); r.onload = () => ok2(String(r.result)); r.readAsDataURL(data); });
+    return [c, url] as const;
+  }));
+  return Object.fromEntries(pares.filter(([, u]) => u));
+}
