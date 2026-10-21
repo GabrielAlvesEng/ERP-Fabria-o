@@ -122,13 +122,13 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
                     {filtradosCc.map((c) => (
                       <button type="button" key={c.id} onClick={() => { setCc([...cc, c.email]); setBuscaCc(''); }}
                         className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-marinho-700">
-                        <span>{c.nome} <span className="text-xs text-slate-500">· {c.empresas?.nome_fantasia}</span></span>
-                        <span className="text-xs text-slate-500">{c.email}</span>
+                        <span>{c.nome} <span className="text-xs text-suave">· {c.empresas?.nome_fantasia}</span></span>
+                        <span className="text-xs text-suave">{c.email}</span>
                       </button>
                     ))}
                   </div>
                 ) : null}
-                <input value={ccLivre} onChange={(e) => setCcLivre(e.target.value)} placeholder="Outros e-mails (separe por vírgula)" className="mt-1 w-full border-t border-slate-200 bg-transparent px-1 pt-2 text-sm outline-none dark:border-marinho-600" />
+                <input value={ccLivre} onChange={(e) => setCcLivre(e.target.value)} placeholder="Outros e-mails (separe por vírgula)" className="mt-1 w-full border-t border-borda bg-transparent px-1 pt-2 text-sm outline-none" />
               </div>
             </Campo>
             <Campo rotulo="Assunto"><Entrada value={assunto} onChange={(e) => setAssunto(e.target.value)} /></Campo>
@@ -140,18 +140,18 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
 
             <div>
               <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Anexos da R{proposta.revisao_atual}</div>
-              {arquivos.length === 0 && <div className="text-sm text-slate-500">Nenhum arquivo anexado nesta revisão.</div>}
+              {arquivos.length === 0 && <div className="text-sm text-suave">Nenhum arquivo anexado nesta revisão.</div>}
               <div className="space-y-1">
                 {arquivos.map((a) => (
                   <Caixa key={a.id} marcado={anexoMarcado(a.id, a.tipo)} onChange={(v) => setAnexosSel({ ...anexosSel, [a.id]: v })}>
-                    <FileText size={14} className="text-slate-400" /> {a.nome} <span className="text-xs text-slate-500">({a.tipo === 'comercial' ? 'proposta comercial' : a.tipo === 'tecnica' ? 'proposta técnica' : a.tipo === 'documento_tecnico' ? 'documento técnico' : 'anexo'})</span>
+                    <FileText size={14} className="text-slate-400" /> {a.nome} <span className="text-xs text-suave">({a.tipo === 'comercial' ? 'proposta comercial' : a.tipo === 'tecnica' ? 'proposta técnica' : a.tipo === 'documento_tecnico' ? 'documento técnico' : 'anexo'})</span>
                   </Caixa>
                 ))}
               </div>
               {(faltaComercial || faltaTecnica) && (
                 <div className="mt-2"><Aviso>Falta anexar a proposta {[faltaComercial && 'comercial', faltaTecnica && 'técnica'].filter(Boolean).join(' e a ')} na aba "Revisões e arquivos". Você pode enviar mesmo assim.</Aviso></div>
               )}
-              {propostasPdf.length > 0 && <div className="mt-1 text-xs text-slate-500">Os PDFs vão anexados ao e-mail.</div>}
+              {propostasPdf.length > 0 && <div className="mt-1 text-xs text-suave">Os PDFs vão anexados ao e-mail.</div>}
             </div>
           </>
         )}
@@ -162,7 +162,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
         </div>
 
         {gerarEmail && (
-          <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-marinho-700/50 dark:text-slate-300">
+          <div className="rounded-lg bg-pagina p-3 text-xs text-slate-600 dark:text-slate-300">
             <div className="mb-1 flex items-center gap-1 font-semibold"><Mail size={13} /> Como o e-mail abre</div>
             O sistema baixa o arquivo <b>Proposta {codigoComRevisao(proposta.codigo, proposta.revisao_atual)}.eml</b>. Abra o arquivo:
             <ul className="ml-4 mt-1 list-disc">

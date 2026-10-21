@@ -26,7 +26,7 @@ export function App() {
       </div>
     );
   }
-  if (carregando) return <div className="p-8 text-sm text-slate-500">Carregando…</div>;
+  if (carregando) return <div className="p-8 text-sm text-suave">Carregando…</div>;
   if (!session) return <LoginPage />;
 
   return (

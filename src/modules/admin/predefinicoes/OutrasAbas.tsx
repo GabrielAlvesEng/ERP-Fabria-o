@@ -52,7 +52,7 @@ export function ItensAba({ grupo }: { grupo: GrupoItem }) {
       </Cartao>
       <div className="flex items-center gap-3">
         <Entrada className="max-w-sm" placeholder="Buscar" value={busca} onChange={(e) => setBusca(e.target.value)} />
-        <span className="text-sm text-slate-500">{itens.length} item(ns)</span>
+        <span className="text-sm text-suave">{itens.length} item(ns)</span>
       </div>
       {isLoading ? <Vazio>Carregando…</Vazio> : (
         <Tabela cabecalho={<><th className={th}>Descrição</th><th className={`${th} w-44`}>Material</th><th className={`${th} w-28`}>Unidade</th><th className={`${th} w-36 text-right`}>Valor</th><th className={th}>Ativo</th></>}>
@@ -81,14 +81,14 @@ export function MateriaisBaseAba() {
   return (
     <div className="space-y-3">
       {erro && <Aviso>{erro}</Aviso>}
-      <p className="text-sm text-slate-500">A densidade (g/cm³) calcula o peso de chapas e perfis. Inox austenítico 8,00 e carbono 7,85 (como a calculadora antiga); confira os demais.</p>
+      <p className="text-sm text-suave">A densidade (g/cm³) calcula o peso de chapas e perfis. Inox austenítico 8,00 e carbono 7,85 (como a calculadora antiga); confira os demais.</p>
       <Entrada className="max-w-sm" placeholder="Buscar material" value={busca} onChange={(e) => setBusca(e.target.value)} />
       {isLoading ? <Vazio>Carregando…</Vazio> : (
         <Tabela cabecalho={<><th className={th}>Material</th><th className={th}>Categoria</th><th className={`${th} w-36 text-right`}>Densidade (g/cm³)</th><th className={th}>Ativo</th></>}>
           {lista.map((m) => (
             <tr key={m.cod_mat} className={linha(m.ativo)}>
               <td className="px-2 py-1">{m.nome}</td>
-              <td className="px-2 text-xs text-slate-500">{m.categoria.replace(/^\d+ - /, '')}</td>
+              <td className="px-2 text-xs text-suave">{m.categoria.replace(/^\d+ - /, '')}</td>
               <td className={td}><CampoNumero valor={Number(m.densidade ?? 0)} casas={3} onConfirmar={(n) => gravar(() => atualizar('catalogo_materiais', { cod_mat: m.cod_mat }, { densidade: n > 0 ? n : null }))} /></td>
               <td className="px-2"><Caixa marcado={m.ativo} onChange={(ativo) => gravar(() => atualizar('catalogo_materiais', { cod_mat: m.cod_mat }, { ativo }))} /></td>
             </tr>
@@ -104,7 +104,7 @@ export function RevisarAba() {
   const { data: itens = [], isLoading } = useQuery({ queryKey: CHAVES.revisar, queryFn: listarARevisar });
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-500">Itens da lista de preços antiga que não foram passados para a biblioteca automaticamente. Cadastre-os na aba certa; esta lista é só consulta.</p>
+      <p className="text-sm text-suave">Itens da lista de preços antiga que não foram passados para a biblioteca automaticamente. Cadastre-os na aba certa; esta lista é só consulta.</p>
       {isLoading ? <Vazio>Carregando…</Vazio> : itens.length === 0 ? <Vazio>Nada a revisar.</Vazio> : (
         <Tabela cabecalho={<><th className={th}>Tipo</th><th className={th}>Descrição</th><th className={`${th} text-right`}>Preço</th></>}>
           {itens.map((i) => <tr key={i.id} className={linha()}><td className="px-2 py-1.5">{i.tipo}</td><td className="px-2">{i.descricao}</td><td className="px-2 text-right">{moeda(i.preco)}</td></tr>)}
@@ -149,7 +149,7 @@ function CartaoFornecedor({ f, servicos, gravar, setErro }: { f: Fornecedor; ser
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
         {(['nome', 'cidade', 'contato', 'telefone', 'email'] as const).map((k) => (
           <Campo key={k} rotulo={k === 'email' ? 'E-mail' : k[0].toUpperCase() + k.slice(1)} className={k === 'nome' ? 'lg:col-span-2' : ''}>
-            <div className="rounded-lg border border-slate-200 dark:border-marinho-600"><CampoCelula valor={f[k]} onConfirmar={(v) => (k !== 'nome' || v.trim().length >= 2) && up({ [k]: v.trim() })} /></div>
+            <div className="rounded-lg border border-borda"><CampoCelula valor={f[k]} onConfirmar={(v) => (k !== 'nome' || v.trim().length >= 2) && up({ [k]: v.trim() })} /></div>
           </Campo>
         ))}
       </div>
@@ -209,7 +209,7 @@ export function MaoObraAba() {
   return (
     <div className="space-y-4">
       {erro && <Aviso>{erro}</Aviso>}
-      <p className="text-sm text-slate-500">Valores-hora usados nos itens novos das propostas. Mudar aqui não altera propostas já lançadas.</p>
+      <p className="text-sm text-suave">Valores-hora usados nos itens novos das propostas. Mudar aqui não altera propostas já lançadas.</p>
       <div className="grid gap-4 lg:grid-cols-3">
         {GRUPOS_MAO_OBRA.map((g) => {
           const n = novo[g] ?? { funcao: '', valor: 0 };
@@ -257,7 +257,7 @@ export function MaquinarioAba() {
   return (
     <div className="max-w-2xl space-y-4">
       {erro && <Aviso>{erro}</Aviso>}
-      <p className="text-sm text-slate-500">Máquinas próprias e o valor-hora. Serviço de máquina terceirizada (laser, dobra…) é cadastrado no fornecedor, em Fornecedores.</p>
+      <p className="text-sm text-suave">Máquinas próprias e o valor-hora. Serviço de máquina terceirizada (laser, dobra…) é cadastrado no fornecedor, em Fornecedores.</p>
       {isLoading ? <Vazio>Carregando…</Vazio> : (
         <Tabela cabecalho={<><th className={th}>Máquina</th><th className={`${th} w-32 text-right`}>R$/h</th><th className={th}>Ativa</th></>}>
           {lista.map((m) => (

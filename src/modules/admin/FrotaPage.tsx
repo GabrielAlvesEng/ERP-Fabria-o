@@ -64,13 +64,13 @@ export function FrotaPage() {
         <Cartao className="p-0">
           {isLoading ? <Vazio>Carregando…</Vazio> : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-marinho-700/50">
+              <thead className="bg-pagina text-left text-xs uppercase text-suave">
                 <tr><th className="px-4 py-2">Veículo</th><th className="w-32 px-4 py-2 text-right">Consumo (km/l)</th><th className="w-24 px-4 py-2">Ativo</th></tr>
               </thead>
               <tbody>
                 {veiculos.length === 0 && <tr><td colSpan={3}><Vazio>Nenhum veículo cadastrado.</Vazio></td></tr>}
                 {veiculos.map((v) => (
-                  <tr key={v.id} className={`border-t border-slate-100 dark:border-marinho-700 ${v.ativo ? '' : 'text-slate-400'}`}>
+                  <tr key={v.id} className={`border-t border-borda ${v.ativo ? '' : 'text-slate-400'}`}>
                     <td className="px-2 py-1"><CampoCelula valor={v.nome} onConfirmar={(nome) => nome.trim().length >= 2 && tentar(() => supabase.from('ref_veiculos').update({ nome: nome.trim() }).eq('id', v.id))} /></td>
                     <td className="px-2 py-1"><CampoNumero valor={Number(v.consumo_km_l)} casas={2} onConfirmar={(n) => n > 0 && tentar(() => supabase.from('ref_veiculos').update({ consumo_km_l: n }).eq('id', v.id))} /></td>
                     <td className="px-4 py-1"><Caixa marcado={v.ativo} onChange={(ativo) => tentar(() => supabase.from('ref_veiculos').update({ ativo }).eq('id', v.id))} /></td>
@@ -79,23 +79,23 @@ export function FrotaPage() {
               </tbody>
             </table>
           )}
-          <form onSubmit={enviar} className="flex flex-wrap items-end gap-2 border-t border-slate-200 p-3 dark:border-marinho-700">
+          <form onSubmit={enviar} className="flex flex-wrap items-end gap-2 border-t border-borda p-3">
             <Campo rotulo="Novo veículo" className="min-w-[200px] flex-1"><Entrada value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} placeholder="ex.: Caminhão munck" /></Campo>
             <Campo rotulo="Consumo (km/l)" className="w-36">
-              <div className="rounded-lg border border-slate-300 bg-white dark:border-marinho-500 dark:bg-marinho-800"><CampoNumero valor={novo.consumo} casas={2} onConfirmar={(n) => setNovo({ ...novo, consumo: n })} className="py-1.5" /></div>
+              <div className="rounded-lg border border-slate-300 bg-superficie dark:border-marinho-500"><CampoNumero valor={novo.consumo} casas={2} onConfirmar={(n) => setNovo({ ...novo, consumo: n })} className="py-1.5" /></div>
             </Campo>
             <Botao type="submit" disabled={adicionar.isPending}><Plus size={15} /> Adicionar</Botao>
           </form>
         </Cartao>
         <Cartao className="self-start">
           <div className="mb-1 font-semibold">Preço padrão do combustível</div>
-          <p className="mb-3 text-sm text-slate-500">Preenche o R$/l dos novos trechos com veículo próprio. Pode ser alterado em cada linha.</p>
+          <p className="mb-3 text-sm text-suave">Preenche o R$/l dos novos trechos com veículo próprio. Pode ser alterado em cada linha.</p>
           <div className="flex items-center gap-2">
-            <div className="w-32 rounded-lg border border-slate-300 bg-white dark:border-marinho-500 dark:bg-marinho-800">
+            <div className="w-32 rounded-lg border border-slate-300 bg-superficie dark:border-marinho-500">
               <CampoNumero valor={preco ?? 0} casas={3} className="py-1.5"
                 onConfirmar={(n) => n >= 0 && tentar(() => supabase.from('configuracoes').upsert({ chave: 'combustivel_preco_padrao', valor: n, atualizado_em: new Date().toISOString() }))} />
             </div>
-            <span className="text-sm text-slate-500">R$/l {preco ? `(${moeda(preco)})` : '(não definido)'}</span>
+            <span className="text-sm text-suave">R$/l {preco ? `(${moeda(preco)})` : '(não definido)'}</span>
           </div>
         </Cartao>
       </div>

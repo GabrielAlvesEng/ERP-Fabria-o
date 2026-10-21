@@ -53,7 +53,7 @@ export function ArvoreView({ projetoCodigo, conjuntos, pecas, selecionado, onSel
       <div key={n.id}>
         <div
           onClick={() => onSelecionar(n.id)}
-          className={`group flex cursor-pointer items-center gap-1.5 rounded-lg py-1.5 pr-2 text-sm transition ${ativo ? 'bg-roxo-500 text-white shadow-sm' : 'hover:bg-white dark:hover:bg-marinho-700'}`}
+          className={`group flex cursor-pointer items-center gap-1.5 rounded-lg py-1.5 pr-2 text-sm transition ${ativo ? 'bg-roxo-500 text-white shadow-sm' : 'hover:bg-superficie'}`}
           style={{ paddingLeft: 6 + nivel * 18 }}
         >
           <button
@@ -65,7 +65,7 @@ export function ArvoreView({ projetoCodigo, conjuntos, pecas, selecionado, onSel
             <ChevronRight size={14} className={`transition-transform ${aberto ? 'rotate-90' : ''}`} />
           </button>
           <Icone size={15} className={ativo ? 'text-white' : COR_ICONE[n.tipo]} />
-          <span className={`font-mono text-[11px] ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{codigoCurto(n.codigo, projetoCodigo)}</span>
+          <span className={`font-mono text-[11px] ${ativo ? 'text-white/80' : 'text-suave'}`}>{codigoCurto(n.codigo, projetoCodigo)}</span>
           <span className={`min-w-0 flex-1 truncate ${n.removido_cad_em ? 'line-through opacity-60' : ''}`} title={n.removido_cad_em ? 'Removido do CAD' : undefined}>{n.nome}</span>
           {Number(n.quantidade) !== 1 && <span className={`rounded px-1 text-[10px] font-semibold ${ativo ? 'bg-white/20' : 'bg-slate-200 text-slate-600 dark:bg-marinho-600 dark:text-slate-200'}`}>×{Number(n.quantidade).toLocaleString('pt-BR')}</span>}
           {(qtdPecas.get(n.id) ?? 0) > 0 && <span className={`text-[10px] ${ativo ? 'text-white/80' : 'text-slate-400'}`}>{qtdPecas.get(n.id)} pç</span>}
@@ -73,7 +73,7 @@ export function ArvoreView({ projetoCodigo, conjuntos, pecas, selecionado, onSel
         </div>
         {aberto && n.filhos.length > 0 && (
           <div className="relative">
-            <span className="absolute bottom-2 top-0 border-l border-slate-200 dark:border-marinho-600" style={{ left: 13 + nivel * 18 }} />
+            <span className="absolute bottom-2 top-0 border-l border-borda" style={{ left: 13 + nivel * 18 }} />
             {n.filhos.map((f) => renderNo(f, nivel + 1))}
           </div>
         )}
@@ -83,20 +83,20 @@ export function ArvoreView({ projetoCodigo, conjuntos, pecas, selecionado, onSel
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <aside className="rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-200 lg:sticky lg:top-2 lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto dark:bg-marinho-900/60 dark:ring-marinho-700">
+      <aside className="rounded-2xl bg-pagina p-2 ring-1 ring-borda lg:sticky lg:top-2 lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto dark:bg-marinho-900/60">
         <div className="relative mb-2">
           <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
-          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar conjunto" className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-2 text-sm outline-none focus:border-roxo-500 dark:border-marinho-600 dark:bg-marinho-800" />
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar conjunto" className="w-full rounded-lg border border-borda bg-superficie py-1.5 pl-8 pr-2 text-sm outline-none focus:border-roxo-500" />
         </div>
-        <div className="mb-1 flex items-center justify-between px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="mb-1 flex items-center justify-between px-2 text-[11px] font-semibold uppercase tracking-wider text-suave">
           <span>Estrutura</span>
           <span className="flex gap-2 normal-case tracking-normal">
             <button className="hover:text-roxo-600" onClick={() => setFechados(new Set())}>expandir</button>
             <button className="hover:text-roxo-600" onClick={() => setFechados(new Set(conjuntos.filter((c) => c.tipo !== 'geral').map((c) => c.id)))}>recolher</button>
           </span>
         </div>
-        {raiz ? renderNo(raiz, 0) : <div className="p-3 text-sm text-slate-500">Sem estrutura.</div>}
-        <div className="mt-3 flex flex-wrap gap-3 border-t border-slate-200 px-2 pt-2 text-[11px] text-slate-500 dark:border-marinho-700">
+        {raiz ? renderNo(raiz, 0) : <div className="p-3 text-sm text-suave">Sem estrutura.</div>}
+        <div className="mt-3 flex flex-wrap gap-3 border-t border-borda px-2 pt-2 text-[11px] text-suave">
           {(Object.keys(NOME_STATUS) as StatusConjunto[]).map((s) => <span key={s} className="inline-flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${COR_STATUS[s]}`} />{NOME_STATUS[s]}</span>)}
         </div>
       </aside>
@@ -130,7 +130,7 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
   return (
     <div className="min-w-0 space-y-4">
       {erro && <Aviso>{erro}</Aviso>}
-      <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700">
+      <div className="rounded-2xl bg-superficie p-4 ring-1 ring-borda">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <div className={`rounded-xl p-2.5 ${c.tipo === 'geral' ? 'bg-marinho-50 text-marinho-500 dark:bg-marinho-700 dark:text-slate-100' : c.tipo === 'submontagem' ? 'bg-roxo-50 text-roxo-600 dark:bg-roxo-700/30 dark:text-roxo-100' : c.tipo === 'soldado' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-petroleo-50 text-petroleo-600 dark:bg-petroleo-600/30 dark:text-teal-100'}`}>
@@ -148,22 +148,22 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
                   {editavel && <button className="text-xs text-roxo-600 hover:underline" onClick={() => tentar(() => atualizarConjunto(c.id, { removido_cad_em: null }))}>Restaurar</button>}
                 </div>
               )}
-              <div className="text-xs text-slate-500">{NOME_TIPO[c.tipo]} · aparece {mult.toLocaleString('pt-BR')}× no projeto{c.codigo_cad && c.codigo_cad !== c.codigo && <> · CAD <span className="font-mono">{c.codigo_cad}</span></>}</div>
+              <div className="text-xs text-suave">{NOME_TIPO[c.tipo]} · aparece {mult.toLocaleString('pt-BR')}× no projeto{c.codigo_cad && c.codigo_cad !== c.codigo && <> · CAD <span className="font-mono">{c.codigo_cad}</span></>}</div>
               <div className="mt-1 text-lg font-semibold">
                 {editavel ? <CampoCelula valor={c.nome} onConfirmar={(v) => v.trim() && tentar(() => atualizarConjunto(c.id, { nome: v.trim() }))} /> : c.nome}
               </div>
             </div>
           </div>
           <div className="flex flex-wrap items-end gap-3 text-sm">
-            <label className="block"><span className="mb-1 block text-[11px] text-slate-500">Qtd no pai</span>
+            <label className="block"><span className="mb-1 block text-[11px] text-suave">Qtd no pai</span>
               <div className="w-20 rounded-lg border border-slate-300 dark:border-marinho-500"><CampoNumero valor={c.quantidade} casas={3} disabled={!editavel || c.tipo === 'geral'} onConfirmar={(n) => n > 0 && tentar(() => atualizarConjunto(c.id, { quantidade: n }))} /></div>
             </label>
-            <label className="block"><span className="mb-1 block text-[11px] text-slate-500">Revisão</span>
+            <label className="block"><span className="mb-1 block text-[11px] text-suave">Revisão</span>
               <div className="w-16 rounded-lg border border-slate-300 dark:border-marinho-500"><CampoCelula valor={c.revisao} disabled={!editavel} onConfirmar={(v) => tentar(() => atualizarConjunto(c.id, { revisao: v || 'R0' }))} /></div>
             </label>
-            <label className="block"><span className="mb-1 block text-[11px] text-slate-500">Situação</span>
+            <label className="block"><span className="mb-1 block text-[11px] text-suave">Situação</span>
               <select value={c.status} disabled={!editavel} onChange={(e) => tentar(() => atualizarConjunto(c.id, { status: e.target.value as StatusConjunto }))}
-                className="cursor-pointer rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm dark:border-marinho-500 dark:bg-marinho-800">
+                className="cursor-pointer rounded-lg border border-slate-300 bg-superficie px-2 py-1.5 text-sm dark:border-marinho-500">
                 {(Object.keys(NOME_STATUS) as StatusConjunto[]).map((s) => <option key={s} value={s}>{NOME_STATUS[s]}</option>)}
               </select>
             </label>
@@ -175,15 +175,15 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
       </div>
 
       {(c.tipo === 'geral' || c.tipo === 'submontagem') && (
-        <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700">
+        <div className="rounded-2xl bg-superficie p-4 ring-1 ring-borda">
           <div className="mb-2 flex items-center gap-2 font-semibold">{c.tipo === 'geral' ? (filhos.some((f) => f.tipo === 'soldado') ? 'Submontagens e conjuntos soldados' : 'Submontagens') : 'Conjuntos secundários'} <Selo>{filhos.length}</Selo></div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {filhos.map((f) => {
               const I = ICONE_TIPO[f.tipo];
               return (
-                <button key={f.id} onClick={() => onSelecionar(f.id)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm ring-1 ring-slate-200 transition hover:ring-roxo-500 dark:ring-marinho-600">
+                <button key={f.id} onClick={() => onSelecionar(f.id)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm ring-1 ring-borda transition hover:ring-roxo-500">
                   <I size={16} className={COR_ICONE[f.tipo]} />
-                  <span className="font-mono text-[11px] text-slate-500">{codigoCurto(f.codigo, projetoCodigo)}</span>
+                  <span className="font-mono text-[11px] text-suave">{codigoCurto(f.codigo, projetoCodigo)}</span>
                   <span className="min-w-0 flex-1 truncate">{f.nome}</span>
                   <span className={`h-2 w-2 rounded-full ${COR_STATUS[f.status]}`} />
                 </button>
@@ -193,7 +193,7 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
           {editavel && (
             <form onSubmit={criarFilho} className="mt-3 flex gap-2">
               <input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder={c.tipo === 'geral' ? 'Nome da nova submontagem (ex.: Estrutura)' : 'Nome do novo conjunto (ex.: Coluna)'}
-                className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-roxo-500 dark:border-marinho-500 dark:bg-marinho-800" />
+                className="flex-1 rounded-lg border border-slate-300 bg-superficie px-3 py-1.5 text-sm outline-none focus:border-roxo-500 dark:border-marinho-500" />
               <Botao type="submit" disabled={!novoNome.trim()}><Plus size={15} /> {c.tipo === 'geral' ? 'Submontagem' : 'Conjunto'}</Botao>
             </form>
           )}
@@ -230,7 +230,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-700">
+    <div className="rounded-2xl bg-superficie p-4 ring-1 ring-borda">
       <div className="mb-2 flex items-center gap-2 font-semibold">Peças e itens {conjunto.tipo === 'geral' ? 'da montagem geral' : conjunto.tipo === 'submontagem' ? 'desta submontagem' : conjunto.tipo === 'soldado' ? 'deste conjunto soldado (lista de corte)' : 'deste conjunto'} <Selo>{pecas.length}</Selo></div>
 
       {(['fabricada', 'fixador', 'comercial'] as Pasta[]).map((pasta) => {
@@ -239,14 +239,14 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
         const I = ICONE_PASTA[pasta];
         return (
           <div key={pasta} className="mb-2 rounded-xl ring-1 ring-slate-100 dark:ring-marinho-700">
-            <button onClick={() => setAbertas({ ...abertas, [pasta]: !abertas[pasta] })} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-marinho-700/40">
+            <button onClick={() => setAbertas({ ...abertas, [pasta]: !abertas[pasta] })} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-pagina">
               <ChevronRight size={14} className={`text-slate-400 transition-transform ${abertas[pasta] ? 'rotate-90' : ''}`} />
-              <I size={15} className="text-slate-500" /> <span className="font-medium">{NOME_PASTA[pasta]}</span> <Selo>{lista.length}</Selo>
+              <I size={15} className="text-suave" /> <span className="font-medium">{NOME_PASTA[pasta]}</span> <Selo>{lista.length}</Selo>
             </button>
             {abertas[pasta] && (
               <div className="overflow-x-auto px-2 pb-2">
                 <table className="w-full min-w-[820px] text-sm">
-                  <thead className="text-left text-[11px] uppercase text-slate-500">
+                  <thead className="text-left text-[11px] uppercase text-suave">
                     <tr>
                       <th className="w-24 px-2 py-1">Código</th><th className="min-w-[220px] px-2 py-1">Descrição</th><th className="w-20 px-2 py-1 text-right">Qtd</th>
                       <th className="w-32 px-2 py-1">COD_OP</th><th className="w-40 px-2 py-1">Material</th><th className="w-20 px-2 py-1 text-right">Esp.</th>
@@ -255,8 +255,8 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
                   </thead>
                   <tbody>
                     {lista.map((p) => (
-                      <tr key={p.id} className={`border-t border-slate-100 dark:border-marinho-700 ${p.removido_cad_em ? 'bg-red-50/60 text-slate-400 dark:bg-red-900/20' : ''}`} title={p.removido_cad_em ? `Removido do CAD em ${dataBR(p.removido_cad_em)}` : undefined}>
-                        <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-slate-500" title={p.codigo}>{p.codigo.replace(/^\d{2}-\d{2,}-\d{3}-/, '')}{p.removido_cad_em && <div className="font-sans text-[10px] font-semibold text-red-600">removido do CAD</div>}</td>
+                      <tr key={p.id} className={`border-t border-borda ${p.removido_cad_em ? 'bg-red-50/60 text-slate-400 dark:bg-red-900/20' : ''}`} title={p.removido_cad_em ? `Removido do CAD em ${dataBR(p.removido_cad_em)}` : undefined}>
+                        <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-suave" title={p.codigo}>{p.codigo.replace(/^\d{2}-\d{2,}-\d{3}-/, '')}{p.removido_cad_em && <div className="font-sans text-[10px] font-semibold text-red-600">removido do CAD</div>}</td>
                         <td className="px-1"><CampoCelula valor={p.descricao} disabled={!editavel} onConfirmar={(v) => tentar(() => atualizarPeca(p.id, { descricao: v }))} /></td>
                         <td className="px-1"><CampoNumero valor={p.quantidade} casas={3} disabled={!editavel} onConfirmar={(n) => n > 0 && tentar(() => atualizarPeca(p.id, { quantidade: n }))} /></td>
                         <td className="px-1"><SeletorOps valor={p.cod_op} disabled={!editavel} onChange={(ops) => tentar(() => atualizarPeca(p.id, { cod_op: ops }))} /></td>
@@ -275,13 +275,13 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
         );
       })}
       <datalist id="lista-cod-mat">{catalogo.map((c) => <option key={c.cod_mat} value={`${c.cod_mat} — ${c.nome}`}>{c.categoria}</option>)}</datalist>
-      {pecas.length === 0 && <div className="py-3 text-center text-sm text-slate-500">Nenhuma peça neste {conjunto.tipo === 'geral' ? 'nível' : 'conjunto'}.</div>}
+      {pecas.length === 0 && <div className="py-3 text-center text-sm text-suave">Nenhuma peça neste {conjunto.tipo === 'geral' ? 'nível' : 'conjunto'}.</div>}
 
       {editavel && (
-        <form onSubmit={adicionar} className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-2 dark:bg-marinho-700/40">
+        <form onSubmit={adicionar} className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-pagina p-2">
           <input value={nova.descricao} onChange={(e) => setNova({ ...nova, descricao: e.target.value })} placeholder="Nova peça ou item (ex.: Chapa base 300x300)"
-            className="min-w-[220px] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-roxo-500 dark:border-marinho-500 dark:bg-marinho-800" />
-          <div className="w-20 rounded-lg border border-slate-300 bg-white dark:border-marinho-500 dark:bg-marinho-800"><CampoNumero valor={nova.quantidade} casas={3} onConfirmar={(n) => setNova({ ...nova, quantidade: n > 0 ? n : 1 })} /></div>
+            className="min-w-[220px] flex-1 rounded-lg border border-slate-300 bg-superficie px-3 py-1.5 text-sm outline-none focus:border-roxo-500 dark:border-marinho-500" />
+          <div className="w-20 rounded-lg border border-slate-300 bg-superficie dark:border-marinho-500"><CampoNumero valor={nova.quantidade} casas={3} onConfirmar={(n) => setNova({ ...nova, quantidade: n > 0 ? n : 1 })} /></div>
           <SeletorOps valor={nova.cod_op} onChange={(ops) => setNova({ ...nova, cod_op: ops })} />
           <Botao type="submit" disabled={!nova.descricao.trim()}><Plus size={15} /> Adicionar</Botao>
         </form>
@@ -296,7 +296,7 @@ function SeletorOps({ valor, onChange, disabled }: { valor: CodOp[]; onChange: (
   const setAberto = (v: boolean) => { if (!v) setPos(null); };
   const ordenados = COD_OPS.filter((o) => valor.includes(o));
   const chip = (op: CodOp, on: boolean) =>
-    `rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold ${on ? (op === 'CM' ? 'bg-amber-500 text-white' : 'bg-roxo-500 text-white') : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-marinho-700 dark:text-slate-300'}`;
+    `rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold ${on ? (op === 'CM' ? 'bg-amber-500 text-white' : 'bg-roxo-500 text-white') : 'bg-slate-100 text-suave hover:bg-slate-200 dark:bg-marinho-700'}`;
   return (
     <div className="relative">
       <button type="button" disabled={disabled} onClick={(e) => { if (aberto) return setPos(null); const r = e.currentTarget.getBoundingClientRect(); setPos({ top: Math.min(r.bottom + 4, window.innerHeight - 280), left: Math.min(r.left, window.innerWidth - 240) }); }} title={ordenados.map((o) => NOME_OP[o]).join(', ') || 'Escolher operações'}
@@ -306,12 +306,12 @@ function SeletorOps({ valor, onChange, disabled }: { valor: CodOp[]; onChange: (
       {aberto && !disabled && (
         <>
           <div className="fixed inset-0 z-20" onMouseDown={() => setAberto(false)} />
-          <div style={{ top: pos!.top, left: pos!.left }} className="fixed z-30 w-56 rounded-lg bg-white p-2 shadow-lg ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-600">
+          <div style={{ top: pos!.top, left: pos!.left }} className="fixed z-30 w-56 rounded-lg bg-superficie p-2 shadow-lg ring-1 ring-borda">
             {COD_OPS.map((op) => {
               const on = valor.includes(op);
               return (
                 <button key={op} type="button" onClick={() => onChange(on ? valor.filter((v) => v !== op) : [...valor, op])}
-                  className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-slate-50 dark:hover:bg-marinho-700">
+                  className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-pagina">
                   <span className={chip(op, on)}>{op}</span><span className="text-slate-600 dark:text-slate-300">{NOME_OP[op]}</span>
                 </button>
               );

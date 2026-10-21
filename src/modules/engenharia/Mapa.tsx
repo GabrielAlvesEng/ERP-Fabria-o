@@ -18,14 +18,14 @@ export function MapaView({ projetoCodigo, conjuntos, pecas, onAbrir }: { projeto
     const cor = { geral: 'border-t-marinho-500', submontagem: 'border-t-roxo-500', conjunto: 'border-t-petroleo-500', soldado: 'border-t-amber-500' }[n.tipo];
     return (
       <button onClick={() => onAbrir(n.id)}
-        className={`w-48 rounded-xl border-t-4 bg-white p-3 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-roxo-500 dark:bg-marinho-800 dark:ring-marinho-600 ${cor} ${n.removido_cad_em ? 'opacity-50 line-through' : ''}`} title={n.removido_cad_em ? 'Removido do CAD' : undefined}>
+        className={`w-48 rounded-xl border-t-4 bg-superficie p-3 text-left shadow-sm ring-1 ring-borda transition hover:-translate-y-0.5 hover:shadow-md hover:ring-roxo-500 ${cor} ${n.removido_cad_em ? 'opacity-50 line-through' : ''}`} title={n.removido_cad_em ? 'Removido do CAD' : undefined}>
         <div className="flex items-center justify-between">
           <Icone size={15} className={COR_ICONE[n.tipo]} />
-          <span className="inline-flex items-center gap-1 text-[10px] text-slate-500"><span className={`h-2 w-2 rounded-full ${COR_STATUS[n.status]}`} />{NOME_STATUS[n.status]}</span>
+          <span className="inline-flex items-center gap-1 text-[10px] text-suave"><span className={`h-2 w-2 rounded-full ${COR_STATUS[n.status]}`} />{NOME_STATUS[n.status]}</span>
         </div>
-        <div className="mt-1 font-mono text-[10px] text-slate-500">{codigoCurto(n.codigo, projetoCodigo)}</div>
+        <div className="mt-1 font-mono text-[10px] text-suave">{codigoCurto(n.codigo, projetoCodigo)}</div>
         <div className="line-clamp-2 text-sm font-semibold">{n.nome}</div>
-        <div className="mt-1 flex gap-2 text-[10px] text-slate-500">
+        <div className="mt-1 flex gap-2 text-[10px] text-suave">
           {Number(n.quantidade) !== 1 && <span>×{Number(n.quantidade).toLocaleString('pt-BR')}</span>}
           <span>{qtd.get(n.id) ?? 0} peças</span>
           <span>{n.revisao}</span>
@@ -59,8 +59,8 @@ export function MapaView({ projetoCodigo, conjuntos, pecas, onAbrir }: { projeto
 
   if (!raiz) return null;
   return (
-    <div className="relative rounded-2xl bg-[radial-gradient(circle,_rgba(100,116,139,0.18)_1px,_transparent_1px)] [background-size:18px_18px] ring-1 ring-slate-200 dark:ring-marinho-700">
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-lg bg-white p-1 text-sm shadow ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-600">
+    <div className="relative rounded-2xl bg-[radial-gradient(circle,_rgba(100,116,139,0.18)_1px,_transparent_1px)] [background-size:18px_18px] ring-1 ring-borda">
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-lg bg-superficie p-1 text-sm shadow ring-1 ring-borda">
         <button onClick={() => setZoom(Math.max(0.4, zoom - 0.1))} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-marinho-700" aria-label="Diminuir zoom"><Minus size={14} /></button>
         <button onClick={() => setZoom(1)} className="w-12 text-center text-xs tabular-nums" title="Voltar a 100%">{Math.round(zoom * 100)}%</button>
         <button onClick={() => setZoom(Math.min(1.6, zoom + 0.1))} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-marinho-700" aria-label="Aumentar zoom"><Plus size={14} /></button>

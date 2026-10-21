@@ -57,7 +57,7 @@ export function SenhasPage() {
           <div className="font-semibold">Excluir Proposta</div>
           {situacao?.definida ? <Selo cor="verde">Definida {situacao.atualizado_em ? `em ${dataHoraBR(situacao.atualizado_em)}` : ''}</Selo> : <Selo cor="amarelo">Não definida</Selo>}
         </div>
-        <p className="mb-3 text-sm text-slate-500">Pedida para excluir propostas que já foram enviadas ao cliente. Rascunhos nunca enviados não pedem senha; propostas aprovadas não podem ser excluídas.</p>
+        <p className="mb-3 text-sm text-suave">Pedida para excluir propostas que já foram enviadas ao cliente. Rascunhos nunca enviados não pedem senha; propostas aprovadas não podem ser excluídas.</p>
         <form onSubmit={salvar} className="space-y-3">
           {erro && <Aviso>{erro}</Aviso>}
           {ok && <Aviso tipo="info">{ok}</Aviso>}
@@ -97,13 +97,13 @@ export function ExcluidasPage() {
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
       <Cartao className="p-0">
         {isLoading ? <Vazio>Carregando…</Vazio> : lista.length === 0 ? <Vazio>Nenhuma proposta excluída.</Vazio> : (
-          <div className="divide-y divide-slate-100 dark:divide-marinho-700">
+          <div className="divide-y divide-borda">
             {lista.map((p) => (
               <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
                 <div>
-                  <div><span className="font-mono font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span> · {p.titulo} <span className="text-slate-500">· {p.empresa}</span></div>
-                  <div className="text-xs text-slate-500">Excluída em {dataHoraBR(p.excluido_em)}{p.excluido_por ? ` por ${p.excluido_por}` : ''} · etapa na exclusão: {p.status}</div>
-                  {p.justificativa && <div className="text-xs text-slate-500">{p.justificativa}</div>}
+                  <div><span className="font-mono font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span> · {p.titulo} <span className="text-suave">· {p.empresa}</span></div>
+                  <div className="text-xs text-suave">Excluída em {dataHoraBR(p.excluido_em)}{p.excluido_por ? ` por ${p.excluido_por}` : ''} · etapa na exclusão: {p.status}</div>
+                  {p.justificativa && <div className="text-xs text-suave">{p.justificativa}</div>}
                 </div>
                 <Botao variante="secundario" onClick={() => restaurar.mutate(p.id)} disabled={restaurar.isPending}><RotateCcw size={14} /> Restaurar</Botao>
               </div>

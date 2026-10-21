@@ -92,7 +92,7 @@ export function ChapasAba() {
           </Campo>
           <div className="flex items-end pb-2">
             {pesoAuto != null && <Caixa marcado={f.pesoManual} onChange={(v) => setF({ ...f, pesoManual: v, peso: v ? pesoAuto : f.peso })}>Digitar o peso</Caixa>}
-            {tipo?.formato === 'chapa_manual' && <span className="text-xs text-slate-500">{tipo.nome}: peso digitado (o cálculo pelas medidas não vale)</span>}
+            {tipo?.formato === 'chapa_manual' && <span className="text-xs text-suave">{tipo.nome}: peso digitado (o cálculo pelas medidas não vale)</span>}
           </div>
           <Campo rotulo={f.valorKg == null ? 'Valor/kg (herdado do material + tipo)' : 'Valor/kg (próprio desta chapa)'}>
             <div className="flex items-center gap-2">
@@ -103,19 +103,19 @@ export function ChapasAba() {
             </div>
           </Campo>
           <div className="flex flex-col justify-end text-sm">
-            <span className="text-xs text-slate-500">Valor total</span>
+            <span className="text-xs text-suave">Valor total</span>
             <span className="text-lg font-bold tabular-nums">{moeda(valorTotalChapa(peso, valorKg))}</span>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-slate-500">{descricao || 'A descrição é montada pelo material, tipo e medidas.'}</span>
+          <span className="text-sm text-suave">{descricao || 'A descrição é montada pelo material, tipo e medidas.'}</span>
           <Botao onClick={salvar}><Plus size={15} /> {f.id ? 'Salvar alterações' : 'Cadastrar chapa'}</Botao>
         </div>
       </Cartao>
 
       <div className="flex items-center gap-3">
         <Entrada className="max-w-sm" placeholder="Buscar chapa" value={busca} onChange={(e) => setBusca(e.target.value)} />
-        <span className="text-sm text-slate-500">{filtradas.length} chapa(s)</span>
+        <span className="text-sm text-suave">{filtradas.length} chapa(s)</span>
       </div>
       {isLoading ? <Vazio>Carregando…</Vazio> : (
         <Tabela cabecalho={<><th className={th}>Chapa</th><th className={`${th} text-right`}>Peso (kg)</th><th className={`${th} text-right`}>Valor/kg</th><th className={`${th} text-right`}>Valor total</th><th className={th}>Ativa</th><th /></>}>
@@ -138,7 +138,7 @@ export function ChapasAba() {
 
       <Cartao>
         <div className="mb-1 font-semibold">Preço por kg (material + tipo)</div>
-        <p className="mb-3 text-sm text-slate-500">As chapas sem valor próprio usam este preço. Mude aqui quando o preço do material mudar.</p>
+        <p className="mb-3 text-sm text-suave">As chapas sem valor próprio usam este preço. Mude aqui quando o preço do material mudar.</p>
         <Tabela cabecalho={<><th className={th}>Material</th><th className={th}>Tipo</th><th className={`${th} w-40 text-right`}>R$/kg</th></>}>
           {precos.map((p) => (
             <tr key={p.id} className={linha()}>

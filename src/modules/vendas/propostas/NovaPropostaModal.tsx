@@ -81,7 +81,7 @@ export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; on
                 {editado && <button type="button" className="shrink-0 text-xs text-roxo-600 hover:underline" onClick={() => setCodigo(sugestao)}>usar sugerido</button>}
               </div>
             </Campo>
-            <div className="self-end pb-2 text-xs text-slate-500">
+            <div className="self-end pb-2 text-xs text-suave">
               {editado
                 ? 'Código definido por você. O sistema recusa se já existir.'
                 : ccAtual !== undefined
@@ -98,7 +98,7 @@ export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; on
         <Campo rotulo="Validade da proposta (dias)">
           <div className="flex items-center gap-2">
             <Entrada type="number" min={1} max={3650} className="w-24" value={f.validade_dias} onChange={set('validade_dias')} placeholder="ex.: 15" />
-            <span className="text-xs text-slate-500">{validadeAte(hojeISO(), Number(f.validade_dias) || null)}</span>
+            <span className="text-xs text-suave">{validadeAte(hojeISO(), Number(f.validade_dias) || null)}</span>
           </div>
         </Campo>
         <Campo rotulo="Condições comerciais" className="sm:col-span-2"><AreaTexto value={f.condicoes_comerciais} onChange={set('condicoes_comerciais')} /></Campo>

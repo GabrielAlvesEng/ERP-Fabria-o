@@ -101,7 +101,7 @@ export function CampoData({ value, onChange, disabled, required, id }: { value: 
         className={cx(campoBase, 'pr-10 tabular-nums disabled:opacity-60', invalida && 'border-red-500 focus:border-red-500 focus:ring-red-100')}
       />
       <button type="button" onClick={abrirCalendario} disabled={disabled} aria-label="Abrir calendário"
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 hover:bg-roxo-50 hover:text-roxo-600 disabled:opacity-40 dark:hover:bg-marinho-700">
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-suave hover:bg-roxo-50 hover:text-roxo-600 disabled:opacity-40 dark:hover:bg-marinho-700">
         <CalendarDays size={16} />
       </button>
       <input ref={nativo} type="date" tabIndex={-1} aria-hidden value={value ?? ''} onChange={(e) => onChange(e.target.value)}
@@ -117,7 +117,7 @@ export function Caixa({ marcado, onChange, children, disabled }: { marcado: bool
     <label className={cx('inline-flex cursor-pointer select-none items-center gap-2 text-sm', disabled && 'cursor-not-allowed opacity-60')}>
       <span className="relative inline-flex">
         <input type="checkbox" className="peer sr-only" checked={marcado} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
-        <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-slate-300 bg-white transition peer-checked:border-roxo-500 peer-checked:bg-roxo-500 peer-focus-visible:ring-2 peer-focus-visible:ring-roxo-200 dark:border-marinho-500 dark:bg-marinho-800">
+        <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-slate-300 bg-superficie transition peer-checked:border-roxo-500 peer-checked:bg-roxo-500 peer-focus-visible:ring-2 peer-focus-visible:ring-roxo-200 dark:border-marinho-500">
           <Check size={13} strokeWidth={3} className={cx('text-white transition', marcado ? 'scale-100 opacity-100' : 'scale-50 opacity-0')} />
         </span>
       </span>
@@ -131,7 +131,7 @@ export function CampoArquivo({ arquivo, onChange, accept }: { arquivo: File | nu
   return (
     <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm hover:border-roxo-500 dark:border-marinho-500">
       <span className="inline-flex items-center gap-1.5 rounded-md bg-roxo-50 px-2.5 py-1 font-medium text-roxo-700 dark:bg-roxo-700/30 dark:text-roxo-100"><Paperclip size={14} /> Escolher arquivo</span>
-      <span className="truncate text-slate-500">{arquivo ? arquivo.name : 'Nenhum arquivo selecionado'}</span>
+      <span className="truncate text-suave">{arquivo ? arquivo.name : 'Nenhum arquivo selecionado'}</span>
       <input type="file" accept={accept} className="sr-only" onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
     </label>
   );
@@ -163,8 +163,8 @@ export function Modal({ aberto, titulo, onFechar, children, largura = 'max-w-lg'
   if (!aberto) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-marinho-900/60 p-4 sm:p-10" onMouseDown={onFechar}>
-      <div className={cx('w-full rounded-2xl bg-white shadow-xl dark:bg-marinho-800', largura)} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-marinho-700">
+      <div className={cx('w-full rounded-2xl bg-superficie shadow-xl', largura)} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-borda px-5 py-3">
           <h2 className="font-semibold">{titulo}</h2>
           <button onClick={onFechar} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-marinho-700" aria-label="Fechar"><X size={18} /></button>
         </div>
@@ -176,14 +176,14 @@ export function Modal({ aberto, titulo, onFechar, children, largura = 'max-w-lg'
 
 export function Aviso({ children, tipo = 'erro' }: { children: ReactNode; tipo?: 'erro' | 'info' }) {
   return (
-    <div className={cx('rounded-lg px-3 py-2 text-sm', tipo === 'erro' ? 'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-200' : 'bg-marinho-50 text-marinho-700 dark:bg-marinho-700 dark:text-slate-100')}>
+    <div className={cx('rounded-lg px-3 py-2 text-sm', tipo === 'erro' ? 'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-200' : 'bg-marinho-50 text-texto dark:bg-marinho-700 dark:text-slate-100')}>
       {children}
     </div>
   );
 }
 
 export function Vazio({ children }: { children: ReactNode }) {
-  return <div className="py-10 text-center text-sm text-slate-500">{children}</div>;
+  return <div className="py-10 text-center text-sm text-suave">{children}</div>;
 }
 
 export function Cabecalho({ titulo, subtitulo, acoes }: { titulo: string; subtitulo?: string; acoes?: ReactNode }) {
@@ -223,7 +223,7 @@ export function CampoNumero({ valor, onConfirmar, casas = 2, disabled, className
       onChange={(e) => setTexto(e.target.value)}
       onBlur={confirmar}
       onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-      className={cx('w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm tabular-nums outline-none hover:border-slate-300 focus:border-roxo-500 focus:bg-white disabled:hover:border-transparent dark:hover:border-marinho-500 dark:focus:bg-marinho-800', alinhar === 'direita' && 'text-right', className)}
+      className={cx('w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm tabular-nums outline-none hover:border-slate-300 focus:border-roxo-500 focus:bg-superficie disabled:hover:border-transparent dark:hover:border-marinho-500', alinhar === 'direita' && 'text-right', className)}
     />
   );
 }
@@ -241,7 +241,7 @@ export function CampoCelula({ valor, onConfirmar, disabled, lista, placeholder }
       onChange={(e) => setTexto(e.target.value)}
       onBlur={() => { if (texto !== valor) onConfirmar(texto); }}
       onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-      className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none placeholder:text-slate-400 hover:border-slate-300 focus:border-roxo-500 focus:bg-white disabled:hover:border-transparent dark:hover:border-marinho-500 dark:focus:bg-marinho-800"
+      className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none placeholder:text-slate-400 hover:border-slate-300 focus:border-roxo-500 focus:bg-superficie disabled:hover:border-transparent dark:hover:border-marinho-500"
     />
   );
 }
@@ -315,16 +315,16 @@ export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder
           else if (e.key === 'Escape') { setTexto(valor); setPos(null); }
         }}
         className={celula
-          ? 'w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none placeholder:text-slate-400 hover:border-slate-300 focus:border-roxo-500 focus:bg-white disabled:hover:border-transparent dark:hover:border-marinho-500 dark:focus:bg-marinho-800'
+          ? 'w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none placeholder:text-slate-400 hover:border-slate-300 focus:border-roxo-500 focus:bg-superficie disabled:hover:border-transparent dark:hover:border-marinho-500'
           : campoBase}
       />
       {pos && !disabled && filtradas.length > 0 && (
-        <div ref={listaRef} style={{ top: pos.top, left: pos.left, width: pos.width }} className="fixed z-50 max-h-60 overflow-y-auto rounded-lg bg-white p-1 shadow-lg ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-600">
+        <div ref={listaRef} style={{ top: pos.top, left: pos.left, width: pos.width }} className="fixed z-50 max-h-60 overflow-y-auto rounded-lg bg-superficie p-1 shadow-lg ring-1 ring-borda">
           {filtradas.map((o, i) => (
             <button key={o.valor} type="button" onMouseDown={(e) => { e.preventDefault(); confirmar(o.valor); ref.current?.blur(); }} onMouseEnter={() => setAtivo(i)}
-              className={cx('flex w-full items-baseline justify-between gap-2 rounded px-2 py-1 text-left text-sm', i === ativo ? 'bg-roxo-50 text-roxo-700 dark:bg-roxo-700/30 dark:text-roxo-100' : 'hover:bg-slate-50 dark:hover:bg-marinho-700')}>
+              className={cx('flex w-full items-baseline justify-between gap-2 rounded px-2 py-1 text-left text-sm', i === ativo ? 'bg-roxo-50 text-roxo-700 dark:bg-roxo-700/30 dark:text-roxo-100' : 'hover:bg-pagina')}>
               <span className="truncate">{o.valor}</span>
-              {o.detalhe && <span className="shrink-0 text-[11px] text-slate-500">{o.detalhe}</span>}
+              {o.detalhe && <span className="shrink-0 text-[11px] text-suave">{o.detalhe}</span>}
             </button>
           ))}
         </div>

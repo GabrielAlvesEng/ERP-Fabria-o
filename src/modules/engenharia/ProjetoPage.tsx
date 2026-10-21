@@ -38,15 +38,15 @@ export function ProjetoPage() {
 
   return (
     <div className="space-y-4">
-      <Link to="/engenharia" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-roxo-600"><ArrowLeft size={15} /> Projetos</Link>
+      <Link to="/engenharia" className="inline-flex items-center gap-1 text-sm text-suave hover:text-roxo-600"><ArrowLeft size={15} /> Projetos</Link>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-mono text-2xl font-bold text-marinho-700 dark:text-white">{projeto.codigo}</h1>
+            <h1 className="font-mono text-2xl font-bold text-texto">{projeto.codigo}</h1>
             <Selo cor={COR_STATUS_PROJETO[projeto.status]}>{NOME_STATUS_PROJETO[projeto.status]}</Selo>
           </div>
           <div className="font-semibold">{projeto.titulo}</div>
-          <div className="text-sm text-slate-500">{projeto.empresas?.nome_fantasia}</div>
+          <div className="text-sm text-suave">{projeto.empresas?.nome_fantasia}</div>
         </div>
         <div className="flex flex-wrap items-end gap-4 text-sm">
           {pode('engenharia', 'editar') && (
@@ -55,7 +55,7 @@ export function ProjetoPage() {
           <Indicador rotulo="Conjuntos" valor={String(conjuntos.filter((c) => !c.removido_cad_em).length)} />
           <Indicador rotulo="Peças e itens" valor={String(pecas.filter((p) => !p.removido_cad_em).length)} />
           <div>
-            <div className="text-xs text-slate-500">Liberado</div>
+            <div className="text-xs text-suave">Liberado</div>
             <div className="flex items-center gap-2">
               <div className="h-2 w-24 rounded-full bg-slate-200 dark:bg-marinho-700"><div className="h-2 rounded-full bg-petroleo-500" style={{ width: `${pct}%` }} /></div>
               <span className="font-semibold tabular-nums">{pct}%</span>
@@ -64,9 +64,9 @@ export function ProjetoPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-slate-200 dark:border-marinho-700">
+      <div className="flex flex-wrap gap-x-1 border-b border-borda">
         {abas.map((a) => (
-          <button key={a.id} onClick={() => setAba(a.id)} className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm ${aba === a.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:text-roxo-100' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+          <button key={a.id} onClick={() => setAba(a.id)} className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm ${aba === a.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'} transition-colors duration-150`}>
             <a.icone size={15} /> {a.rotulo}
           </button>
         ))}
@@ -83,7 +83,7 @@ export function ProjetoPage() {
 }
 
 function Indicador({ rotulo, valor }: { rotulo: string; valor: string }) {
-  return <div><div className="text-xs text-slate-500">{rotulo}</div><div className="font-semibold tabular-nums">{valor}</div></div>;
+  return <div><div className="text-xs text-suave">{rotulo}</div><div className="font-semibold tabular-nums">{valor}</div></div>;
 }
 
 function ListaMateriais({ projeto }: { projeto: Projeto }) {
@@ -112,7 +112,7 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
 
   return (
     <Cartao className="p-0">
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-3 dark:border-marinho-700">
+      <div className="flex flex-wrap items-center gap-2 border-b border-borda p-3">
         <Selecao value={pasta} onChange={(e) => setPasta(e.target.value as Pasta | '')} className="w-48">
           <option value="">Todas as pastas</option>
           {(Object.keys(NOME_PASTA) as Pasta[]).map((p) => <option key={p} value={p}>{NOME_PASTA[p]}</option>)}
@@ -122,13 +122,13 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
           {COD_OPS.map((o) => <option key={o} value={o}>{o}</option>)}
         </Selecao>
         {temRemovidos && <Caixa marcado={verRemovidos} onChange={setVerRemovidos}>Mostrar removidos do CAD</Caixa>}
-        <span className="ml-auto text-sm text-slate-500">{linhas.length} itens · {qtdTotal.toLocaleString('pt-BR')} unidades · {pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</span>
+        <span className="ml-auto text-sm text-suave">{linhas.length} itens · {qtdTotal.toLocaleString('pt-BR')} unidades · {pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</span>
         <button onClick={exportarCsv} disabled={!linhas.length} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-roxo-600 hover:bg-roxo-50 disabled:opacity-40 dark:hover:bg-marinho-700"><Download size={15} /> Excel (CSV)</button>
       </div>
       {linhas.length === 0 ? <Vazio>Nenhuma peça lançada na árvore.</Vazio> : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-marinho-700/50">
+            <thead className="bg-pagina text-left text-xs uppercase text-suave">
               <tr>
                 <th className="px-3 py-2">Código</th><th className="px-3 py-2">Descrição</th><th className="px-3 py-2">COD_OP</th><th className="px-3 py-2">Material</th>
                 <th className="px-3 py-2 text-right">Esp.</th><th className="px-3 py-2 text-right">Qtd/conj.</th><th className="px-3 py-2 text-right">Qtd total</th><th className="px-3 py-2 text-right">Peso total</th>
@@ -136,9 +136,9 @@ function ListaMateriais({ projeto }: { projeto: Projeto }) {
             </thead>
             <tbody>
               {linhas.map((l) => (
-                <tr key={l.id} className={`border-t border-slate-100 dark:border-marinho-700 ${l.removido ? 'text-slate-400 line-through' : ''}`}>
+                <tr key={l.id} className={`border-t border-borda ${l.removido ? 'text-slate-400 line-through' : ''}`}>
                   <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
-                  <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-slate-500 no-underline">{l.removido ? 'Removido do CAD' : NOME_PASTA[l.pasta]}</div></td>
+                  <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-suave no-underline">{l.removido ? 'Removido do CAD' : NOME_PASTA[l.pasta]}</div></td>
                   <td className="px-3 py-1.5"><div className="flex flex-wrap gap-0.5">{l.cod_op.map((o) => <span key={o} className={`rounded px-1 font-mono text-[10px] font-semibold text-white ${o === 'CM' ? 'bg-amber-500' : 'bg-roxo-500'}`}>{o}</span>)}</div></td>
                   <td className="px-3 py-1.5">{rotuloMaterial(l) || '—'}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{l.espessura == null ? '—' : Number(l.espessura).toLocaleString('pt-BR')}</td>
@@ -179,7 +179,7 @@ function DadosProjeto({ projeto }: { projeto: Projeto }) {
         <AreaTexto defaultValue={projeto.observacoes} disabled={!editavel} rows={5} onBlur={(e) => e.target.value !== projeto.observacoes && salvar({ observacoes: e.target.value })} />
       </Campo>
       {projeto.importado_cad_em && <DadosCad projeto={projeto} />}
-      <div className="text-sm text-slate-500">
+      <div className="text-sm text-suave">
         Código do projeto = código da proposta (decisão 11). Proposta de origem: <Link to="/vendas/propostas" className="font-mono text-roxo-600 hover:underline">{projeto.codigo}</Link>
       </div>
     </Cartao>
@@ -196,11 +196,11 @@ function DadosCad({ projeto }: { projeto: Projeto }) {
     ['Aprovado', [d.aprovado, d.data_aprovado].filter(Boolean).join(' · ')], ['Revisão do CAD', d.revisao],
   ];
   return (
-    <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-marinho-700/40">
+    <div className="rounded-xl bg-pagina p-3 text-sm">
       <div className="mb-2 font-semibold">Importado do SolidWorks em {dataHoraBR(projeto.importado_cad_em)}{d.macro ? ` (macro ${d.macro})` : ''}</div>
       <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
         {linhas.filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => (
-          <div key={k} className="flex gap-2"><dt className="text-slate-500">{k}:</dt><dd className="font-medium">{v}</dd></div>
+          <div key={k} className="flex gap-2"><dt className="text-suave">{k}:</dt><dd className="font-medium">{v}</dd></div>
         ))}
       </dl>
       <HistoricoCad projetoId={projeto.id} />
@@ -215,16 +215,16 @@ function HistoricoCad({ projetoId }: { projetoId: string }) {
     [r.novos && `${r.novos} novo(s)`, r.alterados && `${r.alterados} alterado(s)`, r.removidos && `${r.removidos} removido(s)`, r.liberados_em_revisao && `${r.liberados_em_revisao} liberado(s) → em revisão`]
       .filter(Boolean).join(', ') || 'sem mudanças';
   return (
-    <div className="mt-3 border-t border-slate-200 pt-2 dark:border-marinho-600">
+    <div className="mt-3 border-t border-borda pt-2">
       <div className="mb-1 font-semibold">Histórico de importações</div>
       <ul className="space-y-1">
         {historico.map((h) => (
           <li key={h.id} className="flex flex-wrap gap-x-2">
-            <span className="tabular-nums text-slate-500">{dataHoraBR(h.criado_em)}</span>
+            <span className="tabular-nums text-suave">{dataHoraBR(h.criado_em)}</span>
             <span className="font-medium">{h.tipo === 'inicial' ? 'Importação inicial' : 'Nova revisão'}</span>
             <span>{texto(h.resumo)}</span>
-            {h.arquivo && <span className="font-mono text-[11px] text-slate-500">{h.arquivo}</span>}
-            <span className="text-slate-500">· {h.usuarios?.nome ?? '—'}</span>
+            {h.arquivo && <span className="font-mono text-[11px] text-suave">{h.arquivo}</span>}
+            <span className="text-suave">· {h.usuarios?.nome ?? '—'}</span>
           </li>
         ))}
       </ul>

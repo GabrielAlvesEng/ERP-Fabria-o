@@ -33,10 +33,10 @@ export function useGravar() {
 
 export function SubAbas<T extends string>({ abas, ativa, onTrocar }: { abas: readonly T[]; ativa: T; onTrocar: (a: T) => void }) {
   return (
-    <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200 dark:border-marinho-700">
+    <div className="mb-4 flex flex-wrap gap-1 border-b border-borda">
       {abas.map((a) => (
         <button key={a} type="button" onClick={() => onTrocar(a)}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm transition ${a === ativa ? 'border-roxo-500 font-semibold text-roxo-600 dark:text-roxo-100' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}>
+          className={`-mb-px border-b-2 px-3 py-2 text-sm transition ${a === ativa ? 'border-roxo-500 font-semibold text-roxo-600 dark:text-roxo-100' : 'border-transparent text-suave hover:text-slate-800 dark:hover:text-slate-200'}`}>
           {a}
         </button>
       ))}
@@ -44,15 +44,15 @@ export function SubAbas<T extends string>({ abas, ativa, onTrocar }: { abas: rea
   );
 }
 
-export const th = 'px-2 py-2 text-left text-xs font-semibold uppercase text-slate-500';
+export const th = 'px-2 py-2 text-left text-xs font-semibold uppercase text-suave';
 export const td = 'px-1 py-1 align-middle';
-export const linha = (ativo = true) => `border-t border-slate-100 dark:border-marinho-700 ${ativo ? '' : 'text-slate-400'}`;
+export const linha = (ativo = true) => `border-t border-borda ${ativo ? '' : 'text-slate-400'}`;
 
 export function Tabela({ cabecalho, children }: { cabecalho: ReactNode; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200 dark:ring-marinho-700">
+    <div className="overflow-x-auto rounded-xl ring-1 ring-borda">
       <table className="w-full text-sm">
-        <thead className="bg-slate-50 dark:bg-marinho-700/50"><tr>{cabecalho}</tr></thead>
+        <thead className="bg-pagina"><tr>{cabecalho}</tr></thead>
         <tbody>{children}</tbody>
       </table>
     </div>
@@ -60,4 +60,4 @@ export function Tabela({ cabecalho, children }: { cabecalho: ReactNode; children
 }
 
 // Caixa de número com borda para formulários (CampoNumero é de célula).
-export const molduraNumero = 'rounded-lg border border-slate-300 bg-white dark:border-marinho-500 dark:bg-marinho-800';
+export const molduraNumero = 'rounded-lg border border-slate-300 bg-superficie dark:border-marinho-500';

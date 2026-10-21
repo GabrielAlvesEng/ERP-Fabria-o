@@ -54,7 +54,7 @@ export function ExcluirModal({ proposta, onFechar, onExcluida }: { proposta: Pro
             <Entrada type="password" autoComplete="off" value={senha} onChange={(e) => setSenha(e.target.value)} />
           </Campo>
         ) : (
-          <div className="text-xs text-slate-500">Esta proposta nunca foi enviada ao cliente, por isso não pede senha.</div>
+          <div className="text-xs text-suave">Esta proposta nunca foi enviada ao cliente, por isso não pede senha.</div>
         )}
         <div className="flex justify-end gap-2 pt-1">
           <Botao type="button" variante="secundario" onClick={onFechar}>Cancelar</Botao>

@@ -64,10 +64,10 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-marinho-900/40" onMouseDown={onFechar}>
-      <div className={`flex h-full w-full flex-col bg-white shadow-xl transition-[max-width] dark:bg-marinho-800 ${aba === 'Custos' ? 'max-w-6xl' : aba === 'Kick-off' ? 'max-w-4xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
+      <div className={`flex h-full w-full flex-col bg-superficie shadow-xl transition-[max-width] ${aba === 'Custos' ? 'max-w-6xl' : aba === 'Kick-off' ? 'max-w-4xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
         {!p ? <Vazio>Carregando…</Vazio> : (
           <>
-            <div className="border-b border-slate-200 px-5 py-4 dark:border-marinho-700">
+            <div className="border-b border-borda px-5 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
                     <Selo cor={p.status === 'Reprovado' ? 'vermelho' : ['Aprovado', 'Finalizado', 'Emitido NF', 'Pago'].includes(p.status) ? 'verde' : 'roxo'}>{p.status}</Selo>
                   </div>
                   <div className="mt-1 font-semibold">{p.titulo}</div>
-                  <div className="text-sm text-slate-500">{p.empresas?.nome_fantasia} · {p.contatos?.nome} · {moeda(p.valor)}</div>
+                  <div className="text-sm text-suave">{p.empresas?.nome_fantasia} · {p.contatos?.nome} · {moeda(p.valor)}</div>
                 </div>
                 <button onClick={onFechar} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-marinho-700" aria-label="Fechar"><X size={18} /></button>
               </div>
@@ -95,9 +95,9 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
               </div>
               {erro && <div className="mt-2"><Aviso>{erro}</Aviso></div>}
             </div>
-            <div className="flex gap-1 border-b border-slate-200 px-3 dark:border-marinho-700">
+            <div className="flex flex-wrap gap-x-1 border-b border-borda px-3">
               {abas.filter((a) => a !== 'Custos' || pode('custos', 'ler')).map((a) => (
-                <button key={a} onClick={() => setAba(a)} className={`border-b-2 px-3 py-2 text-sm ${aba === a ? 'border-roxo-500 font-semibold text-roxo-600 dark:text-roxo-100' : 'border-transparent text-slate-500'}`}>{a}</button>
+                <button key={a} onClick={() => setAba(a)} className={`-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors duration-150 ${aba === a ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>{a}</button>
               ))}
             </div>
             <div className="flex-1 overflow-y-auto p-5">
@@ -156,12 +156,12 @@ function AbaDados({ p }: { p: Proposta }) {
           <div className="flex items-center gap-2">
             <Entrada type="number" min={1} max={3650} className="w-24" value={f.validade_dias ?? ''} disabled={!editavel}
               onChange={(e) => setF({ ...f, validade_dias: e.target.value ? Math.max(1, Math.round(Number(e.target.value))) : null })} />
-            <span className="text-xs text-slate-500">{validadeAte(f.data_emissao, f.validade_dias)}</span>
+            <span className="text-xs text-suave">{validadeAte(f.data_emissao, f.validade_dias)}</span>
           </div>
         </Campo>
         <Campo rotulo="Condições comerciais" className="sm:col-span-2"><AreaTexto value={f.condicoes_comerciais} onChange={set('condicoes_comerciais')} disabled={!editavel} /></Campo>
         <Campo rotulo="Observações" className="sm:col-span-2"><AreaTexto value={f.observacoes} onChange={set('observacoes')} disabled={!editavel} /></Campo>
-        <div className="text-sm text-slate-500 sm:col-span-2">
+        <div className="text-sm text-suave sm:col-span-2">
           Responsável: {p.usuarios?.nome ?? '—'} · Próximo follow-up: {dataBR(p.proximo_followup)}
         </div>
       </div>
@@ -199,7 +199,7 @@ function AbaRevisoes({ p }: { p: Proposta }) {
     <div className="space-y-4">
       {erro && <Aviso>{erro}</Aviso>}
       {podeEnviar && (
-        <div className="flex flex-wrap items-end gap-2 rounded-xl bg-slate-50 p-3 dark:bg-marinho-700/50">
+        <div className="flex flex-wrap items-end gap-2 rounded-xl bg-pagina p-3">
           <Campo rotulo={`Anexar à ${rotuloRevisao(p.revisao_atual)} (rascunho)`}>
             <Selecao value={tipo} onChange={(e) => setTipo(e.target.value as Arquivo['tipo'])}>
               {Object.entries(tiposArquivo).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -214,21 +214,21 @@ function AbaRevisoes({ p }: { p: Proposta }) {
       {revisoes.map((r) => {
         const doR = arquivos.filter((a) => a.revisao_id === r.id);
         return (
-          <div key={r.id} className="rounded-xl ring-1 ring-slate-200 dark:ring-marinho-700">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2 dark:border-marinho-700">
+          <div key={r.id} className="rounded-xl ring-1 ring-borda">
+            <div className="flex items-center justify-between border-b border-borda px-4 py-2">
               <div className="flex items-center gap-2">
                 <span className="font-semibold">{rotuloRevisao(r.numero)}</span>
                 {r.status === 'enviada' ? <Selo cor="verde">Enviada em {dataBR(r.enviada_em)}</Selo> : <Selo cor="amarelo">Rascunho</Selo>}
               </div>
-              {r.valor !== null && <span className="text-sm text-slate-500">{moeda(r.valor)}</span>}
+              {r.valor !== null && <span className="text-sm text-suave">{moeda(r.valor)}</span>}
             </div>
-            {r.motivo && <div className="px-4 pt-2 text-xs text-slate-500">Motivo: {r.motivo}</div>}
-            <div className="divide-y divide-slate-100 dark:divide-marinho-700">
-              {doR.length === 0 && <div className="px-4 py-3 text-sm text-slate-500">Sem arquivos.</div>}
+            {r.motivo && <div className="px-4 pt-2 text-xs text-suave">Motivo: {r.motivo}</div>}
+            <div className="divide-y divide-borda">
+              {doR.length === 0 && <div className="px-4 py-3 text-sm text-suave">Sem arquivos.</div>}
               {doR.map((a) => (
                 <div key={a.id} className="flex items-center justify-between px-4 py-2 text-sm">
                   <button className="flex items-center gap-2 text-left hover:text-roxo-600" onClick={() => abrirArquivo(a.caminho).catch((e) => setErro(mensagemErro(e)))}>
-                    <FileText size={15} /> <span>{a.nome}</span> <span className="text-xs text-slate-500">({tiposArquivo[a.tipo]})</span>
+                    <FileText size={15} /> <span>{a.nome}</span> <span className="text-xs text-suave">({tiposArquivo[a.tipo]})</span>
                   </button>
                   {r.status === 'rascunho' && pode('vendas', 'editar') && (
                     <button onClick={() => rm.mutate(a)} className="rounded p-1 text-slate-400 hover:text-red-600" aria-label="Remover"><Trash2 size={15} /></button>
@@ -264,7 +264,7 @@ function AbaAprovacao({ p }: { p: Proposta }) {
           {reps.map((r) => (
             <div key={r.id} className="mb-2 rounded-xl bg-red-50 p-3 text-sm dark:bg-red-900/30">
               <div className="font-medium">{r.motivo}{r.concorrente && ` · concorrente: ${r.concorrente}`}</div>
-              <div className="text-xs text-slate-500">{dataHoraBR(r.criado_em)}</div>
+              <div className="text-xs text-suave">{dataHoraBR(r.criado_em)}</div>
               {r.observacoes && <div className="mt-1">{r.observacoes}</div>}
             </div>
           ))}
@@ -278,11 +278,11 @@ function AbaHistorico({ id }: { id: string }) {
   const { data: eventos = [] } = useQuery({ queryKey: ['proposta', id, 'eventos'], queryFn: () => listarEventos(id) });
   if (!eventos.length) return <Vazio>Sem eventos.</Vazio>;
   return (
-    <ol className="space-y-3 border-l-2 border-slate-200 pl-4 dark:border-marinho-700">
+    <ol className="space-y-3 border-l-2 border-borda pl-4">
       {eventos.map((e) => (
         <li key={e.id} className="text-sm">
           <div className="font-medium">{e.descricao}</div>
-          <div className="text-xs text-slate-500">{dataHoraBR(e.criado_em)} · {e.usuarios?.nome ?? '—'}</div>
+          <div className="text-xs text-suave">{dataHoraBR(e.criado_em)} · {e.usuarios?.nome ?? '—'}</div>
         </li>
       ))}
     </ol>

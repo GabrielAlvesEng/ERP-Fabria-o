@@ -47,13 +47,13 @@ export function EmpresasPage() {
   const tabela = (lista: Empresa[], inativas: boolean) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-marinho-700/50">
+        <thead className="bg-pagina text-left text-xs uppercase text-suave">
           <tr><th className="px-4 py-2">Empresa</th><th className="px-4 py-2">CNPJ</th><th className="px-4 py-2">Cidade</th><th className="px-4 py-2">Contatos</th><th /></tr>
         </thead>
         <tbody>
           {lista.map((e) => (
-            <tr key={e.id} className={`border-t border-slate-100 hover:bg-slate-50 dark:border-marinho-700 dark:hover:bg-marinho-700/40 ${inativas ? 'text-slate-500' : ''}`}>
-              <td className="px-4 py-2"><div className="font-medium">{e.nome_fantasia}</div>{e.razao_social && <div className="text-xs text-slate-500">{e.razao_social}</div>}</td>
+            <tr key={e.id} className={`border-t border-borda hover:bg-pagina ${inativas ? 'text-suave' : ''}`}>
+              <td className="px-4 py-2"><div className="font-medium">{e.nome_fantasia}</div>{e.razao_social && <div className="text-xs text-suave">{e.razao_social}</div>}</td>
               <td className="px-4 py-2 whitespace-nowrap">{formatarCNPJ(e.cnpj) || '—'}</td>
               <td className="px-4 py-2">{[e.cidade, e.uf].filter(Boolean).join('-') || '—'}</td>
               <td className="px-4 py-2">{qtdContatos.get(e.id) ?? 0}</td>
@@ -80,7 +80,7 @@ export function EmpresasPage() {
       />
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
       <Cartao className="p-0">
-        <div className="border-b border-slate-200 p-3 dark:border-marinho-700">
+        <div className="border-b border-borda p-3">
           <div className="relative max-w-sm">
             <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
             <Entrada placeholder="Buscar por nome, cidade ou CNPJ" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -96,17 +96,17 @@ export function EmpresasPage() {
             type="button"
             onClick={() => setVerDesativadas(!verDesativadas)}
             aria-expanded={verDesativadas}
-            className={`flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-marinho-700/40 ${verDesativadas ? 'border-b border-slate-200 dark:border-marinho-700' : ''}`}
+            className={`flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-pagina ${verDesativadas ? 'border-b border-borda' : ''}`}
           >
             <ChevronRight size={16} className={`text-slate-400 transition-transform ${verDesativadas ? 'rotate-90' : ''}`} />
             <Ban size={16} className="text-slate-400" />
             <span className="font-semibold">Empresas desativadas</span>
             <Selo>{desativadas.length}</Selo>
-            <span className="hidden text-xs text-slate-500 sm:inline">{verDesativadas ? 'Clique para ocultar' : 'Clique para mostrar'}</span>
+            <span className="hidden text-xs text-suave sm:inline">{verDesativadas ? 'Clique para ocultar' : 'Clique para mostrar'}</span>
           </button>
           {verDesativadas && (
             <>
-              <div className="px-4 pt-2 text-xs text-slate-500">Não aparecem para novos contatos e propostas. O histórico continua preservado.</div>
+              <div className="px-4 pt-2 text-xs text-suave">Não aparecem para novos contatos e propostas. O histórico continua preservado.</div>
               {tabela(desativadas, true)}
             </>
           )}

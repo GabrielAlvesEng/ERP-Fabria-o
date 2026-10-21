@@ -88,7 +88,7 @@ export function ImportarSolidworks({ projeto, conjuntos, pecas, onFechar }: { pr
 
           {(leitura || comparacao) && (
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-suave">
                 {leitura && `${leitura.plano.nos.length} conjunto(s) e ${leitura.plano.pecas.length} peça(s) serão criados. Os códigos finais são confirmados pelo banco.`}
                 {comparacao && (semMudanca ? 'Nenhuma diferença em relação à árvore atual.' : 'Os códigos dos novos itens são confirmados pelo banco.')}
               </span>
@@ -108,25 +108,25 @@ export function ImportarSolidworks({ projeto, conjuntos, pecas, onFechar }: { pr
 
 function PreviaInicial({ leitura }: { leitura: ResultadoLeitura }) {
   return (
-    <div className="max-h-[50vh] overflow-auto rounded-xl ring-1 ring-slate-200 dark:ring-marinho-700">
+    <div className="max-h-[50vh] overflow-auto rounded-xl ring-1 ring-borda">
       <table className="w-full min-w-[760px] text-sm">
-        <thead className="sticky top-0 bg-slate-50 text-left text-[11px] uppercase text-slate-500 dark:bg-marinho-800">
+        <thead className="sticky top-0 bg-pagina text-left text-[11px] uppercase text-suave dark:bg-marinho-800">
           <tr><th className="px-3 py-2">Item</th><th className="px-3 py-2">Código no ERP</th><th className="px-3 py-2">Código CAD</th><th className="px-3 py-2 text-right">Qtd</th><th className="px-3 py-2">COD_OP</th><th className="px-3 py-2">COD_MAT</th><th className="px-3 py-2 text-right">Peso (kg)</th></tr>
         </thead>
         <tbody>
           {leitura.previa.map((l, i) => {
             const Icone = l.tipo === 'peca' ? null : ICONE_TIPO[l.tipo];
             return (
-              <tr key={i} className="border-t border-slate-100 dark:border-marinho-700">
+              <tr key={i} className="border-t border-borda">
                 <td className="px-3 py-1.5" style={{ paddingLeft: 12 + l.nivel * 18 }}>
                   <span className="inline-flex items-center gap-1.5">
                     {Icone ? <Icone size={14} className={COR_ICONE[l.tipo as keyof typeof COR_ICONE]} /> : <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400" />}
                     <span className={l.tipo === 'peca' ? '' : 'font-medium'}>{l.nome}</span>
-                    {l.tipo !== 'peca' && <span className="text-[11px] text-slate-500">({NOME_TIPO[l.tipo]})</span>}
+                    {l.tipo !== 'peca' && <span className="text-[11px] text-suave">({NOME_TIPO[l.tipo]})</span>}
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
-                <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[11px] text-slate-500">{l.codigoCad || '—'}</td>
+                <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[11px] text-suave">{l.codigoCad || '—'}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{l.quantidade.toLocaleString('pt-BR')}</td>
                 <td className="px-3 py-1.5">
                   {l.tipo !== 'peca' ? '' : l.pendente ? <span className="text-xs font-semibold text-amber-600">pendente</span> : (
@@ -167,11 +167,11 @@ function PreviaRevisao({ comparacao }: { comparacao: ResultadoComparacao }) {
           if (!lista.length) return null;
           const recolhido = acao === 'igual' && !verIguais;
           return (
-            <div key={acao} className="rounded-xl ring-1 ring-slate-200 dark:ring-marinho-700">
+            <div key={acao} className="rounded-xl ring-1 ring-borda">
               <button type="button" disabled={acao !== 'igual'} onClick={() => setVerIguais(!verIguais)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold">
                 {acao === 'igual' && <ChevronRight size={14} className={`transition-transform ${verIguais ? 'rotate-90' : ''}`} />}
                 <span className={`rounded-full px-2 py-0.5 text-xs ${ESTILO_ACAO[acao].cor}`}>{ESTILO_ACAO[acao].rotulo}</span>
-                <span className="text-slate-500">{lista.length}</span>
+                <span className="text-suave">{lista.length}</span>
               </button>
               {!recolhido && (
                 <table className="w-full text-sm">
@@ -179,13 +179,13 @@ function PreviaRevisao({ comparacao }: { comparacao: ResultadoComparacao }) {
                     {lista.map((l, i) => {
                       const Icone = l.tipo === 'peca' ? null : ICONE_TIPO[l.tipo];
                       return (
-                        <tr key={i} className="border-t border-slate-100 align-top dark:border-marinho-700">
+                        <tr key={i} className="border-t border-borda align-top">
                           <td className="w-56 whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
                           <td className="px-3 py-1.5">
                             <span className={`inline-flex items-center gap-1.5 ${acao === 'removido' ? 'line-through opacity-70' : ''}`}>
                               {Icone && <Icone size={14} className={COR_ICONE[l.tipo as keyof typeof COR_ICONE]} />}
                               {l.nome}
-                              {l.tipo !== 'peca' && <span className="text-[11px] text-slate-500">({NOME_TIPO[l.tipo]})</span>}
+                              {l.tipo !== 'peca' && <span className="text-[11px] text-suave">({NOME_TIPO[l.tipo]})</span>}
                             </span>
                             {l.mudancas.length > 0 && <ul className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">{l.mudancas.map((m, j) => <li key={j}>{m}</li>)}</ul>}
                           </td>

@@ -105,7 +105,7 @@ export function PropostasPage() {
         <Caixa marcado={soVencidos} onChange={setSoVencidos}>Só follow-up vencido</Caixa>
       </div>
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
-      {isLoading ? <div className="text-sm text-slate-500">Carregando…</div> : (
+      {isLoading ? <div className="text-sm text-suave">Carregando…</div> : (
         <DndContext sensors={sensors} onDragEnd={aoSoltar}>
           <div className="flex gap-3 overflow-x-auto pb-4">
             {STATUS_KANBAN.map((s) => (
@@ -132,12 +132,12 @@ function Coluna({ status, propostas, hoje, onAbrir, onFollowup }: { status: Stat
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const total = propostas.reduce((s, p) => s + Number(p.valor), 0);
   return (
-    <div ref={setNodeRef} className={`flex w-72 shrink-0 flex-col rounded-2xl border-t-4 bg-slate-200/60 p-2 dark:bg-marinho-800/60 ${corColuna[status]} ${isOver ? 'ring-2 ring-roxo-500' : ''}`}>
+    <div ref={setNodeRef} className={`flex w-72 shrink-0 flex-col rounded-xl border-t-[3px] bg-pagina p-2 ring-1 ring-borda transition-shadow duration-150 ${corColuna[status]} ${isOver ? 'ring-2 ring-roxo-400' : ''}`}>
       <div className="flex items-center justify-between px-2 py-1.5">
         <span className="text-sm font-semibold">{status}</span>
         <Selo>{propostas.length}</Selo>
       </div>
-      <div className="px-2 pb-2 text-xs text-slate-500">{moeda(total)}</div>
+      <div className="px-2 pb-2 text-xs text-suave">{moeda(total)}</div>
       <div className="flex min-h-24 flex-col gap-2">
         {propostas.map((p) => <Card key={p.id} p={p} hoje={hoje} onAbrir={onAbrir} onFollowup={onFollowup} />)}
       </div>
@@ -156,7 +156,7 @@ function Card({ p, hoje, onAbrir, onFollowup }: { p: Proposta; hoje: string; onA
       {...attributes}
       onClick={() => onAbrir(p.id)}
       style={transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined}
-      className={`cursor-grab rounded-xl bg-white p-3 text-sm shadow-sm ring-1 ring-slate-200 hover:ring-roxo-500 active:cursor-grabbing dark:bg-marinho-700 dark:ring-marinho-500 ${vencido ? 'ring-2 ring-amber-400 dark:ring-amber-500' : ''} ${isDragging ? 'z-50 opacity-80 shadow-lg' : ''}`}
+      className={`cursor-grab rounded-lg bg-superficie p-3 text-sm shadow-sm ring-1 ring-borda transition-[box-shadow,transform] duration-150 hover:-translate-y-px hover:shadow-md hover:ring-roxo-300 active:cursor-grabbing dark:hover:ring-roxo-400 ${vencido ? 'ring-2 ring-amber-400 dark:ring-amber-500' : ''} ${isDragging ? 'z-50 opacity-80 shadow-lg' : ''}`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span>
@@ -167,13 +167,13 @@ function Card({ p, hoje, onAbrir, onFollowup }: { p: Proposta; hoje: string; onA
         </span>
       </div>
       <div className="mt-1 line-clamp-2 font-medium">{p.titulo}</div>
-      <div className="mt-1 text-xs text-slate-500 dark:text-slate-300">{p.empresas?.nome_fantasia} · {p.contatos?.nome}</div>
+      <div className="mt-1 text-xs text-suave">{p.empresas?.nome_fantasia} · {p.contatos?.nome}</div>
       <div className="mt-2 flex items-center justify-between text-xs">
         <span className="font-semibold">{moeda(p.valor)}</span>
         {aguardando && (
           <span className="inline-flex items-center gap-1">
             {p.proximo_followup && (
-              <span className={`rounded px-1.5 py-0.5 ${vencido ? 'bg-amber-100 font-semibold text-amber-700 dark:bg-amber-900/50 dark:text-amber-200' : 'bg-slate-100 text-slate-500 dark:bg-marinho-600 dark:text-slate-300'}`}>
+              <span className={`rounded px-1.5 py-0.5 ${vencido ? 'bg-amber-100 font-semibold text-amber-700 dark:bg-amber-900/50 dark:text-amber-200' : 'bg-slate-100 text-suave dark:bg-marinho-600'}`}>
                 Retorno {dataBR(p.proximo_followup)}
               </span>
             )}

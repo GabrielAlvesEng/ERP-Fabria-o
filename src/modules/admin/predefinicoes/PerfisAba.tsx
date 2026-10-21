@@ -122,13 +122,13 @@ export function PerfisAba() {
               {def.parede && <Campo rotulo={formato === 'perfil_h' ? 'Alma (mm)' : formato === 'cantoneira' ? 'Espessura (mm ou pol.)' : 'Parede (mm)'}><Entrada value={f.parede} onChange={(e) => setF({ ...f, parede: e.target.value })} placeholder="2,0" /></Campo>}
               {def.c && <Campo rotulo={def.c}><Entrada value={f.c} onChange={(e) => setF({ ...f, c: e.target.value })} /></Campo>}
             </>
-          ) : <div className="text-sm text-slate-500 sm:col-span-2">Escolha o tipo para ver as medidas.</div>}
+          ) : <div className="text-sm text-suave sm:col-span-2">Escolha o tipo para ver as medidas.</div>}
           <Campo rotulo={manual ? 'Peso (kg/m), digitado' : 'Peso (kg/m), automático'}>
             <div className={molduraNumero}><CampoNumero valor={kg} casas={4} className="py-1.5" disabled={!manual} onConfirmar={(n) => setF({ ...f, kg: n })} /></div>
           </Campo>
           <div className="flex items-end pb-2">
             {auto != null && <Caixa marcado={f.kgManual} onChange={(v) => setF({ ...f, kgManual: v, kg: v ? auto : f.kg })}>Digitar o kg/m</Caixa>}
-            {auto == null && formato && <span className="text-xs text-slate-500">{formato === 'tabela' ? 'Bitola fora da base de pesos: digite o kg/m.' : 'Complete as medidas (ou a densidade do material).'}</span>}
+            {auto == null && formato && <span className="text-xs text-suave">{formato === 'tabela' ? 'Bitola fora da base de pesos: digite o kg/m.' : 'Complete as medidas (ou a densidade do material).'}</span>}
           </div>
           <Campo rotulo="Tipo de preço">
             <Selecao value={f.modo} onChange={(e) => setF({ ...f, modo: e.target.value as ModoPreco })}>
@@ -141,7 +141,7 @@ export function PerfisAba() {
           </Campo>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-suave">
             {descricao || 'A descrição é montada pelo tipo, medidas e material.'}
             {f.valor > 0 && <> · {precos.porMetro != null && `${moeda(precos.porMetro)}/m`}{precos.porKg != null && ` · ${moeda(precos.porKg)}/kg`}</>}
           </span>
@@ -159,7 +159,7 @@ export function PerfisAba() {
           <option value="">Todos os materiais</option>
           {materiaisUsados.map((c) => <option key={c} value={c}>{nomeMat(c)}</option>)}
         </Selecao>
-        <span className="text-sm text-slate-500">{filtrados.length} perfil(is){filtrados.length > LIMITE ? `, mostrando ${LIMITE}: use a busca` : ''}</span>
+        <span className="text-sm text-suave">{filtrados.length} perfil(is){filtrados.length > LIMITE ? `, mostrando ${LIMITE}: use a busca` : ''}</span>
       </div>
       {isLoading ? <Vazio>Carregando…</Vazio> : (
         <Tabela cabecalho={<><th className={th}>Perfil</th><th className={`${th} text-right`}>kg/m</th><th className={th}>Preço</th><th className={`${th} w-32 text-right`}>Valor</th><th className={`${th} text-right`}>R$/m</th><th className={`${th} text-right`}>R$/kg</th><th className={th}>Ativo</th><th /></>}>
@@ -169,7 +169,7 @@ export function PerfisAba() {
               <tr key={p.id} className={linha(p.ativo)}>
                 <td className="px-2 py-1">{p.descricao}</td>
                 <td className={`px-2 text-right tabular-nums ${p.kg_m == null ? 'text-amber-600' : ''}`}>{p.kg_m == null ? 'falta' : Number(p.kg_m).toLocaleString('pt-BR')}{p.kg_m_manual && <span className="ml-1 text-[10px] text-slate-400">manual</span>}</td>
-                <td className="px-2 text-xs text-slate-500">{p.preco_modo === 'm' ? 'por metro' : 'por kg'}</td>
+                <td className="px-2 text-xs text-suave">{p.preco_modo === 'm' ? 'por metro' : 'por kg'}</td>
                 <td className={td}><CampoNumero valor={Number(p.valor)} casas={4} onConfirmar={(n) => gravar(() => atualizar('bib_perfis', { id: p.id }, { valor: n }))} /></td>
                 <td className="px-2 text-right tabular-nums">{pr.porMetro != null ? moeda(pr.porMetro) : '—'}</td>
                 <td className="px-2 text-right tabular-nums">{pr.porKg != null ? moeda(pr.porKg) : '—'}</td>
@@ -183,14 +183,14 @@ export function PerfisAba() {
 
       <Cartao>
         <div className="mb-1 font-semibold">Base de pesos dos perfis de catálogo</div>
-        <p className="mb-3 text-sm text-slate-500">kg/m em aço carbono (W, I e U laminados). Para outro material o ERP corrige pela densidade. Valores de mercado: confira antes de usar.</p>
+        <p className="mb-3 text-sm text-suave">kg/m em aço carbono (W, I e U laminados). Para outro material o ERP corrige pela densidade. Valores de mercado: confira antes de usar.</p>
         <Tabela cabecalho={<><th className={th}>Tipo</th><th className={th}>Bitola</th><th className={`${th} w-32 text-right`}>kg/m</th><th className={th}>Fonte</th><th className={th}>Ativo</th></>}>
           {pesos.map((p) => (
             <tr key={p.id} className={linha(p.ativo)}>
               <td className="px-2 py-1">{tipos.find((t) => t.id === p.tipo_id)?.nome}</td>
               <td className="px-2">{p.bitola}</td>
               <td className={td}><CampoNumero valor={Number(p.kg_m)} casas={3} onConfirmar={(n) => n > 0 && gravar(() => atualizar('bib_pesos_perfil', { id: p.id }, { kg_m: n }))} /></td>
-              <td className="px-2 text-xs text-slate-500">{p.fonte}</td>
+              <td className="px-2 text-xs text-suave">{p.fonte}</td>
               <td className="px-2"><Caixa marcado={p.ativo} onChange={(ativo) => gravar(() => atualizar('bib_pesos_perfil', { id: p.id }, { ativo }))} /></td>
             </tr>
           ))}

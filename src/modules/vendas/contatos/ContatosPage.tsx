@@ -56,7 +56,7 @@ export function ContatosPage() {
       />
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
       <Cartao className="p-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 p-3 dark:border-marinho-700">
+        <div className="flex flex-wrap items-center gap-3 border-b border-borda p-3">
           <div className="relative w-full max-w-sm">
             <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
             <Entrada placeholder="Buscar por nome, empresa ou e-mail" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -66,17 +66,17 @@ export function ContatosPage() {
         {isLoading ? <Vazio>Carregando…</Vazio> : lista.length === 0 ? <Vazio>Nenhum contato em {ano}. Use “Incluir contato existente” ou crie uma proposta.</Vazio> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-marinho-700/50">
+              <thead className="bg-pagina text-left text-xs uppercase text-suave">
                 <tr><th className="px-4 py-2">CC {ano}</th><th className="px-4 py-2">Nome</th><th className="px-4 py-2">Empresa</th><th className="px-4 py-2">Telefone</th><th className="px-4 py-2">E-mail</th><th className="px-4 py-2">Situação</th><th /></tr>
               </thead>
               <tbody>
                 {lista.map((c) => {
                   const cc = ccDoAno(c);
                   return (
-                    <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50 dark:border-marinho-700 dark:hover:bg-marinho-700/40">
+                    <tr key={c.id} className="border-t border-borda hover:bg-pagina">
                       <td className="px-4 py-2 font-mono font-semibold">{cc !== undefined ? String(cc).padStart(2, '0') : '—'}</td>
-                      <td className="px-4 py-2"><div className="font-medium">{c.nome}</div>{c.cargo && <div className="text-xs text-slate-500">{c.cargo}</div>}</td>
-                      <td className="px-4 py-2">{c.empresas?.nome_fantasia}{c.unidade && <div className="text-xs text-slate-500">{c.unidade}</div>}</td>
+                      <td className="px-4 py-2"><div className="font-medium">{c.nome}</div>{c.cargo && <div className="text-xs text-suave">{c.cargo}</div>}</td>
+                      <td className="px-4 py-2">{c.empresas?.nome_fantasia}{c.unidade && <div className="text-xs text-suave">{c.unidade}</div>}</td>
                       <td className="px-4 py-2 whitespace-nowrap">{c.telefone || '—'}</td>
                       <td className="px-4 py-2">{c.email || '—'}</td>
                       <td className="px-4 py-2">{c.classificacao === 'cliente' ? <Selo cor="verde">Cliente</Selo> : <Selo>Lead</Selo>}</td>
@@ -173,13 +173,13 @@ function IncluirNoAno({ ano, contatos, onIncluir, onFechar }: { ano: number; con
   const lista = contatos.filter((c) => !t || norm(`${c.nome} ${c.empresas?.nome_fantasia ?? ''}`).includes(t)).slice(0, 50);
   return (
     <Modal aberto titulo={`Incluir contato existente em ${ano}`} onFechar={onFechar}>
-      <p className="mb-3 text-sm text-slate-500">O contato não é duplicado. Ele só passa a fazer parte de {ano} e recebe o próximo código do cliente do ano.</p>
+      <p className="mb-3 text-sm text-suave">O contato não é duplicado. Ele só passa a fazer parte de {ano} e recebe o próximo código do cliente do ano.</p>
       <Entrada placeholder="Buscar" value={busca} onChange={(e) => setBusca(e.target.value)} autoFocus />
-      <div className="mt-3 max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-marinho-700">
+      <div className="mt-3 max-h-80 divide-y divide-borda overflow-y-auto">
         {lista.length === 0 && <Vazio>Nenhum contato fora de {ano}.</Vazio>}
         {lista.map((c) => (
           <div key={c.id} className="flex items-center justify-between py-2 text-sm">
-            <div><div className="font-medium">{c.nome}</div><div className="text-xs text-slate-500">{c.empresas?.nome_fantasia}</div></div>
+            <div><div className="font-medium">{c.nome}</div><div className="text-xs text-suave">{c.empresas?.nome_fantasia}</div></div>
             <Botao variante="secundario" onClick={() => onIncluir(c.id)}>Incluir</Botao>
           </div>
         ))}

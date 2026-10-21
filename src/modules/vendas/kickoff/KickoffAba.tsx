@@ -37,7 +37,7 @@ export function KickoffAba({ propostaId, statusProposta, somenteLeitura = false 
       <div className="space-y-3 py-6 text-center">
         {erro && <Aviso>{erro}</Aviso>}
         <ClipboardList size={36} className="mx-auto text-roxo-500" />
-        <p className="text-sm text-slate-500">Nenhum kick-off registrado. A reunião alinha a execução com todos os setores.</p>
+        <p className="text-sm text-suave">Nenhum kick-off registrado. A reunião alinha a execução com todos os setores.</p>
         {podeEditar && <Botao onClick={() => iniciar.mutate()} disabled={iniciar.isPending}>{iniciar.isPending ? 'Iniciando…' : 'Iniciar kick-off'}</Botao>}
       </div>
     );
@@ -105,27 +105,27 @@ function KickoffConteudo({ k, editavel, propostaId, onErro }: { k: Kickoff; edit
       </div>
 
       {setores.map(([setor, lista]) => (
-        <div key={setor} className="rounded-xl ring-1 ring-slate-200 dark:ring-marinho-700">
-          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-marinho-700">
+        <div key={setor} className="rounded-xl ring-1 ring-borda">
+          <div className="flex items-center justify-between border-b border-borda px-3 py-2">
             <span className="font-semibold">{setor}</span>
-            <span className="text-xs text-slate-500">{lista.filter((i) => i.necessario === 'sim').length} necessário(s) · {lista.filter((i) => i.necessario === 'a_definir').length} a definir</span>
+            <span className="text-xs text-suave">{lista.filter((i) => i.necessario === 'sim').length} necessário(s) · {lista.filter((i) => i.necessario === 'a_definir').length} a definir</span>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-marinho-700">
+          <div className="divide-y divide-borda">
             {lista.map((i) => (
               <div key={i.id} className={`grid gap-2 px-3 py-2 text-sm md:grid-cols-[1fr_auto_160px_150px] md:items-center ${i.necessario === 'nao' ? 'opacity-60' : ''}`}>
                 <div className="flex items-center gap-2">
                   {editavel && <button onClick={() => tentar(() => removerItem(i.id))} className="text-slate-300 hover:text-red-600" aria-label="Remover item"><Trash2 size={13} /></button>}
                   <span>{i.descricao}</span>
                 </div>
-                <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-slate-200 dark:ring-marinho-600">
+                <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-borda">
                   {OPCOES.map((o) => (
                     <button key={o.v} disabled={!editavel} onClick={() => tentar(() => atualizarItem(i.id, { necessario: o.v }))}
-                      className={`px-2.5 py-1 text-xs font-medium transition ${i.necessario === o.v ? o.cor : 'bg-white text-slate-500 hover:bg-slate-50 dark:bg-marinho-800 dark:text-slate-300'} ${!editavel ? 'cursor-default' : ''}`}>
+                      className={`px-2.5 py-1 text-xs font-medium transition ${i.necessario === o.v ? o.cor : 'bg-superficie text-suave hover:bg-pagina'} ${!editavel ? 'cursor-default' : ''}`}>
                       {o.rotulo}
                     </button>
                   ))}
                 </div>
-                <div className="rounded-md ring-1 ring-slate-200 dark:ring-marinho-600">
+                <div className="rounded-md ring-1 ring-borda">
                   <CampoCelula valor={i.responsavel} disabled={!editavel} placeholder="Responsável" onConfirmar={(v) => tentar(() => atualizarItem(i.id, { responsavel: v }))} />
                 </div>
                 <CampoData value={i.prazo} disabled={!editavel} onChange={(v) => tentar(() => atualizarItem(i.id, { prazo: v || null }))} />
@@ -141,16 +141,16 @@ function KickoffConteudo({ k, editavel, propostaId, onErro }: { k: Kickoff; edit
         </div>
       ))}
 
-      <div className="rounded-xl ring-1 ring-slate-200 dark:ring-marinho-700">
-        <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-marinho-700">
+      <div className="rounded-xl ring-1 ring-borda">
+        <div className="flex items-center justify-between border-b border-borda px-3 py-2">
           <span className="font-semibold">Condições de medição e faturamento</span>
-          <span className={`text-xs ${marcos.length && Math.abs(somaMarcos - 100) > 0.01 ? 'text-amber-600' : 'text-slate-500'}`}>{marcos.length ? `Total ${somaMarcos.toLocaleString('pt-BR')}%` : 'Faturamento único na finalização'}</span>
+          <span className={`text-xs ${marcos.length && Math.abs(somaMarcos - 100) > 0.01 ? 'text-amber-600' : 'text-suave'}`}>{marcos.length ? `Total ${somaMarcos.toLocaleString('pt-BR')}%` : 'Faturamento único na finalização'}</span>
         </div>
         <div className="space-y-1 p-2">
           {marcos.map((m, idx) => (
             <div key={idx} className="grid items-center gap-2 text-sm sm:grid-cols-[1fr_90px_1fr_auto]">
               <CampoCelula valor={m.descricao} disabled={!editavel} placeholder="Marco (ex.: Sinal, Entrega da estrutura)" onConfirmar={(v) => salvarMarcos(marcos.map((x, j) => (j === idx ? { ...x, descricao: v } : x)))} />
-              <div className="flex items-center gap-1 rounded-md ring-1 ring-slate-200 dark:ring-marinho-600"><CampoNumero valor={m.percentual} disabled={!editavel} onConfirmar={(n) => salvarMarcos(marcos.map((x, j) => (j === idx ? { ...x, percentual: n } : x)))} /><span className="pr-2 text-xs text-slate-500">%</span></div>
+              <div className="flex items-center gap-1 rounded-md ring-1 ring-borda"><CampoNumero valor={m.percentual} disabled={!editavel} onConfirmar={(n) => salvarMarcos(marcos.map((x, j) => (j === idx ? { ...x, percentual: n } : x)))} /><span className="pr-2 text-xs text-suave">%</span></div>
               <CampoCelula valor={m.evento} disabled={!editavel} placeholder="Quando faturar (evento)" onConfirmar={(v) => salvarMarcos(marcos.map((x, j) => (j === idx ? { ...x, evento: v } : x)))} />
               {editavel && <button onClick={() => salvarMarcos(marcos.filter((_, j) => j !== idx))} className="text-slate-300 hover:text-red-600" aria-label="Remover marco"><Trash2 size={13} /></button>}
             </div>
@@ -173,7 +173,7 @@ function KickoffConteudo({ k, editavel, propostaId, onErro }: { k: Kickoff; edit
           <Botao onClick={() => setConfirmar(true)}><CheckCircle2 size={16} /> Finalizar kick-off</Botao>
         </div>
       )}
-      {k.status === 'finalizado' && k.data_reuniao && <div className="text-right text-xs text-slate-500">Reunião em {dataBR(k.data_reuniao)}</div>}
+      {k.status === 'finalizado' && k.data_reuniao && <div className="text-right text-xs text-suave">Reunião em {dataBR(k.data_reuniao)}</div>}
 
       <Modal aberto={confirmar} titulo="Finalizar o kick-off?" onFechar={() => setConfirmar(false)}>
         <p className="text-sm text-slate-600 dark:text-slate-300">Depois de finalizado, o kick-off fica só leitura e passa a valer para Engenharia e os demais setores. Mudanças futuras geram uma nova versão, e esta fica preservada.</p>

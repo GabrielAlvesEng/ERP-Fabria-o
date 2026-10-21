@@ -37,10 +37,10 @@ export function ProjetosPage() {
       {aguardando.length > 0 && (
         <Cartao className="mb-5 border-l-4 border-l-roxo-500">
           <div className="mb-2 flex items-center gap-2 font-semibold"><FolderPlus size={17} className="text-roxo-500" /> Propostas aprovadas aguardando projeto <Selo cor="roxo">{aguardando.length}</Selo></div>
-          <div className="divide-y divide-slate-100 dark:divide-marinho-700">
+          <div className="divide-y divide-borda">
             {aguardando.map((p) => (
               <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                <div><span className="font-mono font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span> · {p.titulo} <span className="text-slate-500">· {p.empresas?.nome_fantasia}</span></div>
+                <div><span className="font-mono font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span> · {p.titulo} <span className="text-suave">· {p.empresas?.nome_fantasia}</span></div>
                 {pode('engenharia', 'criar') && (
                   <Botao onClick={() => abrir.mutate(p.id)} disabled={abrir.isPending}><FolderOpen size={15} /> Abrir projeto</Botao>
                 )}
@@ -60,14 +60,14 @@ export function ProjetosPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {lista.map((p) => (
-            <Link key={p.id} to={`/engenharia/projetos/${p.id}`} className="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-roxo-500 dark:bg-marinho-800 dark:ring-marinho-700">
+            <Link key={p.id} to={`/engenharia/projetos/${p.id}`} className="group rounded-2xl bg-superficie p-4 shadow-sm ring-1 ring-borda transition hover:-translate-y-0.5 hover:shadow-md hover:ring-roxo-500">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-sm font-bold text-roxo-600 dark:text-roxo-100">{p.codigo}</span>
                 <Selo cor={COR_STATUS_PROJETO[p.status]}>{NOME_STATUS_PROJETO[p.status]}</Selo>
               </div>
               <div className="mt-2 line-clamp-2 font-semibold">{p.titulo}</div>
-              <div className="mt-1 text-sm text-slate-500">{p.empresas?.nome_fantasia}</div>
-              <div className="mt-3 text-xs text-slate-500">Aberto em {dataBR(p.criado_em)}{p.prazo && ` · prazo ${dataBR(p.prazo)}`}</div>
+              <div className="mt-1 text-sm text-suave">{p.empresas?.nome_fantasia}</div>
+              <div className="mt-3 text-xs text-suave">Aberto em {dataBR(p.criado_em)}{p.prazo && ` · prazo ${dataBR(p.prazo)}`}</div>
             </Link>
           ))}
         </div>

@@ -45,19 +45,19 @@ export function RetornosSino() {
       {aberto && (
         <>
           <div className="fixed inset-0 z-30" onMouseDown={() => setAberto(false)} />
-          <div className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200 dark:bg-marinho-800 dark:ring-marinho-600">
+          <div className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-superficie p-2 shadow-lg ring-1 ring-borda">
             <div className="px-2 py-1 text-sm font-semibold">Retornos vencidos</div>
             {vencidos.length === 0 ? (
-              <div className="px-2 py-3 text-sm text-slate-500">Nenhum retorno vencido.</div>
+              <div className="px-2 py-3 text-sm text-suave">Nenhum retorno vencido.</div>
             ) : (
               <ul className="max-h-80 overflow-y-auto">
                 {vencidos.map((p) => (
                   <li key={p.id}>
-                    <button onClick={() => abrir(p.id)} className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-marinho-700">
+                    <button onClick={() => abrir(p.id)} className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-pagina">
                       <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-500" />
                       <span className="min-w-0">
                         <span className="font-mono text-xs font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span> {p.titulo}
-                        <span className="block text-xs text-slate-500">{p.empresas?.nome_fantasia} · {p.contatos?.nome} · desde {dataBR(p.proximo_followup)}{p.responsavel_id === session?.user.id ? ' · sua' : ''}</span>
+                        <span className="block text-xs text-suave">{p.empresas?.nome_fantasia} · {p.contatos?.nome} · desde {dataBR(p.proximo_followup)}{p.responsavel_id === session?.user.id ? ' · sua' : ''}</span>
                       </span>
                     </button>
                   </li>
@@ -69,7 +69,7 @@ export function RetornosSino() {
                 Ativar avisos do Windows para os meus retornos
               </button>
             )}
-            {permissao === 'denied' && <div className="mt-1 px-2 text-[11px] text-slate-500">Avisos do Windows bloqueados no navegador.</div>}
+            {permissao === 'denied' && <div className="mt-1 px-2 text-[11px] text-suave">Avisos do Windows bloqueados no navegador.</div>}
           </div>
         </>
       )}

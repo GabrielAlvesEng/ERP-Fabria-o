@@ -75,10 +75,10 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
               {revisoes.map((r) => <option key={r.id} value={r.id}>R{r.numero} · {r.status === 'enviada' ? 'enviada' : 'rascunho'}</option>)}
             </Selecao>
           </Campo>
-          {!editavel && <span className="mb-2 inline-flex items-center gap-1 text-xs text-slate-500"><Lock size={13} /> {rev.status === 'enviada' ? 'Revisão enviada: custos congelados' : 'Somente leitura'}</span>}
+          {!editavel && <span className="mb-2 inline-flex items-center gap-1 text-xs text-suave"><Lock size={13} /> {rev.status === 'enviada' ? 'Revisão enviada: custos congelados' : 'Somente leitura'}</span>}
         </div>
         <div className="text-right">
-          <div className="text-xs text-slate-500">Preço de venda da proposta ({itens.length} {itens.length === 1 ? 'item' : 'itens'})</div>
+          <div className="text-xs text-suave">Preço de venda da proposta ({itens.length} {itens.length === 1 ? 'item' : 'itens'})</div>
           <div className="text-xl font-bold text-petroleo-600 dark:text-teal-300">{moeda(totalProposta)}</div>
           {editavel && proposta.status === 'À enviar' && pode('vendas', 'editar') && itens.length > 0 && Math.abs(totalProposta - Number(proposta.valor)) > 0.005 && (
             <button className="text-xs text-roxo-600 hover:underline disabled:opacity-50" disabled={usarValor.isPending} onClick={() => usarValor.mutate()}>
@@ -88,10 +88,10 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 dark:border-marinho-700">
+      <div className="flex flex-wrap items-center gap-1 border-b border-borda">
         {itens.map((i) => (
           <button key={i.id} onClick={() => setItemId(i.id)}
-            className={`-mb-px rounded-t-lg border px-3 py-1.5 text-sm ${item?.id === i.id ? 'border-slate-200 border-b-white bg-white font-semibold text-roxo-600 dark:border-marinho-700 dark:border-b-marinho-800 dark:bg-marinho-800 dark:text-roxo-100' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+            className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-150 ${item?.id === i.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>
             Item {i.letra}{i.descricao && <span className="font-normal"> · {i.descricao}</span>}
           </button>
         ))}
@@ -179,7 +179,7 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarre
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
       <div className="min-w-0 space-y-3">
-        <div className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-6 dark:bg-marinho-700/40">
+        <div className="grid gap-3 rounded-xl bg-pagina p-3 sm:grid-cols-6">
           <Campo rotulo={`Descrição do item ${it.letra}`} className="sm:col-span-6">
             <Entrada defaultValue={it.descricao} disabled={!editavel} onBlur={(e) => e.target.value !== it.descricao && salvarItem({ descricao: e.target.value })} />
           </Campo>
@@ -194,8 +194,8 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarre
           const aberta = abertas[s.id];
           const blocos = blocosDaSecao(s, doS);
           return (
-            <div key={s.id} className="rounded-xl ring-1 ring-slate-200 dark:ring-marinho-700">
-              <button type="button" onClick={() => setAbertas({ ...abertas, [s.id]: !aberta })} className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-marinho-700/40">
+            <div key={s.id} className="rounded-xl ring-1 ring-borda">
+              <button type="button" onClick={() => setAbertas({ ...abertas, [s.id]: !aberta })} className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-pagina">
                 <ChevronRight size={16} className={`text-slate-400 transition-transform ${aberta ? 'rotate-90' : ''}`} />
                 <span className="w-5 font-mono text-xs font-bold text-roxo-600 dark:text-roxo-100">{s.letra}</span>
                 <span className="font-semibold">{s.titulo}</span>
@@ -203,12 +203,12 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarre
                 <span className="ml-auto font-semibold tabular-nums">{moeda(r.porSecao[s.id])}</span>
               </button>
               {aberta && (
-                <div className="border-t border-slate-100 px-2 pb-2 dark:border-marinho-700">
+                <div className="border-t border-borda px-2 pb-2">
                   {blocos ? blocos.map((b) => {
                     const doG = doS.filter((l) => (b.grupo === OUTROS ? !s.blocos!.some((x) => x.grupo === l.grupo) : l.grupo === b.grupo));
                     return (
                       <div key={b.grupo} className="mt-2">
-                        <div className="flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <div className="flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-suave">
                           {b.grupo === OUTROS ? 'Outros (grupo antigo)' : b.grupo} <Selo>{doG.length}</Selo>
                           <span className="ml-auto font-semibold normal-case tabular-nums text-slate-700 dark:text-slate-200">{moeda(doG.reduce((t, l) => t + totalLinha(l), 0))}</span>
                         </div>
@@ -283,7 +283,7 @@ function Linha({ r, v, forte }: { r: string; v: number; forte?: boolean }) {
 function CampoPct({ rotulo, valor, onConfirmar, editavel, casas = 2 }: { rotulo: string; valor: number; onConfirmar: (n: number) => void; editavel: boolean; casas?: number }) {
   return (
     <Campo rotulo={rotulo}>
-      <div className="rounded-lg border border-slate-300 bg-white dark:border-marinho-500 dark:bg-marinho-800">
+      <div className="rounded-lg border border-slate-300 bg-superficie dark:border-marinho-500">
         <CampoNumero valor={valor} casas={casas} disabled={!editavel} onConfirmar={onConfirmar} className="py-1.5" />
       </div>
     </Campo>
@@ -302,7 +302,7 @@ function TabelaLinhas({ linhas, colunas, secao, grupo, listas, peso, editavel, o
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={aoSoltar}>
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] text-sm">
-        <thead className="text-left text-[11px] uppercase text-slate-500">
+        <thead className="text-left text-[11px] uppercase text-suave">
           <tr>
             <th className="w-6" />
             {colunas.map((c) => <th key={c.campo} className={`px-2 py-1.5 font-medium ${c.largura ?? ''} ${c.tipo === 'numero' ? 'text-right' : ''}`}>{c.rotulo}</th>)}
@@ -316,7 +316,7 @@ function TabelaLinhas({ linhas, colunas, secao, grupo, listas, peso, editavel, o
                 <LinhaCusto key={l.id} linha={l} colunas={colunas} secao={secao} grupo={grupo} listas={listas} peso={peso} editavel={editavel}
                   onSalvar={(d) => onSalvar(l, d)} onRemover={() => onRemover(l)} />
               ))}
-              {ordenadas.length === 0 && <tr><td colSpan={colunas.length + 3} className="px-2 py-3 text-center text-xs text-slate-500">Sem linhas.</td></tr>}
+              {ordenadas.length === 0 && <tr><td colSpan={colunas.length + 3} className="px-2 py-3 text-center text-xs text-suave">Sem linhas.</td></tr>}
             </tbody>
           </SortableContext>
       </table>
@@ -410,7 +410,7 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
   }
 
   return (
-    <tr ref={setNodeRef} style={estilo} className={`border-t border-slate-100 dark:border-marinho-700 ${isDragging ? 'relative z-10 bg-white shadow-md dark:bg-marinho-800' : ''}`}>
+    <tr ref={setNodeRef} style={estilo} className={`border-t border-borda ${isDragging ? 'relative z-10 bg-superficie shadow-md' : ''}`}>
       <td className="w-6 px-0.5">
         {editavel && (
           <button ref={setActivatorNodeRef} {...attributes} {...listeners} type="button" title="Arrastar para mudar a posição" className="cursor-grab touch-none rounded p-0.5 text-slate-300 hover:text-slate-600 active:cursor-grabbing dark:text-slate-500">
@@ -429,7 +429,7 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
               )}
               {secao === 'materiais' && c.campo === 'fator' && (
                 <>
-                  <span className="w-7 text-[11px] text-slate-500">{l.unidade}</span>
+                  <span className="w-7 text-[11px] text-suave">{l.unidade}</span>
                   {editavel && grupo === 'Chapas' && (
                     <button title="Calcular peso da chapa" onClick={() => setCalc(true)} className="rounded p-1 text-slate-400 hover:bg-roxo-50 hover:text-roxo-600 dark:hover:bg-marinho-700"><Scale size={14} /></button>
                   )}
@@ -442,7 +442,7 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
               <option>Sim</option><option>Não</option>
             </select>
           ) : c.tipo === 'leitura' ? (
-            <span className="px-2 text-sm text-slate-500" title={secao === 'maquinas' ? 'Escolha o serviço de um fornecedor (Terceirizada = Sim)' : undefined}>{String(l[c.campo] ?? '') || '—'}</span>
+            <span className="px-2 text-sm text-suave" title={secao === 'maquinas' ? 'Escolha o serviço de um fornecedor (Terceirizada = Sim)' : undefined}>{String(l[c.campo] ?? '') || '—'}</span>
           ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' || c.tipo === 'veiculo' ? (
             <CampoEscolha valor={c.tipo === 'catalogo' ? semCodigoMaterial(l.material) : String(l[c.campo] ?? '')} opcoes={opcoes(c)} disabled={!editavel}
               placeholder={c.tipo === 'catalogo' ? 'Ex.: AISI 304' : c.tipo === 'material' ? 'Digite para buscar na biblioteca' : secao === 'maquinas' ? (l.detalhe === 'Sim' ? 'Serviço do fornecedor' : 'Máquina própria') : ''}
