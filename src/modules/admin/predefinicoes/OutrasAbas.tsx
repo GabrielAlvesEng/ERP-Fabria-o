@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { supabase } from '@/shared/lib/supabase';
 import { moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Carregando, Cartao, Entrada, Selecao, Vazio } from '@/shared/ui';
+import { Aviso, Botao, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Cartao, Entrada, EsqueletoCartoes, EsqueletoTabela, Selecao, Vazio } from '@/shared/ui';
 import {
   UNIDADES_SERVICO, atualizar, inserir, listarARevisar, listarFornecedores, listarItens, listarMateriaisBase, listarServicos, type Fornecedor, type ServicoFornecedor,
 } from '@/modules/biblioteca/api';
@@ -54,7 +54,7 @@ export function ItensAba({ grupo }: { grupo: GrupoItem }) {
         <Entrada className="max-w-sm" placeholder="Buscar" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <span className="text-sm text-suave">{itens.length} item(ns)</span>
       </div>
-      {isLoading ? <Carregando /> : (
+      {isLoading ? <EsqueletoTabela /> : (
         <Tabela cabecalho={<><th className={th}>Descrição</th><th className={`${th} w-44`}>Material</th><th className={`${th} w-28`}>Unidade</th><th className={`${th} w-36 text-right`}>Valor</th><th className={th}>Ativo</th></>}>
           {itens.length === 0 && <tr><td colSpan={5}><Vazio>Nenhum item cadastrado.</Vazio></td></tr>}
           {itens.map((i) => (
@@ -83,7 +83,7 @@ export function MateriaisBaseAba() {
       {erro && <Aviso>{erro}</Aviso>}
       <p className="text-sm text-suave">A densidade (g/cm³) calcula o peso de chapas e perfis. Inox austenítico 8,00 e carbono 7,85 (como a calculadora antiga); confira os demais.</p>
       <Entrada className="max-w-sm" placeholder="Buscar material" value={busca} onChange={(e) => setBusca(e.target.value)} />
-      {isLoading ? <Carregando /> : (
+      {isLoading ? <EsqueletoTabela /> : (
         <Tabela cabecalho={<><th className={th}>Material</th><th className={th}>Categoria</th><th className={`${th} w-36 text-right`}>Densidade (g/cm³)</th><th className={th}>Ativo</th></>}>
           {lista.map((m) => (
             <tr key={m.cod_mat} className={linha(m.ativo)}>
@@ -105,7 +105,7 @@ export function RevisarAba() {
   return (
     <div className="space-y-3">
       <p className="text-sm text-suave">Itens da lista de preços antiga que não foram passados para a biblioteca automaticamente. Cadastre-os na aba certa; esta lista é só consulta.</p>
-      {isLoading ? <Carregando /> : itens.length === 0 ? <Vazio>Nada a revisar.</Vazio> : (
+      {isLoading ? <EsqueletoTabela /> : itens.length === 0 ? <Vazio>Nada a revisar.</Vazio> : (
         <Tabela cabecalho={<><th className={th}>Tipo</th><th className={th}>Descrição</th><th className={`${th} text-right`}>Preço</th></>}>
           {itens.map((i) => <tr key={i.id} className={linha()}><td className="px-2 py-1.5">{i.tipo}</td><td className="px-2">{i.descricao}</td><td className="px-2 text-right">{moeda(i.preco)}</td></tr>)}
         </Tabela>
@@ -135,7 +135,7 @@ export function FornecedoresAba() {
           <Botao type="submit"><Plus size={15} /> Adicionar</Botao>
         </form>
       </Cartao>
-      {isLoading ? <Carregando /> : fornecedores.map((f) => <CartaoFornecedor key={f.id} f={f} servicos={servicos.filter((s) => s.fornecedor_id === f.id)} gravar={gravar} setErro={setErro} />)}
+      {isLoading ? <EsqueletoCartoes quantidade={3} /> : fornecedores.map((f) => <CartaoFornecedor key={f.id} f={f} servicos={servicos.filter((s) => s.fornecedor_id === f.id)} gravar={gravar} setErro={setErro} />)}
     </div>
   );
 }
@@ -205,7 +205,7 @@ export function MaoObraAba() {
     },
   });
   const [novo, setNovo] = useState<Record<string, { funcao: string; valor: number }>>({});
-  if (isLoading) return <Carregando />;
+  if (isLoading) return <EsqueletoTabela />;
   return (
     <div className="space-y-4">
       {erro && <Aviso>{erro}</Aviso>}
@@ -258,7 +258,7 @@ export function MaquinarioAba() {
     <div className="max-w-2xl space-y-4">
       {erro && <Aviso>{erro}</Aviso>}
       <p className="text-sm text-suave">Máquinas próprias e o valor-hora. Serviço de máquina terceirizada (laser, dobra…) é cadastrado no fornecedor, em Fornecedores.</p>
-      {isLoading ? <Carregando /> : (
+      {isLoading ? <EsqueletoTabela /> : (
         <Tabela cabecalho={<><th className={th}>Máquina</th><th className={`${th} w-32 text-right`}>R$/h</th><th className={th}>Ativa</th></>}>
           {lista.map((m) => (
             <tr key={m.id} className={linha(m.ativo)}>

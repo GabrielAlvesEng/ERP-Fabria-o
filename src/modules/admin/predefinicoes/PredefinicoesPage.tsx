@@ -18,9 +18,11 @@ export function PredefinicoesPage() {
     <>
       <Cabecalho titulo="Predefinições" subtitulo="Tabelas usadas nas propostas e, depois, na Engenharia e em Compras. Mudar aqui não altera custos já lançados." />
       <SubAbas abas={ABAS} ativa={aba} onTrocar={setAba} />
+      <div key={aba} className="entrar">
       {aba === 'Materiais' && (
         <>
           <SubAbas abas={ABAS_MATERIAIS} ativa={sub} onTrocar={setSub} />
+          <div key={sub} className="entrar">
           {sub === 'Chapas' && <ChapasAba />}
           {sub === 'Perfis' && <PerfisAba />}
           {sub === 'Itens comerciais' && <ItensAba grupo="Comerciais" />}
@@ -28,11 +30,13 @@ export function PredefinicoesPage() {
           {sub === 'Consumíveis' && <ItensAba grupo="Consumíveis" />}
           {sub === 'Materiais e densidades' && <MateriaisBaseAba />}
           {sub === 'A revisar' && <RevisarAba />}
+          </div>
         </>
       )}
       {aba === 'Fornecedores' && <FornecedoresAba />}
       {aba === 'Mão de obra' && <MaoObraAba />}
       {aba === 'Maquinário' && <MaquinarioAba />}
+      </div>
     </>
   );
 }

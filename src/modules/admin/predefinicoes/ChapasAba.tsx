@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Pencil, Plus, X } from 'lucide-react';
 import { moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Caixa, Campo, CampoEscolha, CampoNumero, Carregando, Cartao, Entrada, Selecao, Vazio } from '@/shared/ui';
+import { Aviso, Botao, Caixa, Campo, CampoEscolha, CampoNumero, Cartao, Entrada, EsqueletoTabela, Selecao, Vazio } from '@/shared/ui';
 import { atualizar, inserir, listarChapas, listarMateriaisBase, listarPrecosChapa, listarTipos, type Chapa } from '@/modules/biblioteca/api';
 import { descricaoChapa, lerMedida, pesoChapa, valorTotalChapa } from '@/modules/biblioteca/regras';
 import { CHAVES, Tabela, linha, molduraNumero, td, th, useGravar } from './comum';
@@ -117,7 +117,7 @@ export function ChapasAba() {
         <Entrada className="max-w-sm" placeholder="Buscar chapa" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <span className="text-sm text-suave">{filtradas.length} chapa(s)</span>
       </div>
-      {isLoading ? <Carregando /> : (
+      {isLoading ? <EsqueletoTabela /> : (
         <Tabela cabecalho={<><th className={th}>Chapa</th><th className={`${th} text-right`}>Peso (kg)</th><th className={`${th} text-right`}>Valor/kg</th><th className={`${th} text-right`}>Valor total</th><th className={th}>Ativa</th><th /></>}>
           {filtradas.length === 0 && <tr><td colSpan={6}><Vazio>Nenhuma chapa cadastrada ainda.</Vazio></td></tr>}
           {filtradas.map((c) => {

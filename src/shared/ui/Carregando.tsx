@@ -55,11 +55,15 @@ export function BarraCarregamento() {
   );
 }
 
-// Tira o preloader da primeira carga (index.html) com um esmaecer.
+// Tira o preloader da primeira carga (index.html) com um esmaecer, depois de no mínimo 2 s na tela.
+const MINIMO_PRELOADER = 2000;
 export function esconderPreloader() {
   const el = document.getElementById('preloader');
   if (!el || el.dataset.saindo) return;
   el.dataset.saindo = '1';
-  el.style.opacity = '0';
-  setTimeout(() => el.remove(), 350);
+  const inicio = (window as { __inicioPreloader?: number }).__inicioPreloader ?? Date.now();
+  setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 350);
+  }, Math.max(0, MINIMO_PRELOADER - (Date.now() - inicio)));
 }

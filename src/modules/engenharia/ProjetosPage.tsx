@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FolderOpen, FolderPlus, Search } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, mensagemErro } from '@/shared/lib/formato';
-import { Aviso, Botao, Cabecalho, Carregando, Cartao, Entrada, Selo, Vazio } from '@/shared/ui';
+import { Aviso, Botao, Cabecalho, Cartao, Entrada, EsqueletoCartoes, Selo, Vazio } from '@/shared/ui';
 import { criarProjeto, listarProjetos, propostasSemProjeto } from './api';
 import type { Projeto } from './regras';
 
@@ -55,7 +55,7 @@ export function ProjetosPage() {
         <Entrada placeholder="Buscar por código, título ou cliente" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
 
-      {isLoading ? <Carregando /> : lista.length === 0 ? (
+      {isLoading ? <EsqueletoCartoes /> : lista.length === 0 ? (
         <Vazio>Nenhum projeto ainda. Quando uma proposta for aprovada, ela aparece acima para abrir o projeto.</Vazio>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

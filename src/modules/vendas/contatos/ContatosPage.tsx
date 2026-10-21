@@ -4,7 +4,7 @@ import { CalendarPlus, Pencil, Plus, Search } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Carregando, Cartao, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Cartao, Entrada, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import { incluirContatoNoAno, listarContatos, listarEmpresas, salvarContato } from '../api';
 import type { Contato } from '../types';
 
@@ -46,7 +46,7 @@ export function ContatosPage() {
     <>
       <Cabecalho
         titulo="Contatos"
-        subtitulo={`${doAno} contatos ativos em ${ano} · ${contatos.length} no total`}
+        subtitulo={isLoading ? 'Carregando os contatos…' : `${doAno} contatos ativos em ${ano} · ${contatos.length} no total`}
         acoes={
           <>
             {pode('vendas', 'editar') && <Botao variante="secundario" onClick={() => setIncluindo(true)}><CalendarPlus size={16} /> Incluir contato existente em {ano}</Botao>}
@@ -63,7 +63,7 @@ export function ContatosPage() {
           </div>
           <Caixa marcado={todos} onChange={setTodos}>Mostrar contatos de todos os anos</Caixa>
         </div>
-        {isLoading ? <Carregando /> : lista.length === 0 ? <Vazio>Nenhum contato em {ano}. Use “Incluir contato existente” ou crie uma proposta.</Vazio> : (
+        {isLoading ? <EsqueletoTabela /> : lista.length === 0 ? <Vazio>Nenhum contato em {ano}. Use “Incluir contato existente” ou crie uma proposta.</Vazio> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-pagina text-left text-xs uppercase text-suave">

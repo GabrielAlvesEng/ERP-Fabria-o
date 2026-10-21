@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
 import { mensagemErro } from '@/shared/lib/formato';
 
 // Chaves de cache da biblioteca e das predefinições (a aba Custos lê as mesmas).
@@ -32,14 +33,16 @@ export function useGravar() {
 }
 
 export function SubAbas<T extends string>({ abas, ativa, onTrocar }: { abas: readonly T[]; ativa: T; onTrocar: (a: T) => void }) {
+  const linha = useIndicadorAbas(ativa);
   return (
-    <div className="abas mb-4 gap-1 border-b border-borda">
+    <div ref={linha} className="abas abas-indicador mb-4 gap-1 border-b border-borda" role="tablist">
       {abas.map((a) => (
-        <button key={a} type="button" onClick={() => onTrocar(a)}
+        <button key={a} type="button" role="tab" aria-selected={a === ativa} onClick={() => onTrocar(a)}
           className={`-mb-px border-b-2 px-3 py-2 text-sm transition ${a === ativa ? 'border-roxo-500 font-semibold text-roxo-600 dark:text-roxo-100' : 'border-transparent text-suave hover:text-slate-800 dark:hover:text-slate-200'}`}>
           {a}
         </button>
       ))}
+      <span className="abas-linha" />
     </div>
   );
 }

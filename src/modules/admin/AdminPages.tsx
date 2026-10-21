@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, KeyRound, Library, RotateCcw, Trash2, Truck } from 'lucide-react';
 import { supabase } from '@/shared/lib/supabase';
 import { dataHoraBR, mensagemErro } from '@/shared/lib/formato';
-import { Aviso, Botao, Cabecalho, Campo, Carregando, Cartao, Entrada, Modal, Selo, Vazio } from '@/shared/ui';
+import { Aviso, Botao, Cabecalho, Campo, Cartao, Entrada, EsqueletoTabela, Modal, Selo, Vazio } from '@/shared/ui';
 
 const abas = [
   { to: '/admin', rotulo: 'Senhas', icone: KeyRound, end: true },
@@ -151,7 +151,7 @@ export function ExcluidasPage() {
     <>
       <Cabecalho titulo="Lixeira" subtitulo={`Propostas e projetos excluídos ficam aqui por ${DIAS_LIXEIRA} dias: restaure se foi engano ou exclua definitivamente. Depois desse prazo são apagados sozinhos.`} />
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
-      {isLoading || !data ? <Carregando /> : (
+      {isLoading || !data ? <EsqueletoTabela linhas={4} /> : (
         <div className="space-y-6">
           {secao('Propostas', data.propostas, 'Nenhuma proposta na Lixeira.')}
           {secao('Projetos', data.projetos, 'Nenhum projeto na Lixeira.')}

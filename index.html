@@ -13,6 +13,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icones/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <script>
+      window.__inicioPreloader = Date.now(); // o preloader fica no mínimo 2 s (pedido do Gabriel)
       // Tema antes de tudo (sem piscar branco no tema escuro). Mesma regra de src/app/tema.ts.
       try { var t = localStorage.getItem('erp-tema'); if (t === 'escuro' || (t !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark'); } catch (e) {}
     </script>

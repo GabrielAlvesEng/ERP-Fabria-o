@@ -49,3 +49,26 @@ table, .tabular-nums { font-variant-numeric: tabular-nums; }
 /* Carregamento: barra do topo indo e voltando. */
 @keyframes barra-carregando { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 .barra-carregando { animation: barra-carregando 1.1s ease-in-out infinite; }
+
+/* Skeleton: bloco cinza com um brilho passando. */
+.esqueleto { position: relative; overflow: hidden; background: rgb(var(--borda) / 0.7); }
+.esqueleto::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  animation: esqueleto-brilho 1.4s ease-in-out infinite;
+}
+.dark .esqueleto::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent); }
+@keyframes esqueleto-brilho { to { transform: translateX(100%); } }
+
+/* Troca de abas: o conteúdo novo entra subindo e aparecendo; a linha roxa desliza até a aba escolhida. */
+@keyframes entrar { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.entrar { animation: entrar 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.abas-indicador { position: relative; }
+.abas-indicador > .abas-linha {
+  position: absolute; bottom: 0; height: 2px; border-radius: 2px; pointer-events: none;
+  background: #410fa0; left: var(--ind-x, 0); width: var(--ind-w, 0);
+  transition: left 280ms cubic-bezier(0.3, 0.8, 0.3, 1), width 280ms cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+.dark .abas-indicador > .abas-linha { background: #9672e9; }
+.abas-indicador [aria-selected='true'], .abas-indicador [aria-current='page'] { border-bottom-color: transparent !important; }
+@media (prefers-reduced-motion: reduce) { .entrar { animation: none; } .esqueleto::after { animation: none; } }

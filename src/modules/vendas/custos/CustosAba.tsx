@@ -9,7 +9,8 @@ import { listarCatalogo } from '@/modules/engenharia/api';
 import type { MaterialCatalogo } from '@/modules/engenharia/regras';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro, moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Carregando, Entrada, Modal, Selecao, Selo, type OpcaoEscolha, Vazio } from '@/shared/ui';
+import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
+import { Aviso, Botao, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Entrada, EsqueletoTabela, Modal, type OpcaoEscolha, Selecao, Selo, Vazio } from '@/shared/ui';
 import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
 import {
@@ -44,6 +45,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
   const { data: frota } = useQuery({ queryKey: ['ref_veiculos'], queryFn: listarVeiculosECombustivel, staleTime: 10 * 60_000 });
   const [itemId, setItemId] = useState<string | null>(null);
   const item = itens.find((i) => i.id === itemId) ?? itens[0];
+  const linhaAbas = useIndicadorAbas(`${item?.id}|${itens.length}|${item?.descricao}`);
 
   const chaveLinhas = ['custos', 'linhas', rev?.id, itens.map((i) => i.id).join()];
   const recarregar = () => {
@@ -66,7 +68,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
     onError: (e) => setErro(mensagemErro(e)),
   });
 
-  if (!rev) return <Carregando />;
+  if (!rev) return <EsqueletoTabela />;
 
   return (
     <div className="space-y-4">
@@ -91,9 +93,9 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
         </div>
       </div>
 
-      <div className="abas items-center gap-1 border-b border-borda">
+      <div ref={linhaAbas} className="abas abas-indicador items-center gap-1 border-b border-borda" role="tablist">
         {itens.map((i) => (
-          <button key={i.id} onClick={() => setItemId(i.id)}
+          <button key={i.id} role="tab" aria-selected={item?.id === i.id} onClick={() => setItemId(i.id)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-150 ${item?.id === i.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>
             Item {i.letra}{i.descricao && <span className="font-normal"> · {i.descricao}</span>}
           </button>
@@ -103,13 +105,13 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
             <Plus size={15} /> {novoItem.isPending ? 'Criando…' : 'Novo item'}
           </button>
         )}
+        <span className="abas-linha" />
       </div>
 
       {itens.length === 0 ? (
         <Vazio>{editavel ? 'Nenhum item de custo ainda. Clique em "Novo item" para começar (vem com o modelo da planilha).' : 'Esta revisão não tem custos lançados.'}</Vazio>
       ) : item && (
-        <ItemCustos
-          key={item.id}
+        <div key={item.id} className="entrar"><ItemCustos
           item={item}
           linhas={linhas.filter((l) => l.item_id === item.id)}
           listas={{ catalogo, refs, veiculos: frota?.veiculos ?? [], precos: frota?.precos ?? {} }}
@@ -118,7 +120,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
           onLinha={trocarLinha}
           onRecarregar={recarregar}
           onExcluido={() => { setItemId(null); recarregar(); }}
-        />
+        /></div>
       )}
     </div>
   );

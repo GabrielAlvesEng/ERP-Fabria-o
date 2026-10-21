@@ -75,7 +75,7 @@ export function Layout() {
           </div>
         )}
         <main className="mx-auto w-full min-w-0 max-w-[1600px] flex-1 p-3 sm:p-4 md:p-6">
-          <Outlet />
+          <div key={local.pathname.split('/')[1]} className="entrar"><Outlet /></div>
         </main>
       </div>
     </div>

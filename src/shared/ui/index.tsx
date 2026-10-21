@@ -357,3 +357,4 @@ export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder
   );
 }
 export { BarraCarregamento, Carregando, SimboloCarregando, esconderPreloader } from './Carregando';
+export { Esqueleto, EsqueletoCartoes, EsqueletoDashboard, EsqueletoDetalhe, EsqueletoKanban, EsqueletoPagina, EsqueletoTabela } from './Esqueleto';

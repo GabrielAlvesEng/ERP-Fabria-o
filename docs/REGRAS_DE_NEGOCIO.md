@@ -149,6 +149,10 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
 63. **Selects e carregamento (21/10/2026, pedido do Gabriel):**
     - **Select próprio do ERP** (`Selecao`) em todo o site, no lugar da lista padrão do navegador: lista com as cores, bordas e cantos do site nos temas claro e escuro, item escolhido marcado em roxo, busca quando há mais de 10 opções, teclado (setas, Enter, Esc, letra inicial) e abertura para cima quando não há espaço embaixo. Versão compacta nas tabelas.
     - **Preloader:** na primeira carga, o símbolo da Fabriaço enche de baixo para cima com as próprias cores (roxo e grafite; no tema escuro, lilás e branco). Ele está no `index.html`, para aparecer antes do JavaScript, e some com um esmaecer quando a sessão é conferida. O mesmo símbolo animado aparece, menor, nos carregamentos de telas e componentes, e uma barra fina no topo mostra quando o ERP está buscando ou gravando dados (só se passar de 250 ms).
+64. **Preloader mínimo, skeletons e troca de abas (21/10/2026, pedido do Gabriel):**
+    - O preloader da primeira carga fica **no mínimo 2 s** na tela (mesmo que o ERP carregue antes), e então esmaece.
+    - **Skeleton screens** no lugar dos "Carregando…": blocos cinza com brilho no formato do conteúdo, nas telas de Vendas (Dashboard, Empresas, Contatos, Kanban, Vendedores, detalhe da proposta, Custos, Documentos e prévia do PDF, Kick-off), Engenharia (Projetos, projeto) e Administração (Lixeira, Frota, Modelos de proposta, Predefinições). Enquanto carrega, o subtítulo diz "Carregando…" em vez de mostrar "0 propostas".
+    - **Troca de abas animada** em todo o site: a linha roxa desliza até a aba escolhida e o conteúdo novo entra subindo e aparecendo (abas dos módulos, da proposta, dos itens de custo, do projeto e das Predefinições, e na troca de módulo). Quem pede menos movimento no sistema não vê as animações.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

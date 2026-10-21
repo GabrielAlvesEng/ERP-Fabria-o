@@ -4,7 +4,7 @@ import { AlarmClock, BadgeCheck, CircleCheck, FileText, Handshake, Percent, User
 import type { LucideIcon } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { dataBR, hojeISO, moeda } from '@/shared/lib/formato';
-import { Cabecalho, Cartao, Selo } from '@/shared/ui';
+import { Cabecalho, Cartao, EsqueletoDashboard, Selo } from '@/shared/ui';
 import { Rosca, useContagem, type FatiaRosca } from '@/shared/ui/graficos';
 import { listarContatos, listarPropostas } from '../api';
 import { AGUARDANDO_RETORNO, ETAPAS_FINANCEIRO, STATUS_KANBAN, colunaKanban, type StatusProposta } from '../types';
@@ -18,8 +18,8 @@ type Kpi = { rotulo: string; valor: number; formato: 'numero' | 'moeda' | 'pct';
 
 export function DashboardPage() {
   const { ano } = useAno();
-  const { data: propostas = [] } = useQuery({ queryKey: ['propostas', ano], queryFn: () => listarPropostas(ano) });
-  const { data: contatos = [] } = useQuery({ queryKey: ['contatos'], queryFn: listarContatos });
+  const { data: propostas = [], isLoading: l1 } = useQuery({ queryKey: ['propostas', ano], queryFn: () => listarPropostas(ano) });
+  const { data: contatos = [], isLoading: l2 } = useQuery({ queryKey: ['contatos'], queryFn: listarContatos });
   const hoje = hojeISO();
 
   const soma = (f: (s: string) => boolean) => propostas.filter((p) => f(p.status)).reduce((s, p) => s + Number(p.valor), 0);
@@ -46,6 +46,7 @@ export function DashboardPage() {
   });
   const fatias: FatiaRosca[] = porColuna.map((c) => ({ id: c.s, rotulo: c.s, valor: c.n, cor: COR_COLUNA[c.s], detalhe: moeda(c.valor) }));
 
+  if (l1 || l2) return <><Cabecalho titulo="Dashboard Comercial" subtitulo={`Ano ${ano}`} /><EsqueletoDashboard /></>;
   return (
     <>
       <Cabecalho titulo="Dashboard Comercial" subtitulo={`Ano ${ano}`} />

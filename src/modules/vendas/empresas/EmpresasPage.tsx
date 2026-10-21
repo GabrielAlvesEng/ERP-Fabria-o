@@ -4,7 +4,7 @@ import { Ban, ChevronRight, Loader2, Pencil, Plus, RotateCcw, Search } from 'luc
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { consultarCNPJ } from '@/shared/lib/cnpj';
 import { apenasDigitos, cnpjValido, formatarCNPJ, mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Cabecalho, Campo, Carregando, Cartao, Entrada, Modal, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Cabecalho, Campo, Cartao, Entrada, EsqueletoTabela, Modal, Selo, Vazio } from '@/shared/ui';
 import { definirAtivoEmpresa, listarContatos, listarEmpresas, salvarEmpresa } from '../api';
 import type { Empresa } from '../types';
 
@@ -75,7 +75,7 @@ export function EmpresasPage() {
     <>
       <Cabecalho
         titulo="Empresas"
-        subtitulo={`${empresas.filter((e) => e.ativo).length} empresas ativas · ${empresas.filter((e) => !e.ativo).length} desativadas`}
+        subtitulo={isLoading ? 'Carregando as empresas…' : `${empresas.filter((e) => e.ativo).length} empresas ativas · ${empresas.filter((e) => !e.ativo).length} desativadas`}
         acoes={pode('vendas', 'criar') && <Botao onClick={() => setEditando({ ...vazia })}><Plus size={16} /> Nova empresa</Botao>}
       />
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
@@ -87,7 +87,7 @@ export function EmpresasPage() {
           </div>
         </div>
         {error && <div className="p-3"><Aviso>{mensagemErro(error)}</Aviso></div>}
-        {isLoading ? <Carregando /> : ativas.length === 0 ? <Vazio>Nenhuma empresa ativa encontrada.</Vazio> : tabela(ativas, false)}
+        {isLoading ? <EsqueletoTabela /> : ativas.length === 0 ? <Vazio>Nenhuma empresa ativa encontrada.</Vazio> : tabela(ativas, false)}
       </Cartao>
 
       {desativadas.length > 0 && (

@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Lock, Trash2, Upload, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, CampoData, Carregando, Entrada, EntradaMoeda, Selecao, Selo, Vazio } from '@/shared/ui';
+import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
+import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, EntradaMoeda, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
   abrirArquivo, atualizarRascunho, enviarArquivoRevisao, listarArquivos, listarEventos, listarReprovacoes, listarRevisoes,
   moverProposta, obterAprovacao, obterProposta, removerArquivo,
@@ -39,6 +40,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
   const [followup, setFollowup] = useState(false);
   const [excluir, setExcluir] = useState(false);
   const { data: p } = useQuery({ queryKey: ['proposta', id], queryFn: () => obterProposta(id) });
+  const linhaAbas = useIndicadorAbas(`${aba}|${p ? 1 : 0}`);
 
   const mover = useMutation({
     mutationFn: (para: StatusProposta) => moverProposta(id, para),
@@ -67,7 +69,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-marinho-900/40" onMouseDown={onFechar}>
       <div className={`flex h-full w-full flex-col bg-superficie shadow-xl transition-[max-width] ${aba === 'Custos' || aba === 'Documentos' ? 'max-w-6xl' : aba === 'Kick-off' ? 'max-w-4xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
-        {!p ? <Carregando /> : (
+        {!p ? <EsqueletoDetalhe /> : (
           <>
             <div className="border-b border-borda px-5 py-4">
               <div className="flex items-start justify-between gap-3">
@@ -97,12 +99,13 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
               </div>
               {erro && <div className="mt-2"><Aviso>{erro}</Aviso></div>}
             </div>
-            <div className="abas gap-x-1 border-b border-borda px-3">
+            <div ref={linhaAbas} className="abas abas-indicador gap-x-1 border-b border-borda px-3" role="tablist">
               {abas.filter((a) => a !== 'Custos' || pode('custos', 'ler')).map((a) => (
-                <button key={a} onClick={() => setAba(a)} className={`-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors duration-150 ${aba === a ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>{a}</button>
+                <button key={a} role="tab" aria-selected={aba === a} onClick={() => setAba(a)} className={`-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors duration-150 ${aba === a ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>{a}</button>
               ))}
+              <span className="abas-linha" />
             </div>
-            <div className="flex-1 overflow-y-auto p-5">
+            <div key={aba} className="entrar flex-1 overflow-y-auto p-5">
               {aba === 'Dados' && <AbaDados p={p} />}
               {aba === 'Custos' && <CustosAba proposta={p} />}
               {aba === 'Documentos' && <DocumentosAba proposta={p} />}

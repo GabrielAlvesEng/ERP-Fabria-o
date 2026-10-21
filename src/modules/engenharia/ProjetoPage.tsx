@@ -6,7 +6,8 @@ import { ExcluirProjetoModal } from './ExcluirProjetoModal';
 import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Carregando, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
+import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
+import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
 import { atualizarProjeto, custoMateriaisProposta, listarCatalogo, listarConjuntos, listarImportacoesCad, listarPecas, listarRefsEng, obterProjeto } from './api';
 import { LIMITE_DIFERENCA, estimar, resumoCompra, type RefsEng } from './biblioteca';
 import { descricaoDoItem } from './CampoBiblioteca';
@@ -36,9 +37,10 @@ export function ProjetoPage() {
   const { data: projeto, error } = useQuery({ queryKey: ['eng', id, 'projeto'], queryFn: () => obterProjeto(id) });
   const { data: conjuntos = [] } = useQuery({ queryKey: ['eng', id, 'conjuntos'], queryFn: () => listarConjuntos(id) });
   const { data: pecas = [] } = useQuery({ queryKey: ['eng', id, 'pecas'], queryFn: () => listarPecas(id) });
+  const linhaAbas = useIndicadorAbas(`${aba}|${projeto ? 1 : 0}`);
 
   if (error) return <Aviso>{mensagemErro(error)}</Aviso>;
-  if (!projeto) return <Carregando />;
+  if (!projeto) return <EsqueletoDetalhe />;
   const pct = progresso(conjuntos);
 
   return (
@@ -72,19 +74,22 @@ export function ProjetoPage() {
         </div>
       </div>
 
-      <div className="abas gap-x-1 border-b border-borda">
+      <div ref={linhaAbas} className="abas abas-indicador gap-x-1 border-b border-borda" role="tablist">
         {abas.map((a) => (
-          <button key={a.id} onClick={() => setAba(a.id)} className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm ${aba === a.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'} transition-colors duration-150`}>
+          <button key={a.id} role="tab" aria-selected={aba === a.id} onClick={() => setAba(a.id)} className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm ${aba === a.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'} transition-colors duration-150`}>
             <a.icone size={15} /> {a.rotulo}
           </button>
         ))}
+        <span className="abas-linha" />
       </div>
+      <div key={aba} className="entrar">
 
       {aba === 'arvore' && <ArvoreView projetoCodigo={projeto.codigo} conjuntos={conjuntos} pecas={pecas} selecionado={selecionado} onSelecionar={setSelecionado} />}
       {aba === 'mapa' && <MapaView projetoCodigo={projeto.codigo} conjuntos={conjuntos} pecas={pecas} onAbrir={(cid) => { setSelecionado(cid); setAba('arvore'); }} />}
       {aba === 'bom' && <ListaMateriais projeto={projeto} />}
       {aba === 'kickoff' && <KickoffAba propostaId={projeto.proposta_id} statusProposta="Aprovado" somenteLeitura />}
       {aba === 'dados' && <DadosProjeto projeto={projeto} />}
+      </div>
       {importando && <ImportarSolidworks projeto={projeto} conjuntos={conjuntos} pecas={pecas} onFechar={() => setImportando(false)} />}
       {excluindo && <ExcluirProjetoModal projeto={projeto} onFechar={() => setExcluindo(false)} onExcluido={() => navegar('/engenharia')} />}
     </div>

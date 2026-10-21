@@ -1,13 +1,36 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useLayoutEffect, useRef } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 
 export interface AbaModulo { to: string; rotulo: string; icone: LucideIcon; end?: boolean }
 
+// Linha roxa que desliza até a aba ativa (decisão 64). Use no contêiner das abas, junto com a classe
+// "abas-indicador" e um <span className="abas-linha" />; a aba ativa tem aria-selected ou aria-current.
+export function useIndicadorAbas<T extends HTMLElement = HTMLDivElement>(chave: unknown) {
+  const ref = useRef<T>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const medir = () => {
+      const a = el.querySelector<HTMLElement>('[aria-selected="true"], [aria-current="page"]');
+      el.style.setProperty('--ind-x', `${a ? a.offsetLeft : 0}px`);
+      el.style.setProperty('--ind-w', `${a ? a.offsetWidth : 0}px`);
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [chave]);
+  return ref;
+}
+
 // Abas superiores dos módulos (redesign, decisão 51): linha roxa sob a aba ativa; no celular rolam de lado (decisão 59).
 export function AbasModulo({ abas }: { abas: AbaModulo[] }) {
+  const { pathname } = useLocation();
+  const linha = useIndicadorAbas(pathname);
   return (
     <div className="flex min-h-full flex-col gap-4">
-      <div className="abas gap-x-1 border-b border-borda" role="tablist">
+      <div ref={linha} className="abas abas-indicador gap-x-1 border-b border-borda" role="tablist">
         {abas.map((a) => (
           <NavLink key={a.to} to={a.to} end={a.end} role="tab"
             className={({ isActive }) => `-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm transition-colors duration-150 ${isActive
@@ -16,9 +39,10 @@ export function AbasModulo({ abas }: { abas: AbaModulo[] }) {
             <a.icone size={16} /> {a.rotulo}
           </NavLink>
         ))}
+        <span className="abas-linha" />
       </div>
       <div className="flex-1 rounded-xl border border-borda bg-superficie p-3 shadow-sm sm:p-4 md:p-6">
-        <Outlet />
+        <div key={pathname} className="entrar"><Outlet /></div>
       </div>
     </div>
   );

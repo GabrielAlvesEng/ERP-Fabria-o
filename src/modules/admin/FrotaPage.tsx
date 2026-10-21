@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, Car, Fuel, History, Plus, Trash2, Truck } from 'lucide-react';
 import { supabase } from '@/shared/lib/supabase';
 import { dataBR, dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Cabecalho, Campo, CampoData, CampoNumero, Carregando, Cartao, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Cabecalho, Campo, CampoData, CampoNumero, Cartao, Entrada, EsqueletoCartoes, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 
 // Administração → Frota (decisões 42 e 55): preço dos 3 combustíveis com histórico e ficha completa de cada veículo
 // (placa, tipo, eixos, combustível, documentos, até 3 fotos). Os custos das propostas usam o veículo, o consumo e o preço.
@@ -63,7 +63,7 @@ export function FrotaPage() {
         acoes={<Botao onClick={() => setAberto('novo')}><Plus size={15} /> Novo veículo</Botao>} />
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <div className="min-w-0">
-          {isLoading ? <Carregando /> : veiculos.length === 0 ? <Vazio>Nenhum veículo cadastrado.</Vazio> : (
+          {isLoading ? <EsqueletoCartoes /> : veiculos.length === 0 ? <Vazio>Nenhum veículo cadastrado.</Vazio> : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {veiculos.map((v) => {
                 const capa = fotos.find((f) => f.veiculo_id === v.id);

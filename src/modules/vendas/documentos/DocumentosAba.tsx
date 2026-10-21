@@ -4,7 +4,7 @@ import { Download, Eye, FileCheck2, PencilLine, RotateCcw, Sparkles } from 'luci
 import { supabase } from '@/shared/lib/supabase';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Carregando } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, EsqueletoDetalhe, EsqueletoPagina } from '@/shared/ui';
 import { enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
 import type { Proposta } from '@/modules/vendas/types';
 import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadroes, salvarDocumento } from './api';
@@ -115,7 +115,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
     alterar(padroes[tipo]);
   }
 
-  if (isLoading || !padroes || !doc) return <Carregando />;
+  if (isLoading || !padroes || !doc) return <EsqueletoDetalhe />;
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -153,7 +153,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
           <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} />
         </div>
         <div className={`lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:block'}`}>
-          {dados ? <Suspense fallback={<Carregando texto="Carregando a prévia…" />}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} /></Suspense> : <Carregando texto="Carregando os dados da proposta…" />}
+          {dados ? <Suspense fallback={<EsqueletoPagina />}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} /></Suspense> : <EsqueletoPagina />}
         </div>
       </div>
     </div>
