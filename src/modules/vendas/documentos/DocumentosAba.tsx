@@ -1,14 +1,15 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Eye, FileCheck2, PencilLine, RotateCcw } from 'lucide-react';
+import { Download, Eye, FileCheck2, PencilLine, RotateCcw, Sparkles } from 'lucide-react';
+import { supabase } from '@/shared/lib/supabase';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
-import { Aviso, Botao, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Vazio } from '@/shared/ui';
 import { enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
 import type { Proposta } from '@/modules/vendas/types';
 import { dadosDaProposta, lerDocumentos, lerPadroes, salvarDocumento } from './api';
 import { EditorDocumento } from './EditorDocumento';
-import { nomeArquivo, type Documento, type TipoDocumento } from './modelo';
+import { aplicarTextosIA, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
 
 const Previa = lazy(() => import('./Previa'));
 
@@ -79,6 +80,29 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
     setGerando(false);
   }
 
+  // Textos por IA (entrega 3): a explicação vai para a Edge Function, que chama a OpenAI com a chave guardada no Supabase.
+  const [pensando, setPensando] = useState(false);
+  const explicacao = doc?.explicacao ?? docs[tipo === 'tecnica' ? 'comercial' : 'tecnica']?.explicacao ?? '';
+  async function gerarComIA() {
+    if (!doc || !dados) return;
+    if (explicacao.trim().length < 15) return setMsg({ tipo: 'erro', texto: 'Explique a proposta com um pouco mais de detalhe (o que será feito, para quem e onde).' });
+    const jaTem = doc.secoes.some((s) => s.id === 'objetivo' && s.tipo === 'texto' && s.texto.trim());
+    if (jaTem && !confirm('A IA vai substituir capa, objetivo e os demais textos da obra. Garantia, validade e confidencialidade não mudam. Continuar?')) return;
+    setMsg(null); setPensando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gerar-textos-proposta', {
+        body: { tipo, explicacao, titulo: p.titulo, cliente: dados.cliente.nome, local: dados.cliente.local, itens: dados.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) },
+      });
+      if (error) {
+        const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
+        throw new Error(corpo?.erro ?? error.message);
+      }
+      alterar(aplicarTextosIA({ ...doc, explicacao }, (data as { textos: TextosIA }).textos));
+      setMsg({ tipo: 'info', texto: 'Textos gerados pela IA. Revise antes de gerar o PDF: a IA pode errar detalhes técnicos.' });
+    } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); }
+    setPensando(false);
+  }
+
   function restaurar() {
     if (!padroes || !confirm(`Voltar a proposta ${tipo === 'tecnica' ? 'técnica' : 'comercial'} para os textos padrão? O que foi escrito nesta revisão será substituído.`)) return;
     alterar(padroes[tipo]);
@@ -105,6 +129,17 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
         </div>
       </div>
       {!editavel && <Aviso tipo="info">{rev?.status === 'enviada' ? `A R${p.revisao_atual} já foi enviada: os textos ficam como foram enviados. Para mudar, crie uma nova revisão.` : 'Somente leitura.'}</Aviso>}
+      {editavel && (
+        <div className="rounded-xl bg-roxo-50/60 p-3 ring-1 ring-roxo-100 dark:bg-roxo-500/10 dark:ring-roxo-500/30">
+          <div className="mb-1 flex items-center gap-2 text-sm font-semibold"><Sparkles size={15} className="text-roxo-600 dark:text-roxo-100" /> Explique a proposta</div>
+          <AreaTexto rows={3} value={explicacao} onChange={(e) => alterar({ ...doc, explicacao: e.target.value })}
+            placeholder="Ex.: proposta técnica para a SYMRISE de Descalvado-SP: desenvolvimento de um sistema de vedação pneumática por meio de um perfil de borracha com geometria em “H”, associado a um ponto de conexão para ar comprimido, visando vedar e evitar vazamentos." />
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-suave">Vai para a OpenAI só a explicação, o cliente, o local e os itens. Preços e dados de contato não vão.</span>
+            <Botao onClick={gerarComIA} disabled={pensando || !dados}><Sparkles size={15} /> {pensando ? 'Escrevendo… (até 1 min)' : `Gerar textos com IA (${tipo === 'tecnica' ? 'técnica' : 'comercial'})`}</Botao>
+          </div>
+        </div>
+      )}
       {msg && <Aviso tipo={msg.tipo === 'info' ? 'info' : undefined}>{msg.texto}</Aviso>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className={verPrevia ? 'hidden lg:block' : ''}>

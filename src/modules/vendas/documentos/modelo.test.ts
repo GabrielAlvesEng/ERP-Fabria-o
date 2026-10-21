@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blocos, completarDocumento, documentoPadrao, marcadorCartao, nomeArquivo, numerar, substituir, trechos } from './modelo';
+import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, marcadorCartao, nomeArquivo, numerar, substituir, trechos } from './modelo';
 
 describe('documentos da proposta', () => {
   it('lê negrito', () => {
@@ -37,5 +37,25 @@ describe('documentos da proposta', () => {
   });
   it('nome do arquivo', () => {
     expect(nomeArquivo('26-01-019', 0, 'Vedação Pneumática / Rosca MP', 'tecnica')).toBe('Proposta 26-01-019-R0 FABRIAÇO - Vedação Pneumática Rosca MP - Técnica.pdf');
+  });
+  it('encaixa os textos da IA sem mexer no resto', () => {
+    const t = aplicarTextosIA(documentoPadrao('tecnica'), {
+      capa: { linha1: 'Vedação Pneumática', linha2: 'Rosca MP', subtitulo: 'Novo cabeçote.' }, objetivo: 'Objetivo da IA.', aplicacao: '  ',
+      competencias: { Mecânica: 'Sim', Pneumática: 'Sim' }, escopo_intro: 'Etapas:', escopo: [{ titulo: 'ENGENHARIA', texto: 'Projeto.' }, { titulo: ' ', texto: 'vazio' }],
+    });
+    expect(t.capa.linha2).toBe('Rosca MP');
+    const sec = (id: string) => t.secoes.find((s) => s.id === id)!;
+    expect(sec('objetivo')).toMatchObject({ texto: 'Objetivo da IA.' });
+    expect(sec('aplicacao')).toMatchObject({ texto: '' });
+    const gar = sec('garantia');
+    expect(gar.tipo === 'texto' ? gar.texto : '').toMatch(/18 meses/);
+    const comp = sec('competencias');
+    expect(comp.tipo === 'competencias' && comp.itens.filter((i) => i.valor === 'Sim').map((i) => i.nome)).toEqual(['Mecânica', 'Pneumática']);
+    const esc = sec('escopo');
+    expect(esc.tipo === 'cartoes' && [esc.intro, esc.cartoes.length]).toEqual(['Etapas:', 1]);
+    const c = aplicarTextosIA(documentoPadrao('comercial'), { abertura: 'Olá.', descricoes: [{ letra: 'A', texto: 'Fabricação do cabeçote.' }] });
+    const val = c.secoes.find((s) => s.id === 'valores')!;
+    expect(c.abertura).toBe('Olá.');
+    expect(val.tipo === 'valores' && val.descricoes.A).toBe('Fabricação do cabeçote.');
   });
 });

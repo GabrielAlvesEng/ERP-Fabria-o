@@ -146,3 +146,10 @@
     - títulos de seção sozinhos no pé da página;
     - tabela de impostos espremida.
   - **Não testado com login real, e a prévia não aparece no Chrome do Android** (use Baixar PDF).
+- **Gerador de propostas, entrega 3: textos por IA (decisão 61):**
+  - Edge Function `gerar-textos-proposta` publicada no Supabase (`supabase/functions/gerar-textos-proposta/index.ts`). Ela confere o login e a permissão `vendas.editar` e chama a OpenAI com saída em formato fixo (JSON schema).
+  - Chave nos segredos do Supabase (`IA_API_KEY`, cadastrada pelo Gabriel), nunca no site.
+  - Conferido no Supabase: a função enxerga a chave e recusa chamadas sem login.
+  - Na tela: campo "Explique a proposta" e botão "Gerar textos com IA". As respostas são encaixadas nas seções por `aplicarTextosIA`, com 1 teste novo (112 no total).
+  - Conferido no navegador com resposta simulada: o envio leva só explicação, título, cliente, local e itens; capa e escopo foram preenchidos e salvos.
+  - **A chamada real à OpenAI não foi testada** (exige o login do Gabriel). A chave expira em 7 dias: depois disso será preciso gerar outra e atualizar o segredo.

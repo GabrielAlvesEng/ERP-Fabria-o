@@ -26,6 +26,7 @@ export interface Documento {
   capa: { linha1: string; linha2: string; subtitulo: string };
   visao: { objeto: string; solucao: string; unidade: string }; // técnica: cartões do "Visão do documento"
   abertura: string; // comercial: parágrafo do "Olá, {contato}"
+  explicacao?: string; // o que o vendedor escreveu para a IA (não sai no PDF)
   secoes: Secao[];
 }
 
@@ -263,4 +264,34 @@ export const marcadorCartao = (marcador: 'numero' | 'letra', i: number) => (marc
 export function nomeArquivo(codigo: string, revisao: number, titulo: string, tipo: TipoDocumento): string {
   const limpo = titulo.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
   return `Proposta ${codigo}-R${revisao} FABRIAÇO - ${limpo} - ${tipo === 'tecnica' ? 'Técnica' : 'Comercial'}.pdf`;
+}
+
+// Resposta da IA (Edge Function gerar-textos-proposta) encaixada nas seções. Preços nunca vêm daqui.
+export interface TextosIA {
+  capa?: { linha1: string; linha2: string; subtitulo: string };
+  visao?: { objeto: string; solucao: string };
+  objetivo?: string; aplicacao?: string; normas?: string; fora_escopo?: string; abertura?: string; escopo_intro?: string;
+  competencias?: Record<string, Marca3>;
+  escopo?: Cartao[];
+  descricoes?: { letra: string; texto: string }[];
+}
+
+export function aplicarTextosIA(doc: Documento, t: TextosIA): Documento {
+  const secoes = doc.secoes.map((s): Secao => {
+    if (s.tipo === 'texto') {
+      const novo = ({ objetivo: t.objetivo, aplicacao: t.aplicacao, normas: t.normas, fora: t.fora_escopo } as Record<string, string | undefined>)[s.id];
+      return novo?.trim() ? { ...s, texto: novo.trim() } : s;
+    }
+    if (s.tipo === 'competencias' && t.competencias) return { ...s, itens: s.itens.map((i) => ({ ...i, valor: t.competencias![i.nome] ?? i.valor })) };
+    if (s.tipo === 'cartoes' && s.id === 'escopo' && t.escopo?.length) return { ...s, intro: t.escopo_intro?.trim() || s.intro, cartoes: t.escopo.filter((c) => c.titulo.trim()) };
+    if (s.tipo === 'valores' && t.descricoes?.length) return { ...s, descricoes: { ...s.descricoes, ...Object.fromEntries(t.descricoes.map((d) => [d.letra, d.texto])) } };
+    return s;
+  });
+  return {
+    ...doc,
+    capa: t.capa ? { ...doc.capa, ...t.capa } : doc.capa,
+    visao: t.visao ? { ...doc.visao, ...t.visao } : doc.visao,
+    abertura: t.abertura?.trim() || doc.abertura,
+    secoes,
+  };
 }

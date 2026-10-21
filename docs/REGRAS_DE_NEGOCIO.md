@@ -131,7 +131,12 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - **Gerar e anexar PDF** guarda o arquivo na revisão (técnica ou comercial), com o nome `Proposta {código}-R{n} FABRIAÇO - {título} - Técnica/Comercial.pdf`. O arquivo vai junto no e-mail de envio. **Baixar PDF** só baixa.
     - Revisão enviada fica só leitura. A nova revisão começa com os textos da anterior.
     - **Administração → Modelos de proposta**: dados da Fabriaço e textos padrão (sobre nós, normas, responsabilidades, documentações, fora do escopo, gestão, garantia de 18 meses, prazo, validade, confidencialidade, frete CIF, impostos padrão, pagamento 21 DDL). Os padrões foram confirmados pelo Gabriel: dados da Fabriaço e impostos do modelo, capa com assunto na 1ª linha e equipamento na 2ª.
-    - Textos por IA (OpenAI) e imagens na capa/escopo são as entregas 3 e 4.
+    - **Textos por IA (entrega 3, 21/10/2026):** campo "Explique a proposta" e botão "Gerar textos com IA", na técnica e na comercial.
+      - A Edge Function `gerar-textos-proposta` chama a OpenAI (modelo `gpt-4.1-mini`, que pode ser trocado pelo segredo `IA_MODELO`) com a chave guardada no Supabase.
+      - Só usuário logado com `vendas.editar` usa.
+      - Vão para a OpenAI só a explicação, o cliente, o local, o título e os itens. **Preços nunca vêm da IA.**
+      - A IA preenche capa, visão, objetivo, aplicação, normas, competências, escopo e fora do escopo (técnica), e abertura, objetivo e descrição dos itens (comercial). Garantia, validade, confidencialidade e demais textos padrão não mudam.
+    - Imagens na capa e no escopo: entrega 4.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
