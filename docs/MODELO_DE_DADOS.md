@@ -85,3 +85,13 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `ref_veiculos` ganhou placa (única, maiúscula), tipo, marca, modelo, ano, cor, renavam, chassi, eixos (2 a 9), combustivel (gasolina, etanol, diesel, flex), capacidade_kg, passageiros, licenciamento_vence, seguro_vence, revisao_km, revisao_data, situacao (ativo, manutencao, vendido) e observacoes. O gatilho `sincronizar_veiculo_ativo` mantém `ativo = (situacao = 'ativo')`.
 - `veiculo_fotos` (veiculo_id, caminho único, nome, ordem): no máximo 3 por veículo (gatilho `limitar_fotos_veiculo`). Arquivos no bucket privado `frota`, em `veiculos/{veiculo_id}/…` (5 MB, JPG/PNG/WEBP).
 - `custo_linhas.ida_volta`: na Viagem, combustível e pedágio contam 2 vezes; `copiar_custos` leva o campo para a nova revisão.
+
+## Segurança (`20261021000025_revoga_truncate.sql`)
+
+- Nenhuma tabela do schema `public` dá TRUNCATE, REFERENCES, TRIGGER ou MAINTAIN para `anon` e `authenticated`; o padrão do schema também não, para tabelas novas.
+
+## Fixadores em pastas (`20261021000026_fixadores_pastas.sql`)
+
+- `bib_fixador_tipos` (nome, rotulo_a, rotulo_b vazio = sem comprimento, ordem, ativo), `bib_fixador_materiais` (nome, ordem, ativo) e `bib_fixador_tipo_materiais` (quais materiais cada tipo tem, com ativo).
+- `bib_itens` ganhou `fixador_tipo_id`, `fixador_material_id`, `medida` e `comprimento` (únicos juntos). O gatilho `montar_descricao_fixador` monta descrição e material; renomear tipo ou material atualiza os itens.
+- Leitura: custos, engenharia ou admin; gravação: admin.editar.

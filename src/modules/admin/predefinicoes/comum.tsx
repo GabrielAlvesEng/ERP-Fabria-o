@@ -6,7 +6,7 @@ import { mensagemErro } from '@/shared/lib/formato';
 export const CHAVES = {
   materiais: ['bib', 'materiais'], tipos: ['bib', 'tipos'], precosChapa: ['bib', 'precos_chapa'], chapas: ['bib', 'chapas'],
   perfis: ['bib', 'perfis'], pesos: ['bib', 'pesos'], itens: ['bib', 'itens'], fornecedores: ['bib', 'fornecedores'],
-  servicos: ['bib', 'servicos'], revisar: ['bib', 'revisar'], maoObra: ['admin_mao_obra'], maquinas: ['admin_maquinas'],
+  servicos: ['bib', 'servicos'], fixadores: ['bib', 'fixadores'], revisar: ['bib', 'revisar'], maoObra: ['admin_mao_obra'], maquinas: ['admin_maquinas'],
 } as const;
 
 // Executa uma gravação, mostra o erro do banco (RLS, repetido, validação) e recarrega a biblioteca.

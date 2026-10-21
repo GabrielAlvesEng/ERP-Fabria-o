@@ -1,3 +1,5 @@
+import { lerTudo } from '@/shared/lib/consulta';
+import { compararTamanho } from '@/modules/biblioteca/fixadores';
 import { supabase } from '@/shared/lib/supabase';
 import type { CustoItem, CustoLinha, LinhaNova } from './regras';
 import { modeloLinhas, proximaLetra } from './regras';
@@ -10,7 +12,7 @@ function ok<T>(r: { data: T | null; error: unknown }): T {
 // Biblioteca de Materiais e Predefinições usadas na aba Custos (decisões 48 a 50).
 export interface RefChapa { id: string; cod_mat: string; tipo_id: string; descricao: string; peso_kg: number; valor_kg: number | null }
 export interface RefPerfil { id: string; cod_mat: string | null; descricao: string; kg_m: number | null; preco_modo: 'm' | 'kg'; valor: number }
-export interface RefItem { id: string; grupo: 'Comerciais' | 'Fixadores' | 'Consumíveis'; descricao: string; material: string; unidade: string; valor: number }
+export interface RefItem { id: string; grupo: 'Comerciais' | 'Fixadores' | 'Consumíveis'; descricao: string; material: string; unidade: string; valor: number; fixador_tipo_id?: string | null; medida?: string; comprimento?: string }
 export interface RefServico { id: string; servico: string; valor: number; fornecedor: string }
 export interface RefMaoObra { etapa: string; funcao: string; valor_hora: number }
 export interface RefMaquina { nome: string; valor_hora: number }
@@ -19,19 +21,28 @@ export interface Referencias {
   servicos: RefServico[]; maoObra: RefMaoObra[]; maquinas: RefMaquina[];
 }
 
+// Fixadores do mesmo tipo e material na ordem de catálogo (M8 x 20 antes de M8 x 100); o resto por descrição.
+function ordenarItens(itens: RefItem[]): RefItem[] {
+  // Chave da "pasta" do fixador: a descrição sem a medida ("Parafuso Allen Cab. Cilíndrica" + material).
+  const pasta = (i: RefItem) => i.fixador_tipo_id && i.medida ? `${i.descricao.slice(0, i.descricao.indexOf(` ${i.medida}`))} ${i.material}` : i.descricao;
+  return [...itens].sort((a, b) => pasta(a).localeCompare(pasta(b), 'pt-BR')
+    || (a.fixador_tipo_id && b.fixador_tipo_id ? compararTamanho({ medida: a.medida ?? '', comprimento: a.comprimento ?? '' }, { medida: b.medida ?? '', comprimento: b.comprimento ?? '' }) : 0)
+    || a.descricao.localeCompare(b.descricao, 'pt-BR'));
+}
+
 export async function listarReferencias(): Promise<Referencias> {
   const [ch, pc, pf, it, sv, mo, maq] = await Promise.all([
     supabase.from('bib_chapas').select('id, cod_mat, tipo_id, descricao, peso_kg, valor_kg').eq('ativo', true).order('descricao').limit(5000),
     supabase.from('bib_chapa_precos').select('cod_mat, tipo_id, valor_kg'),
     supabase.from('bib_perfis').select('id, cod_mat, descricao, kg_m, preco_modo, valor').eq('ativo', true).order('descricao').limit(5000),
-    supabase.from('bib_itens').select('id, grupo, descricao, material, unidade, valor').eq('ativo', true).order('descricao').limit(5000),
+    lerTudo<RefItem>((de, ate) => supabase.from('bib_itens').select('id, grupo, descricao, material, unidade, valor, fixador_tipo_id, medida, comprimento').eq('ativo', true).order('descricao').order('id').range(de, ate)),
     supabase.from('fornecedor_servicos').select('id, servico, valor, unidade, fornecedores!inner(nome, ativo)').eq('ativo', true).eq('unidade', 'hora').eq('fornecedores.ativo', true),
     supabase.from('ref_mao_obra').select('etapa, funcao, valor_hora').eq('ativo', true).order('ordem'),
     supabase.from('ref_maquinas').select('nome, valor_hora').eq('ativo', true).eq('terceirizada', false).order('ordem'),
   ]);
   type Sv = { id: string; servico: string; valor: number; fornecedores: { nome: string } | { nome: string }[] };
   return {
-    chapas: ok(ch) ?? [], precosChapa: ok(pc) ?? [], perfis: ok(pf) ?? [], itens: ok(it) ?? [],
+    chapas: ok(ch) ?? [], precosChapa: ok(pc) ?? [], perfis: ok(pf) ?? [], itens: ordenarItens(ok(it) ?? []),
     servicos: ((ok(sv) ?? []) as unknown as Sv[]).map((x) => ({ id: x.id, servico: x.servico, valor: Number(x.valor), fornecedor: Array.isArray(x.fornecedores) ? x.fornecedores[0]?.nome ?? '' : x.fornecedores.nome })),
     maoObra: ok(mo) ?? [], maquinas: ok(maq) ?? [],
   };

@@ -3,6 +3,7 @@ import { Cabecalho } from '@/shared/ui';
 import { ChapasAba } from './ChapasAba';
 import { PerfisAba } from './PerfisAba';
 import { FornecedoresAba, ItensAba, MaoObraAba, MaquinarioAba, MateriaisBaseAba, RevisarAba } from './OutrasAbas';
+import { FixadoresAba } from './FixadoresAba';
 import { SubAbas } from './comum';
 
 const ABAS = ['Materiais', 'Fornecedores', 'Mão de obra', 'Maquinário'] as const;
@@ -23,7 +24,7 @@ export function PredefinicoesPage() {
           {sub === 'Chapas' && <ChapasAba />}
           {sub === 'Perfis' && <PerfisAba />}
           {sub === 'Itens comerciais' && <ItensAba grupo="Comerciais" />}
-          {sub === 'Fixadores' && <ItensAba grupo="Fixadores" />}
+          {sub === 'Fixadores' && <FixadoresAba />}
           {sub === 'Consumíveis' && <ItensAba grupo="Consumíveis" />}
           {sub === 'Materiais e densidades' && <MateriaisBaseAba />}
           {sub === 'A revisar' && <RevisarAba />}

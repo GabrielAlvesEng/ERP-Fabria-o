@@ -1,6 +1,6 @@
 # Biblioteca de Fixadores em pastas
 
-Versão 1, 21/10/2026. **Estado: planejamento aguardando aprovação do Gabriel.**
+Versão 1, 21/10/2026. **Estado: implementado (decisão 58).** Respostas: grade inicial (sem resposta; seguida a recomendação), polegada sim, valor por peça, os 4 materiais só nos tipos que os têm.
 
 Pedido (21/10): separar os fixadores em pastas, como as pastas do computador da empresa:
 1. pastas por **tipo** de fixador;

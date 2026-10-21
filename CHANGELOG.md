@@ -101,3 +101,15 @@
 - **Viagem mais organizada (decisão 56):** veículo próprio sem as colunas Km/l e R$/l (vêm da Frota e aparecem embaixo do veículo, com aviso quando o veículo não é cadastrado); nova ordem das colunas; colunas de número com largura mínima, para não cortarem os valores. Conferido no navegador a 840 px de largura.
 - **Logo oficial (decisão 57):** SVGs do Gabriel em `public/marca/` (símbolo, letreiro e logo completa, mais as versões do manual para o tema escuro); favicon trocado pelo símbolo; ícones do celular (180, 192, 512 e maskable) gerados do símbolo; menu lateral, topo do celular e login com a logo nova; a marca provisória `public/marca/simbolo.svg` foi substituída. Link "Esqueci minha senha" legível no tema escuro. Conferido no navegador no claro, no escuro e no celular.
 - Planejamento da Biblioteca de Fixadores em pastas (tipo → material → tamanhos) em `docs/PLANEJAMENTO_FIXADORES.md`. Aguardando aprovação.
+- **Segurança:** migration `20261021000025_revoga_truncate.sql` aplicada.
+  - As 27 tabelas criadas depois da 0004 tinham herdado TRUNCATE, REFERENCES, TRIGGER e MAINTAIN para `anon` e `authenticated`. O TRUNCATE ignora o RLS: com a chave pública do site, sem login, daria para esvaziar uma tabela.
+  - Os privilégios foram retirados, e o padrão do schema também, para tabelas futuras. Conferido: `anon` sem nenhum privilégio nas tabelas e as tabelas novas sem TRUNCATE.
+  - Nenhum dado foi alterado. Não há como saber pelo banco se alguém usou isso; as contagens das tabelas estão normais.
+- **Fixadores em pastas (decisão 58):**
+  - Migration `20261021000026_fixadores_pastas.sql` aplicada: `bib_fixador_tipos`, `bib_fixador_materiais`, `bib_fixador_tipo_materiais` e colunas de fixador em `bib_itens`, com a descrição montada por gatilho. Testada antes numa transação desfeita.
+  - Carga de 2.093 tamanhos sem preço. Os 168 comerciais não mudaram.
+  - Tela Administração → Predefinições → Fixadores com pastas, caminho para voltar, busca geral, tabela de tamanhos, "Gerar vários" e "Tipo e materiais". Ordem de catálogo (métrico antes de polegada, M8 x 20 antes de M8 x 100), com 4 testes novos.
+  - Leitura da biblioteca em páginas de 1.000: a API do Supabase devolve no máximo 1.000 linhas, e com os fixadores a biblioteca passou disso. Vale nos custos, na Engenharia e nas Predefinições.
+  - Campo de escolha busca por palavras em qualquer ordem.
+  - Conferido no navegador com dados simulados: adicionar, gerar 3 combinações que faltavam, busca geral, pastas do anel (Aço mola) e escolha na proposta ("allen m8 zinc" → R$ 0,85/pç). 104 testes e build ok.
+- Planejamento da exclusão de projetos e da Lixeira em `docs/PLANEJAMENTO_LIXEIRA.md`, aguardando confirmação (muda a regra de exclusão sempre lógica).

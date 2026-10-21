@@ -1,3 +1,4 @@
+import { lerTudo } from '@/shared/lib/consulta';
 import { supabase } from '@/shared/lib/supabase';
 import type { Conjunto, MaterialCatalogo, Peca, Projeto } from './regras';
 import type { RefsEng } from './biblioteca';
@@ -88,7 +89,7 @@ export async function listarRefsEng(): Promise<RefsEng> {
   const [ch, pf, it, tp, pc] = await Promise.all([
     supabase.from('bib_chapas').select('id, cod_mat, tipo_id, descricao, espessura_mm, largura_mm, comprimento_mm, peso_kg, valor_kg').eq('ativo', true).limit(5000),
     supabase.from('bib_perfis').select('id, cod_mat, tipo_id, descricao, a_mm, b_mm, c_mm, parede_mm, kg_m, preco_modo, valor').eq('ativo', true).order('descricao').limit(5000),
-    supabase.from('bib_itens').select('id, grupo, descricao, unidade, valor').eq('ativo', true).order('descricao').limit(5000),
+    lerTudo((de, ate) => supabase.from('bib_itens').select('id, grupo, descricao, unidade, valor').eq('ativo', true).order('descricao').order('id').range(de, ate)),
     supabase.from('bib_tipos').select('id, grupo, nome, formato'),
     supabase.from('bib_chapa_precos').select('cod_mat, tipo_id, valor_kg'),
   ]);

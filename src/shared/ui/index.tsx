@@ -309,7 +309,9 @@ export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder
   }, [aberta]);
 
   const termo = semAcento(texto.trim());
-  const filtradas = (termo && texto !== valor ? opcoes.filter((o) => semAcento(`${o.valor} ${o.detalhe ?? ''}`).includes(termo)) : opcoes).slice(0, 60);
+  // Todas as palavras digitadas, em qualquer ordem ("allen m8 inox" acha "Parafuso Allen Cab. Cilíndrica M8 x 20 Inox 304").
+  const palavras = termo.split(/\s+/).filter(Boolean);
+  const filtradas = (termo && texto !== valor ? opcoes.filter((o) => { const t = semAcento(`${o.valor} ${o.detalhe ?? ''}`); return palavras.every((p) => t.includes(p)); }) : opcoes).slice(0, 60);
 
   const posicao = (r: DOMRect) => ({ top: Math.min(r.bottom + 2, window.innerHeight - 260), left: Math.min(r.left, window.innerWidth - Math.max(r.width, 280) - 8), width: Math.max(r.width, 280) });
   function abrir() {

@@ -1,3 +1,4 @@
+import { lerTudo } from '@/shared/lib/consulta';
 import { supabase } from '@/shared/lib/supabase';
 import type { Formato, GrupoItem, ModoPreco, TipoBiblioteca } from './regras';
 
@@ -18,7 +19,13 @@ export interface Perfil {
   kg_m: number | null; kg_m_manual: boolean; preco_modo: ModoPreco; valor: number; descricao: string; ativo: boolean;
 }
 export interface PesoPerfil { id: string; tipo_id: string; bitola: string; kg_m: number; fonte: string; ativo: boolean }
-export interface ItemBiblioteca { id: string; grupo: GrupoItem; descricao: string; material: string; unidade: string; valor: number; ativo: boolean }
+export interface ItemBiblioteca {
+  id: string; grupo: GrupoItem; descricao: string; material: string; unidade: string; valor: number; ativo: boolean;
+  fixador_tipo_id?: string | null; fixador_material_id?: string | null; medida?: string; comprimento?: string;
+}
+export interface FixadorTipo { id: string; nome: string; rotulo_a: string; rotulo_b: string | null; ordem: number; ativo: boolean }
+export interface FixadorMaterial { id: string; nome: string; ordem: number; ativo: boolean }
+export interface FixadorTipoMaterial { tipo_id: string; material_id: string; ativo: boolean }
 export interface Fornecedor { id: string; nome: string; cidade: string; contato: string; telefone: string; email: string; observacoes: string; ativo: boolean }
 export interface ServicoFornecedor { id: string; fornecedor_id: string; servico: string; unidade: 'hora' | 'kg' | 'm²' | 'metro' | 'peça'; valor: number; ativo: boolean }
 export const UNIDADES_SERVICO: ServicoFornecedor['unidade'][] = ['hora', 'kg', 'm²', 'metro', 'peça'];
@@ -32,17 +39,25 @@ export const listarChapas = async (): Promise<Chapa[]> => ok(await supabase.from
 export const listarPerfis = async (): Promise<Perfil[]> => ok(await supabase.from('bib_perfis').select('*').order('descricao').limit(5000));
 export const listarPesosPerfil = async (): Promise<PesoPerfil[]> => ok(await supabase.from('bib_pesos_perfil').select('*').order('kg_m'));
 export const listarItens = async (): Promise<ItemBiblioteca[]> =>
-  ok(await supabase.from('bib_itens').select('id, grupo, descricao, material, unidade, valor, ativo').order('descricao').limit(5000));
+  ok(await lerTudo((de, ate) => supabase.from('bib_itens').select('id, grupo, descricao, material, unidade, valor, ativo, fixador_tipo_id, fixador_material_id, medida, comprimento').order('descricao').order('id').range(de, ate)));
+export const listarFixadores = async (): Promise<{ tipos: FixadorTipo[]; materiais: FixadorMaterial[]; pastas: FixadorTipoMaterial[] }> => {
+  const [t, m, p] = await Promise.all([
+    supabase.from('bib_fixador_tipos').select('*').order('ordem').order('nome'),
+    supabase.from('bib_fixador_materiais').select('*').order('ordem').order('nome'),
+    supabase.from('bib_fixador_tipo_materiais').select('*'),
+  ]);
+  return { tipos: ok(t), materiais: ok(m), pastas: ok(p) };
+};
 export const listarFornecedores = async (): Promise<Fornecedor[]> => ok(await supabase.from('fornecedores').select('*').order('nome'));
 export const listarServicos = async (): Promise<ServicoFornecedor[]> => ok(await supabase.from('fornecedor_servicos').select('*').order('servico'));
 export const listarARevisar = async (): Promise<{ id: string; tipo: string; descricao: string; preco: number }[]> =>
   ok(await supabase.from('ref_materiais').select('id, tipo, descricao, preco').eq('ativo', true).eq('migrado', false).order('descricao'));
 
 type Tabela = 'bib_chapa_precos' | 'bib_chapas' | 'bib_perfis' | 'bib_pesos_perfil' | 'bib_itens' | 'bib_tipos' | 'fornecedores' | 'fornecedor_servicos'
-  | 'catalogo_materiais' | 'ref_mao_obra' | 'ref_maquinas';
+  | 'catalogo_materiais' | 'ref_mao_obra' | 'ref_maquinas' | 'bib_fixador_tipos' | 'bib_fixador_materiais' | 'bib_fixador_tipo_materiais';
 
 // Gravação genérica: sem exclusão física (desativar = ativo false), auditoria no banco.
-export async function inserir(tabela: Tabela, dados: Record<string, unknown>): Promise<void> {
+export async function inserir(tabela: Tabela, dados: Record<string, unknown> | Record<string, unknown>[]): Promise<void> {
   ok(await supabase.from(tabela).insert(dados));
 }
 export async function atualizar(tabela: Tabela, chave: Record<string, string>, dados: Record<string, unknown>): Promise<void> {

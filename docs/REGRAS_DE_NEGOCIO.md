@@ -95,6 +95,23 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - **Cálculo automático da rota: API QualP** (escolha do Gabriel), por uma Edge Function do Supabase com a chave guardada como segredo `ROTAS_API_KEY`. **Aguarda o Gabriel contratar o plano e cadastrar a chave**; até lá, km e pedágio são digitados.
 56. **Viagem mais organizada (21/10/2026)** (pedido do Gabriel; *ajusta* a decisão 55 na tela): no **Veículo próprio** não há mais colunas Km/l e R$/l — vêm do cadastro em Administração → Frota e aparecem em letra pequena embaixo do veículo; veículo digitado sem cadastro mostra aviso para escolher da lista. Colunas na ordem Veículo, Origem, Destino, Km (ida), Pedágio (ida), Viagens, Ida e volta. Veículo alugado (que não é cadastrado) continua com Km/l e R$/l, com Ida e volta no fim. Colunas de número com largura mínima: em tela estreita a tabela rola de lado em vez de cortar os valores. A fórmula não mudou.
 57. **Logo oficial (21/10/2026)** (*substitui* a marca provisória da decisão 51): arquivos do Gabriel usados sem alteração no tema claro (`public/marca/fabriaco-simbolo.svg`, `fabriaco-letreiro.svg`, `fabriaco-logo-cor.svg`); no tema escuro, a versão do manual de identidade (roxo #8B63E7 e branco no lugar do preto). Menu lateral: símbolo + letreiro; topo do celular: símbolo; login: logo completa com "Montagens Industriais e Caldeiraria". **Favicon = `fabriaco-simbolo.svg`**, como pedido. Ícones do celular gerados do símbolo em fundo branco, como o ícone de aplicativo do manual.
+58. **Fixadores em pastas (21/10/2026)** (`docs/PLANEJAMENTO_FIXADORES.md`; *substitui* a lista única de fixadores da decisão 48). Respostas do Gabriel: tem polegada; valor **por peça**; os 4 materiais só nos tipos que os têm. A pergunta 1 (grade inicial) voltou sem resposta, e foi seguida a recomendação.
+    - Pastas **tipo → material → tamanhos**. Os 15 tipos seguem a ordem das pastas da empresa.
+    - Materiais: Inox 304, Zincado, Bicromatizado e Preto, mais Alumínio e Aço mola.
+    - Cada tipo tem as suas pastas de material, editáveis em "Tipo e materiais". Recomendação inicial, a confirmar:
+      - anéis de trava: só Aço mola;
+      - porca rebite: Inox 304, Zincado e Alumínio;
+      - cupilha: Inox 304 e Zincado;
+      - parabolt: Inox 304, Zincado e Bicromatizado;
+      - demais tipos: os 4 materiais.
+    - Descrição montada pelo banco: "Parafuso Allen Cab. Cilíndrica M8 x 20 Inox 304".
+    - **Grade inicial sem preço**, 2.093 tamanhos:
+      - parafusos M5 a M20, com comprimentos conforme o diâmetro, e polegada de 1/4" a 3/4" no sextavado e no Allen cilíndrico;
+      - porcas e arruelas M5 a M24 e 1/4" a 1";
+      - porca rebite M3 a M10, cupilhas, parabolt PBA e anéis de trava E e I;
+      - Grampo Tipo U vazio, para cadastrar.
+    - "Gerar vários" cria combinações de medidas × comprimentos. Tamanhos e pastas são desativados, nunca apagados.
+    - Busca da proposta por palavras em qualquer ordem ("allen m8 inox").
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
@@ -133,6 +150,8 @@ Detalhes completos em `DOCUMENTO_MESTRE.md`, seção 8. Resumo:
 - [ ] Fornecedor real dos serviços de laser e dobra hoje em "A definir" (decisão 49).
 - [ ] Confirmar as recomendações implementadas nas decisões 47 a 50 (etapa financeira pelo detalhe, veículo alugado, fornecedores com serviços, preço de chapa por material + tipo, base de pesos de mercado, campos de fixadores e consumíveis, migração da lista de preços).
 - [ ] Contratar a API QualP e cadastrar a chave no Supabase (Edge Functions → Secrets, nome `ROTAS_API_KEY`) para liberar o botão "Calcular rota" (decisão 55).
+- [ ] Fixadores: conferir as pastas de material de porca rebite, cupilha, parabolt e anéis de trava, e a grade inicial de tamanhos (decisão 58).
+- [ ] Exclusão de projetos e Lixeira com apagamento definitivo/30 dias: planejamento em `docs/PLANEJAMENTO_LIXEIRA.md`, aguardando confirmação.
 - [ ] Conferir a base de pesos de I e U laminados e preencher o kg/m das 18 vigas W/I/U da lista antiga que vieram sem peso.
 
 As demais perguntas marcadas [DECIDIR] no `docs/PLANEJAMENTO_VENDAS.md` continuam abertas até o Gabriel responder ou aprovar as recomendações.
