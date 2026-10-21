@@ -19,7 +19,7 @@ describe('e-mail de envio', () => {
   });
   it('monta .eml com CC, assunto acentuado e anexos', () => {
     const eml = montarEml({
-      para: ['cliente@empresa.com'], cc: ['outro@empresa.com'], assunto: 'Proposta 26-26-005 FABRIAÇO - Tanque', corpo: 'Olá', assinatura: 'Gabriel',
+      para: ['cliente@empresa.com'], cc: ['outro@empresa.com'], assunto: 'Proposta 26-26-005 FABRIAÇO - Tanque', corpo: 'Olá',
       anexos: [{ nome: 'Proposta Técnica.pdf', tipo: 'application/pdf', base64: 'JVBERi0x' }],
     });
     expect(eml).toContain('To: cliente@empresa.com');

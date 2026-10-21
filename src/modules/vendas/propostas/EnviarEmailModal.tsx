@@ -1,7 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail, X } from 'lucide-react';
-import { useAuth } from '@/shared/auth/AuthProvider';
 import { supabase } from '@/shared/lib/supabase';
 import { hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Entrada, Modal } from '@/shared/ui';
@@ -9,19 +8,12 @@ import { listarArquivos, listarContatos, listarRevisoes, moverProposta } from '.
 import type { Proposta } from '../types';
 import { assuntoProposta, baixarArquivo, blobParaBase64, codigoComRevisao, corpoPadrao, emailValido, montarEml, separarEmails, type Anexo } from './email';
 
-async function minhaAssinatura(uid: string): Promise<string> {
-  const { data } = await supabase.from('usuarios').select('assinatura').eq('id', uid).maybeSingle();
-  return (data?.assinatura as string) ?? '';
-}
-
 export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; onFechar: () => void }) {
   const qc = useQueryClient();
-  const { session } = useAuth();
   const { data: contatos = [] } = useQuery({ queryKey: ['contatos'], queryFn: listarContatos });
   const { data: revisoes = [] } = useQuery({ queryKey: ['proposta', proposta.id, 'revisoes', proposta.revisao_atual, proposta.status], queryFn: () => listarRevisoes(proposta.id) });
   const rev = revisoes.find((r) => r.numero === proposta.revisao_atual);
   const { data: arquivos = [] } = useQuery({ queryKey: ['proposta', proposta.id, 'arquivos', rev?.id], queryFn: () => listarArquivos([rev!.id]).then((l) => l.filter((a) => a.tipo !== 'imagem_documento')), enabled: Boolean(rev) });
-  const { data: assinaturaSalva } = useQuery({ queryKey: ['minha_assinatura', session?.user.id], queryFn: () => minhaAssinatura(session!.user.id), enabled: Boolean(session) });
 
   const contato = contatos.find((c) => c.id === proposta.contato_id);
   const [para, setPara] = useState<string | null>(null);
@@ -29,8 +21,6 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
   const [ccLivre, setCcLivre] = useState('');
   const [assunto, setAssunto] = useState(assuntoProposta(proposta.codigo, proposta.revisao_atual, proposta.titulo));
   const [corpo, setCorpo] = useState<string | null>(null);
-  const [assinatura, setAssinatura] = useState<string | null>(null);
-  const [salvarAssinatura, setSalvarAssinatura] = useState(false);
   const [anexosSel, setAnexosSel] = useState<Record<string, boolean>>({});
   const [data, setData] = useState(hojeISO());
   const [retorno, setRetorno] = useState('');
@@ -39,16 +29,16 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
 
   const paraValor = para ?? contato?.email ?? '';
   const corpoValor = corpo ?? corpoPadrao(contato?.nome ?? '', proposta.codigo, proposta.revisao_atual, proposta.titulo);
-  const assinaturaValor = assinatura ?? assinaturaSalva ?? '';
   const propostasPdf = arquivos.filter((a) => a.tipo === 'comercial' || a.tipo === 'tecnica');
   const anexoMarcado = (id: string, tipo: string) => anexosSel[id] ?? (tipo === 'comercial' || tipo === 'tecnica');
   const faltaComercial = !arquivos.some((a) => a.tipo === 'comercial');
   const faltaTecnica = !arquivos.some((a) => a.tipo === 'tecnica');
 
-  // CC: contatos da mesma empresa primeiro, depois os demais com e-mail.
+  // CC: só os contatos (com e-mail) da mesma empresa do contato da proposta.
+  const empresaCc = contato?.empresa_id ?? proposta.empresa_id;
   const opcoesCc = useMemo(() => contatos
-    .filter((c) => c.email && c.id !== proposta.contato_id)
-    .sort((a, b) => Number(b.empresa_id === proposta.empresa_id) - Number(a.empresa_id === proposta.empresa_id) || a.nome.localeCompare(b.nome)), [contatos, proposta]);
+    .filter((c) => c.email && c.id !== proposta.contato_id && c.empresa_id === empresaCc)
+    .sort((a, b) => a.nome.localeCompare(b.nome)), [contatos, proposta.contato_id, empresaCc]);
   const [buscaCc, setBuscaCc] = useState('');
   const filtradosCc = opcoesCc.filter((c) => !cc.includes(c.email) && (!buscaCc || `${c.nome} ${c.email} ${c.empresas?.nome_fantasia ?? ''}`.toLowerCase().includes(buscaCc.toLowerCase()))).slice(0, 8);
 
@@ -70,11 +60,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
           if (error || !blob) throw new Error(`Não foi possível baixar o anexo ${a.nome}.`);
           anexos.push({ nome: a.nome, tipo: blob.type || 'application/pdf', base64: await blobParaBase64(blob) });
         }
-        eml = montarEml({ para: paraLista, cc: ccLista, assunto, corpo: corpoValor, assinatura: assinaturaValor, anexos });
-      }
-      if (salvarAssinatura && assinatura !== null) {
-        const { error } = await supabase.rpc('salvar_minha_assinatura', { p_assinatura: assinatura });
-        if (error) throw error;
+        eml = montarEml({ para: paraLista, cc: ccLista, assunto, corpo: corpoValor, anexos });
       }
       // 2) move para Enviados (congela a revisão) e registra para quem foi
       await moverProposta(proposta.id, 'Enviados', {
@@ -90,7 +76,6 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['propostas'] });
       qc.invalidateQueries({ queryKey: ['proposta'] });
-      qc.invalidateQueries({ queryKey: ['minha_assinatura'] });
       onFechar();
     },
     onError: (e) => setErro(mensagemErro(e)),
@@ -116,7 +101,8 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
                     </span>
                   ))}
                 </div>
-                <input value={buscaCc} onChange={(e) => setBuscaCc(e.target.value)} placeholder="Buscar contato para copiar…" className="w-full bg-transparent px-1 py-1 text-sm outline-none" />
+                {opcoesCc.length === 0 && <div className="px-1 py-1 text-xs text-suave">Nenhum outro contato com e-mail em {contato?.empresas?.nome_fantasia ?? 'nesta empresa'}.</div>}
+                {opcoesCc.length > 0 && <input value={buscaCc} onChange={(e) => setBuscaCc(e.target.value)} placeholder={`Buscar contato de ${contato?.empresas?.nome_fantasia ?? 'da empresa'}…`} className="w-full bg-transparent px-1 py-1 text-sm outline-none" />}
                 {buscaCc !== '' || cc.length === 0 ? (
                   <div className="mt-1 max-h-36 overflow-y-auto">
                     {filtradosCc.map((c) => (
@@ -133,10 +119,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
             </Campo>
             <Campo rotulo="Assunto"><Entrada value={assunto} onChange={(e) => setAssunto(e.target.value)} /></Campo>
             <Campo rotulo="Mensagem"><AreaTexto rows={9} value={corpoValor} onChange={(e) => setCorpo(e.target.value)} /></Campo>
-            <Campo rotulo="Assinatura">
-              <AreaTexto rows={4} value={assinaturaValor} onChange={(e) => setAssinatura(e.target.value)} placeholder={'Nome\nCargo\nFabriaço Brasil · (19) 0000-0000'} />
-            </Campo>
-            {assinatura !== null && assinatura !== assinaturaSalva && <Caixa marcado={salvarAssinatura} onChange={setSalvarAssinatura}>Salvar como minha assinatura padrão</Caixa>}
+            <p className="text-xs text-suave">A assinatura não vai daqui: use a que já está configurada no seu Outlook ou Thunderbird (veja abaixo).</p>
 
             <div>
               <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Anexos da R{proposta.revisao_atual}</div>
@@ -166,8 +149,8 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
             <div className="mb-1 flex items-center gap-1 font-semibold"><Mail size={13} /> Como o e-mail abre</div>
             O sistema baixa o arquivo <b>Proposta {codigoComRevisao(proposta.codigo, proposta.revisao_atual)}.eml</b>. Abra o arquivo:
             <ul className="ml-4 mt-1 list-disc">
-              <li><b>Outlook (instalado no computador):</b> abre como mensagem nova, com anexos. Confira e clique em Enviar.</li>
-              <li><b>Thunderbird:</b> abre a mensagem; use <b>Editar como nova mensagem</b> (Ctrl+E) e clique em Enviar.</li>
+              <li><b>Outlook (instalado no computador):</b> abre como mensagem nova, com anexos. Se a sua assinatura não aparecer sozinha, clique no fim do texto e use <b>Mensagem → Assinatura</b>. Confira e clique em Enviar.</li>
+              <li><b>Thunderbird:</b> abre a mensagem; use <b>Editar como nova mensagem</b> (Ctrl+E). A assinatura da sua conta costuma entrar nesse momento; se não entrar, confira se o remetente (De) é a sua conta. Clique em Enviar.</li>
               <li><b>Outlook no navegador (365 web):</b> ainda não abre arquivos .eml. Use o Outlook instalado ou anexe os PDFs manualmente por enquanto.</li>
             </ul>
           </div>

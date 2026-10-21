@@ -154,6 +154,9 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - **Skeleton screens** no lugar dos "Carregando…": blocos cinza com brilho no formato do conteúdo, nas telas de Vendas (Dashboard, Empresas, Contatos, Kanban, Vendedores, detalhe da proposta, Custos, Documentos e prévia do PDF, Kick-off), Engenharia (Projetos, projeto) e Administração (Lixeira, Frota, Modelos de proposta, Predefinições). Enquanto carrega, o subtítulo diz "Carregando…" em vez de mostrar "0 propostas".
     - **Troca de abas animada** em todo o site: a linha roxa desliza até a aba escolhida e o conteúdo novo entra subindo e aparecendo (abas dos módulos, da proposta, dos itens de custo, do projeto e das Predefinições, e na troca de módulo). Quem pede menos movimento no sistema não vê as animações.
     - **Rolagem (21/10/2026, pedido do Gabriel):** só a área do conteúdo rola; o menu lateral e o topo ficam parados. A barra de rolagem fica dentro dessa área, é fina e nas cores do tema, e o espaço dela já fica reservado: abrir uma aba com rolagem não muda mais a largura do conteúdo.
+65. **Envio da proposta por e-mail (21/10/2026, pedido do Gabriel; *altera* a decisão 32):**
+    - **CC só com contatos da mesma empresa** do contato que recebe a proposta (antes apareciam todos os contatos, com os da empresa primeiro). E-mails de fora ainda podem ser digitados no campo "Outros e-mails".
+    - **Sem assinatura no ERP:** o campo de assinatura saiu e o e-mail gerado (.eml) vai sem assinatura, para usar a que já está configurada no Outlook ou no Thunderbird. A assinatura que estava salva no usuário continua guardada no banco, só não é mais usada. Observação: o Outlook pode não colocar a assinatura sozinho ao abrir um .eml; nesse caso, Mensagem → Assinatura.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

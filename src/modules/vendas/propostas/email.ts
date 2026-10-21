@@ -54,14 +54,14 @@ function escaparHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-export function montarEml(p: { para: string[]; cc: string[]; assunto: string; corpo: string; assinatura: string; anexos: Anexo[]; data?: Date }): string {
+// Sem assinatura: o vendedor usa a que já está no Outlook/Thunderbird (pedido do Gabriel, 21/10/2026).
+export function montarEml(p: { para: string[]; cc: string[]; assunto: string; corpo: string; anexos: Anexo[]; data?: Date }): string {
   const misto = `misto_${Math.random().toString(36).slice(2)}`;
   const alt = `alt_${Math.random().toString(36).slice(2)}`;
-  const texto = p.assinatura.trim() ? `${p.corpo}\n\n${p.assinatura}` : p.corpo;
+  const texto = p.corpo;
   const html =
     `<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">` +
     p.corpo.split('\n').map((l) => (l ? `<p style="margin:0">${escaparHtml(l)}</p>` : '<p style="margin:0">&nbsp;</p>')).join('') +
-    (p.assinatura.trim() ? `<p style="margin:0">&nbsp;</p>${p.assinatura.split('\n').map((l) => `<p style="margin:0">${escaparHtml(l) || '&nbsp;'}</p>`).join('')}` : '') +
     `</div>`;
   const linhas = [
     `To: ${p.para.join(', ')}`,
