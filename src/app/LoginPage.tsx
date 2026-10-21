@@ -31,7 +31,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-pagina p-4">
       <form onSubmit={entrar} className="w-full max-w-sm space-y-4 rounded-xl bg-superficie p-7 shadow-sm ring-1 ring-borda">
         <div className="space-y-3">
-          <Marca />
+          <div className="pb-2"><Marca vertical /></div>
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-texto">Entrar no ERP</h1>
             <p className="text-sm text-suave">Use seu e-mail e senha.</p>
@@ -42,7 +42,7 @@ export function LoginPage() {
         <Campo rotulo="E-mail"><Entrada type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></Campo>
         <Campo rotulo="Senha"><Entrada type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} required /></Campo>
         <Botao type="submit" className="w-full" disabled={enviando}>{enviando ? 'Entrando…' : 'Entrar'}</Botao>
-        <button type="button" onClick={recuperar} className="w-full text-center text-xs text-roxo-600 hover:underline">Esqueci minha senha</button>
+        <button type="button" onClick={recuperar} className="w-full text-center text-xs text-roxo-600 hover:underline dark:text-roxo-100">Esqueci minha senha</button>
       </form>
     </div>
   );

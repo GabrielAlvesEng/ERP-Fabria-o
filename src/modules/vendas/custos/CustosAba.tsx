@@ -133,6 +133,9 @@ function blocosDaSecao(s: DefSecao, linhas: CustoLinha[]): Bloco[] | null {
 }
 
 const REF_VAZIA: Referencias = { chapas: [], precosChapa: [], perfis: [], itens: [], servicos: [], maoObra: [], maquinas: [] };
+// "w-24" vira largura mínima (96 px): a tabela rola de lado em vez de espremer os números.
+const larguraMinima = (l?: string) => { const n = /^w-(\d+)$/.exec(l ?? '')?.[1]; return n ? { minWidth: Number(n) * 4 } : undefined; };
+
 interface Listas { catalogo: MaterialCatalogo[]; refs: Referencias; veiculos: RefVeiculo[]; precos: Partial<Record<Combustivel, number>> }
 
 function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarregar, onExcluido }: {
@@ -308,7 +311,7 @@ function TabelaLinhas({ linhas, colunas, secao, grupo, listas, peso, editavel, o
         <thead className="text-left text-[11px] uppercase text-suave">
           <tr>
             <th className="w-6" />
-            {colunas.map((c) => <th key={c.campo} className={`px-2 py-1.5 font-medium ${c.largura ?? ''} ${c.tipo === 'numero' ? 'text-right' : ''}`}>{c.rotulo}</th>)}
+            {colunas.map((c) => <th key={c.campo} style={larguraMinima(c.largura)} className={`px-2 py-1.5 font-medium ${c.largura ?? ''} ${c.tipo === 'numero' ? 'text-right' : ''}`}>{c.rotulo}</th>)}
             <th className="w-32 px-2 py-1.5 text-right font-medium">Total</th>
             <th className="w-8" />
           </tr>
@@ -449,7 +452,16 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
             <div className="flex justify-center"><Caixa marcado={Boolean(l.ida_volta)} disabled={!editavel} onChange={(v) => onSalvar({ ida_volta: v })} /></div>
           ) : c.tipo === 'leitura' ? (
             <span className="px-2 text-sm text-suave" title={secao === 'maquinas' ? 'Escolha o serviço de um fornecedor (Terceirizada = Sim)' : undefined}>{String(l[c.campo] ?? '') || '—'}</span>
-          ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' || c.tipo === 'veiculo' ? (
+          ) : c.tipo === 'veiculo' ? (
+            <div>
+              <CampoEscolha valor={String(l.descricao ?? '')} opcoes={opcoes(c)} disabled={!editavel} placeholder="Escolha um veículo da frota" onConfirmar={(v) => escolher(c, v)} />
+              <div className={`px-2 text-[11px] ${l.descricao && !(Number(l.consumo) > 0) ? 'text-amber-600 dark:text-amber-400' : 'text-suave'}`}>
+                {!l.descricao ? '' : Number(l.consumo) > 0
+                  ? `${Number(l.consumo).toLocaleString('pt-BR')} km/l · ${l.combustivel ? `${moeda(Number(l.combustivel))}/l` : 'sem preço do combustível'}`
+                  : 'Sem cadastro na Frota: escolha da lista'}
+              </div>
+            </div>
+          ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' ? (
             <CampoEscolha valor={c.tipo === 'catalogo' ? semCodigoMaterial(l.material) : String(l[c.campo] ?? '')} opcoes={opcoes(c)} disabled={!editavel}
               placeholder={c.tipo === 'catalogo' ? 'Ex.: AISI 304' : c.tipo === 'material' ? 'Digite para buscar na biblioteca' : secao === 'maquinas' ? (l.detalhe === 'Sim' ? 'Serviço do fornecedor' : 'Máquina própria') : ''}
               onConfirmar={(v) => escolher(c, v)} />

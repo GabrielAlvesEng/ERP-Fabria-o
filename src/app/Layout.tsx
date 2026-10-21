@@ -79,16 +79,30 @@ export function Layout() {
   );
 }
 
-// Marca provisória: símbolo "F" no roxo da marca + nome. Troca pela Logo Moderna oficial quando os arquivos chegarem (public/marca/).
-export function Marca({ compacta = false }: { compacta?: boolean }) {
+// Logo oficial (public/marca/, arquivos do Gabriel). No tema escuro entra a versão do manual: roxo #8B63E7 e branco.
+const MARCA = `${import.meta.env.BASE_URL}marca/`;
+function ImagemMarca({ nome, className }: { nome: string; className: string }) {
+  return (
+    <>
+      <img src={`${MARCA}${nome}.svg`} alt="Fabriaço" className={`${className} dark:hidden`} />
+      <img src={`${MARCA}${nome}-escuro.svg`} alt="Fabriaço" className={`${className} hidden dark:block`} />
+    </>
+  );
+}
+
+// variante "horizontal": símbolo + letreiro (sidebar); "compacta": só o símbolo (topo do celular); "vertical": logo completa (login).
+export function Marca({ compacta = false, vertical = false }: { compacta?: boolean; vertical?: boolean }) {
+  if (vertical) return (
+    <div className="flex flex-col items-center gap-2">
+      <ImagemMarca nome="fabriaco-logo-cor" className="h-20 w-auto" />
+      <div className="text-[10px] uppercase tracking-[0.2em] text-suave">Montagens Industriais e Caldeiraria</div>
+    </div>
+  );
   return (
     <div className="flex items-center gap-2.5">
-      <img src={`${import.meta.env.BASE_URL}marca/simbolo.svg`} alt="" className="h-8 w-8 shrink-0" />
+      <ImagemMarca nome="fabriaco-simbolo" className="h-8 w-auto shrink-0" />
       {!compacta && (
-        <div className="leading-tight">
-          <div className="text-[15px] font-bold tracking-tight text-texto">FABRIAÇO</div>
-          <div className="text-[10px] uppercase tracking-wider text-suave">Montagens Industriais e Caldeiraria</div>
-        </div>
+        <ImagemMarca nome="fabriaco-letreiro" className="h-5 w-auto" />
       )}
     </div>
   );

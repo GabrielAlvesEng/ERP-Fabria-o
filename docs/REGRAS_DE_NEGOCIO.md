@@ -93,6 +93,8 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - **Flex calcula sempre com gasolina.** Escolher o veículo na seção Viagem preenche o km/l e o R$/l pelo combustível dele.
     - **Ida e volta** na linha de Veículo próprio e Veículo alugado: km e pedágio digitados são os da ida e contam 2 vezes (veículo próprio: viagens × (combustível + pedágio) × 2; alugado: diárias × diária + (combustível + pedágio) × 2).
     - **Cálculo automático da rota: API QualP** (escolha do Gabriel), por uma Edge Function do Supabase com a chave guardada como segredo `ROTAS_API_KEY`. **Aguarda o Gabriel contratar o plano e cadastrar a chave**; até lá, km e pedágio são digitados.
+56. **Viagem mais organizada (21/10/2026)** (pedido do Gabriel; *ajusta* a decisão 55 na tela): no **Veículo próprio** não há mais colunas Km/l e R$/l — vêm do cadastro em Administração → Frota e aparecem em letra pequena embaixo do veículo; veículo digitado sem cadastro mostra aviso para escolher da lista. Colunas na ordem Veículo, Origem, Destino, Km (ida), Pedágio (ida), Viagens, Ida e volta. Veículo alugado (que não é cadastrado) continua com Km/l e R$/l, com Ida e volta no fim. Colunas de número com largura mínima: em tela estreita a tabela rola de lado em vez de cortar os valores. A fórmula não mudou.
+57. **Logo oficial (21/10/2026)** (*substitui* a marca provisória da decisão 51): arquivos do Gabriel usados sem alteração no tema claro (`public/marca/fabriaco-simbolo.svg`, `fabriaco-letreiro.svg`, `fabriaco-logo-cor.svg`); no tema escuro, a versão do manual de identidade (roxo #8B63E7 e branco no lugar do preto). Menu lateral: símbolo + letreiro; topo do celular: símbolo; login: logo completa com "Montagens Industriais e Caldeiraria". **Favicon = `fabriaco-simbolo.svg`**, como pedido. Ícones do celular gerados do símbolo em fundo branco, como o ícone de aplicativo do manual.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
@@ -127,7 +129,7 @@ Detalhes completos em `DOCUMENTO_MESTRE.md`, seção 8. Resumo:
 - [ ] Onde fica a pasta do código (dentro ou fora do OneDrive) e qual conta do GitHub usar.
 - [ ] SolidWorks: arquivo JSON real exportado pela macro atual, para construir a importação da árvore.
 - [ ] E-mail pelo Outlook web (Microsoft 365): exige registrar um aplicativo no Azure da empresa.
-- [ ] Arquivos da Logo Moderna (SVG) para trocar a marca provisória, o favicon e os ícones do celular (decisão 51).
+- [x] ~~Arquivos da Logo Moderna (SVG)~~ recebidos e aplicados (decisão 57).
 - [ ] Fornecedor real dos serviços de laser e dobra hoje em "A definir" (decisão 49).
 - [ ] Confirmar as recomendações implementadas nas decisões 47 a 50 (etapa financeira pelo detalhe, veículo alugado, fornecedores com serviços, preço de chapa por material + tipo, base de pesos de mercado, campos de fixadores e consumíveis, migração da lista de preços).
 - [ ] Contratar a API QualP e cadastrar a chave no Supabase (Edge Functions → Secrets, nome `ROTAS_API_KEY`) para liberar o botão "Calcular rota" (decisão 55).
