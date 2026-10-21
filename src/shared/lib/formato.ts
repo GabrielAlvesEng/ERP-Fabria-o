@@ -51,9 +51,9 @@ export function mensagemErro(e: unknown): string {
   return 'Erro inesperado.';
 }
 
-// Aceita "1.234,56", "1234,56" ou "1234.56" e devolve texto numérico para o banco.
+// Aceita "R$ 1.234,56", "1.234,56", "1234,56" ou "1234.56" e devolve texto numérico para o banco.
 export function numeroBR(s: string): string {
-  const t = s.trim();
+  const t = s.replace(/R\$/i, '').trim();
   if (!t) return '';
   return t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t;
 }

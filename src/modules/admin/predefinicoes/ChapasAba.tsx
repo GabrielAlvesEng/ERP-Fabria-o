@@ -97,7 +97,7 @@ export function ChapasAba() {
           <Campo rotulo={f.valorKg == null ? 'Valor/kg (herdado do material + tipo)' : 'Valor/kg (próprio desta chapa)'}>
             <div className="flex items-center gap-2">
               <div className={`${molduraNumero} flex-1`}>
-                <CampoNumero valor={valorKg} casas={4} className="py-1.5" onConfirmar={(n) => setF({ ...f, valorKg: n })} />
+                <CampoNumero moeda valor={valorKg} casas={4} className="py-1.5" onConfirmar={(n) => setF({ ...f, valorKg: n })} />
               </div>
               {f.valorKg != null && <button type="button" className="text-xs text-roxo-600 hover:underline" onClick={() => setF({ ...f, valorKg: null })}>herdar</button>}
             </div>
@@ -144,7 +144,7 @@ export function ChapasAba() {
             <tr key={p.id} className={linha()}>
               <td className="px-2 py-1">{nomeMat(p.cod_mat)}</td>
               <td className="px-2">{tipos.find((t) => t.id === p.tipo_id)?.nome}</td>
-              <td className={td}><CampoNumero valor={Number(p.valor_kg)} casas={4} onConfirmar={(n) => gravar(() => atualizar('bib_chapa_precos', { id: p.id }, { valor_kg: n }))} /></td>
+              <td className={td}><CampoNumero moeda valor={Number(p.valor_kg)} casas={4} onConfirmar={(n) => gravar(() => atualizar('bib_chapa_precos', { id: p.id }, { valor_kg: n }))} /></td>
             </tr>
           ))}
         </Tabela>
@@ -156,7 +156,7 @@ export function ChapasAba() {
               {tiposChapa.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </Selecao>
           </Campo>
-          <Campo rotulo="R$/kg" className="w-32"><div className={molduraNumero}><CampoNumero valor={novoPreco.valor} casas={4} className="py-1.5" onConfirmar={(n) => setNovoPreco({ ...novoPreco, valor: n })} /></div></Campo>
+          <Campo rotulo="R$/kg" className="w-32"><div className={molduraNumero}><CampoNumero moeda valor={novoPreco.valor} casas={4} className="py-1.5" onConfirmar={(n) => setNovoPreco({ ...novoPreco, valor: n })} /></div></Campo>
           <Botao variante="secundario" onClick={async () => {
             const m = porNome(novoPreco.material);
             if (!m || !novoPreco.tipo_id) return setErro('Escolha material e tipo para o preço.');

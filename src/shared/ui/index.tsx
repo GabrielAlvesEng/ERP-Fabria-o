@@ -201,31 +201,59 @@ export function Cabecalho({ titulo, subtitulo, acoes }: { titulo: string; subtit
 }
 
 // Número no formato brasileiro (1.234,56). Mostra formatado; ao sair do campo, devolve o número.
-export function CampoNumero({ valor, onConfirmar, casas = 2, disabled, className, alinhar = 'direita' }: {
-  valor: number; onConfirmar: (n: number) => void; casas?: number; disabled?: boolean; className?: string; alinhar?: 'direita' | 'esquerda';
+// Número editável (célula ou formulário). Com `moeda`, mostra "R$ 1.234,56" fora da edição; ao editar, só o número.
+export function CampoNumero({ valor, onConfirmar, casas = 2, disabled, className, alinhar = 'direita', moeda = false }: {
+  valor: number; onConfirmar: (n: number) => void; casas?: number; disabled?: boolean; className?: string; alinhar?: 'direita' | 'esquerda'; moeda?: boolean;
 }) {
-  const fmt = (n: number) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: casas });
-  const [texto, setTexto] = useState(fmt(valor));
+  const fmt = (n: number) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: moeda ? 2 : 0, maximumFractionDigits: Math.max(casas, moeda ? 2 : 0) });
+  const exibir = (n: number) => (moeda ? `R$ ${fmt(n)}` : fmt(n));
+  const [texto, setTexto] = useState(exibir(valor));
   const [focado, setFocado] = useState(false);
-  useEffect(() => { if (!focado) setTexto(fmt(valor)); }, [valor, focado]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!focado) setTexto(exibir(valor)); }, [valor, focado, moeda]); // eslint-disable-line react-hooks/exhaustive-deps
   function confirmar() {
     setFocado(false);
-    const t = texto.trim();
+    const t = texto.replace(/R\$/i, '').trim();
     const n = t === '' ? 0 : Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
-    if (Number.isNaN(n)) { setTexto(fmt(valor)); return; }
+    if (Number.isNaN(n)) { setTexto(exibir(valor)); return; }
     if (n !== Number(valor)) onConfirmar(n);
-    setTexto(fmt(n));
+    setTexto(exibir(n));
   }
   return (
     <input
       inputMode="decimal"
       value={texto}
       disabled={disabled}
-      onFocus={(e) => { setFocado(true); e.target.select(); }}
+      onFocus={(e) => { setFocado(true); setTexto(fmt(valor)); const el = e.target; requestAnimationFrame(() => el.select()); }}
       onChange={(e) => setTexto(e.target.value)}
       onBlur={confirmar}
       onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
       className={cx('w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm tabular-nums outline-none hover:border-slate-300 focus:border-roxo-500 focus:bg-superficie disabled:hover:border-transparent dark:hover:border-marinho-500', alinhar === 'direita' && 'text-right', className)}
+    />
+  );
+}
+
+// Valor em reais nos formulários (texto livre, convertido depois com numeroBR): "R$ 1.234,56" fora da edição.
+export function EntradaMoeda({ value, onChange, disabled, placeholder = 'R$ 0,00', className }: {
+  value: string; onChange: (v: string) => void; disabled?: boolean; placeholder?: string; className?: string;
+}) {
+  const [focado, setFocado] = useState(false);
+  const formatar = (v: string) => {
+    const t = v.replace(/R\$/i, '').trim();
+    if (!t) return '';
+    const n = Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
+    return Number.isNaN(n) ? v : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const mostrado = focado ? value.replace(/R\$/i, '').trim() : value.trim() ? `R$ ${formatar(value)}` : '';
+  return (
+    <input
+      inputMode="decimal"
+      value={mostrado}
+      disabled={disabled}
+      placeholder={placeholder}
+      onFocus={() => { setFocado(true); if (value.trim()) onChange(formatar(value)); }}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={() => { setFocado(false); onChange(formatar(value)); }}
+      className={cx(campoBase, 'tabular-nums', className)}
     />
   );
 }

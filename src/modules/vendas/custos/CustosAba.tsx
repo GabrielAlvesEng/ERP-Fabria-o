@@ -23,6 +23,8 @@ import {
 import { precosPerfil } from '@/modules/biblioteca/regras';
 
 const celula = 'px-1 py-1 align-middle';
+// Colunas em reais nas linhas de custo (preço, mão de obra/pedágio e combustível): mostram R$.
+const CAMPOS_MOEDA: string[] = ['valor_unitario', 'adicional', 'combustivel'];
 
 export function CustosAba({ proposta }: { proposta: Proposta }) {
   const { pode } = useAuth();
@@ -422,7 +424,7 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
         <td key={c.campo} className={celula}>
           {c.tipo === 'numero' ? (
             <div className="flex items-center gap-1">
-              <CampoNumero valor={Number(l[c.campo] ?? 0)} casas={c.campo === 'valor_unitario' ? 4 : c.campo === 'adicional' ? 2 : 3} disabled={!editavel || (c.campo === 'quantidade' && grupo === ('Acabamento em inox' as GrupoMaterial))} onConfirmar={(n) => onSalvar({ [c.campo]: n })} />
+              <CampoNumero moeda={CAMPOS_MOEDA.includes(c.campo)} valor={Number(l[c.campo] ?? 0)} casas={c.campo === 'valor_unitario' ? 4 : c.campo === 'adicional' ? 2 : 3} disabled={!editavel || (c.campo === 'quantidade' && grupo === ('Acabamento em inox' as GrupoMaterial))} onConfirmar={(n) => onSalvar({ [c.campo]: n })} />
               {c.pesoMateriais && editavel && peso.kg > 0 && (
                 <button title={`Usar o peso dos materiais do item: ${peso.kg.toLocaleString('pt-BR')} kg${peso.perfisSemKgM ? ` (${peso.perfisSemKgM} perfil(is) sem kg/m na lista de preços ficaram de fora)` : ''}`}
                   onClick={() => onSalvar({ quantidade: peso.kg })} className="shrink-0 rounded p-1 text-slate-400 hover:bg-roxo-50 hover:text-roxo-600 dark:hover:bg-marinho-700"><Scale size={14} /></button>

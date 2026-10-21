@@ -137,7 +137,7 @@ export function PerfisAba() {
             </Selecao>
           </Campo>
           <Campo rotulo={f.modo === 'm' ? 'Valor/m' : 'Valor/kg'}>
-            <div className={molduraNumero}><CampoNumero valor={f.valor} casas={4} className="py-1.5" onConfirmar={(n) => setF({ ...f, valor: n })} /></div>
+            <div className={molduraNumero}><CampoNumero moeda valor={f.valor} casas={4} className="py-1.5" onConfirmar={(n) => setF({ ...f, valor: n })} /></div>
           </Campo>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -170,7 +170,7 @@ export function PerfisAba() {
                 <td className="px-2 py-1">{p.descricao}</td>
                 <td className={`px-2 text-right tabular-nums ${p.kg_m == null ? 'text-amber-600' : ''}`}>{p.kg_m == null ? 'falta' : Number(p.kg_m).toLocaleString('pt-BR')}{p.kg_m_manual && <span className="ml-1 text-[10px] text-slate-400">manual</span>}</td>
                 <td className="px-2 text-xs text-suave">{p.preco_modo === 'm' ? 'por metro' : 'por kg'}</td>
-                <td className={td}><CampoNumero valor={Number(p.valor)} casas={4} onConfirmar={(n) => gravar(() => atualizar('bib_perfis', { id: p.id }, { valor: n }))} /></td>
+                <td className={td}><CampoNumero moeda valor={Number(p.valor)} casas={4} onConfirmar={(n) => gravar(() => atualizar('bib_perfis', { id: p.id }, { valor: n }))} /></td>
                 <td className="px-2 text-right tabular-nums">{pr.porMetro != null ? moeda(pr.porMetro) : '—'}</td>
                 <td className="px-2 text-right tabular-nums">{pr.porKg != null ? moeda(pr.porKg) : '—'}</td>
                 <td className="px-2"><Caixa marcado={p.ativo} onChange={(ativo) => gravar(() => atualizar('bib_perfis', { id: p.id }, { ativo }))} /></td>

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { hojeISO, mensagemErro, numeroBR } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, Entrada, Modal, Selecao } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, Entrada, Modal, Selecao, EntradaMoeda } from '@/shared/ui';
 import { criarProposta, listarContatos, listarEmpresas, sugerirCodigoProposta } from '../api';
 import { validadeAte } from './regras';
 
@@ -93,7 +93,7 @@ export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; on
         )}
         <Campo rotulo="Título do fornecimento *" className="sm:col-span-2"><Entrada value={f.titulo} onChange={set('titulo')} /></Campo>
         <Campo rotulo="Descrição" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} /></Campo>
-        <Campo rotulo="Valor (R$)"><Entrada inputMode="decimal" value={f.valor} onChange={set('valor')} placeholder="0,00" /></Campo>
+        <Campo rotulo="Valor (R$)"><EntradaMoeda value={f.valor} onChange={(v) => setF({ ...f, valor: v })} /></Campo>
         <Campo rotulo="Prazo previsto"><Entrada value={f.prazo_previsto} onChange={set('prazo_previsto')} placeholder="ex.: 30 dias" /></Campo>
         <Campo rotulo="Validade da proposta (dias)">
           <div className="flex items-center gap-2">

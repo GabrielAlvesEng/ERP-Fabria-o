@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Lock, Trash2, Upload, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, Selecao, Selo, Vazio, EntradaMoeda } from '@/shared/ui';
 import {
   abrirArquivo, atualizarRascunho, enviarArquivoRevisao, listarArquivos, listarEventos, listarReprovacoes, listarRevisoes,
   moverProposta, obterAprovacao, obterProposta, removerArquivo,
@@ -149,7 +149,7 @@ function AbaDados({ p }: { p: Proposta }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo rotulo="Título do fornecimento" className="sm:col-span-2"><Entrada value={f.titulo} onChange={set('titulo')} disabled={!editavel} /></Campo>
         <Campo rotulo="Descrição" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} disabled={!editavel} /></Campo>
-        <Campo rotulo="Valor (R$)"><Entrada value={String(f.valor)} onChange={set('valor')} disabled={!editavel} /></Campo>
+        <Campo rotulo="Valor (R$)"><EntradaMoeda value={String(f.valor)} onChange={(v) => set('valor')({ target: { value: v } })} disabled={!editavel} /></Campo>
         <Campo rotulo="Data de emissão"><CampoData value={f.data_emissao} onChange={(v) => setF({ ...f, data_emissao: v })} disabled={!editavel} /></Campo>
         <Campo rotulo="Prazo previsto"><Entrada value={f.prazo_previsto} onChange={set('prazo_previsto')} disabled={!editavel} /></Campo>
         <Campo rotulo="Validade (dias)">

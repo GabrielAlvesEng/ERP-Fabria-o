@@ -46,7 +46,7 @@ export function ItensAba({ grupo }: { grupo: GrupoItem }) {
           <Campo rotulo="Descrição" className="min-w-[260px] flex-1"><Entrada value={novo.descricao} onChange={(e) => setNovo({ ...novo, descricao: e.target.value })} placeholder={`Ex.: ${EXEMPLO[grupo]}`} /></Campo>
           <Campo rotulo="Material (opcional)" className="w-44"><Entrada value={novo.material} onChange={(e) => setNovo({ ...novo, material: e.target.value })} /></Campo>
           <Campo rotulo="Unidade" className="w-28"><CampoEscolha celula={false} valor={novo.unidade} opcoes={unidades} onConfirmar={(v) => setNovo({ ...novo, unidade: v })} /></Campo>
-          <Campo rotulo="Valor" className="w-32"><div className={molduraNumero}><CampoNumero valor={novo.valor} casas={4} className="py-1.5" onConfirmar={(n) => setNovo({ ...novo, valor: n })} /></div></Campo>
+          <Campo rotulo="Valor" className="w-32"><div className={molduraNumero}><CampoNumero moeda valor={novo.valor} casas={4} className="py-1.5" onConfirmar={(n) => setNovo({ ...novo, valor: n })} /></div></Campo>
           <Botao onClick={adicionar}><Plus size={15} /> Adicionar</Botao>
         </div>
       </Cartao>
@@ -62,7 +62,7 @@ export function ItensAba({ grupo }: { grupo: GrupoItem }) {
               <td className={td}><CampoCelula valor={i.descricao} onConfirmar={(v) => v.trim().length >= 2 && up(i.id, { descricao: v.trim() })} /></td>
               <td className={td}><CampoCelula valor={i.material} onConfirmar={(v) => up(i.id, { material: v.trim() })} /></td>
               <td className={td}><CampoEscolha valor={i.unidade} opcoes={unidades} onConfirmar={(v) => up(i.id, { unidade: v.trim() || 'un' })} /></td>
-              <td className={td}><CampoNumero valor={Number(i.valor)} casas={4} onConfirmar={(n) => up(i.id, { valor: n })} /></td>
+              <td className={td}><CampoNumero moeda valor={Number(i.valor)} casas={4} onConfirmar={(n) => up(i.id, { valor: n })} /></td>
               <td className="px-2"><Caixa marcado={i.ativo} onChange={(ativo) => up(i.id, { ativo })} /></td>
             </tr>
           ))}
@@ -165,7 +165,7 @@ function CartaoFornecedor({ f, servicos, gravar, setErro }: { f: Fornecedor; ser
                   {UNIDADES_SERVICO.map((u) => <option key={u}>{u}</option>)}
                 </select>
               </td>
-              <td className={td}><CampoNumero valor={Number(s.valor)} casas={4} onConfirmar={(n) => upS(s.id, { valor: n })} /></td>
+              <td className={td}><CampoNumero moeda valor={Number(s.valor)} casas={4} onConfirmar={(n) => upS(s.id, { valor: n })} /></td>
               <td className="px-2"><Caixa marcado={s.ativo} onChange={(ativo) => upS(s.id, { ativo })} /></td>
             </tr>
           ))}
@@ -177,7 +177,7 @@ function CartaoFornecedor({ f, servicos, gravar, setErro }: { f: Fornecedor; ser
               {UNIDADES_SERVICO.map((u) => <option key={u}>{u}</option>)}
             </Selecao>
           </Campo>
-          <Campo rotulo="Valor" className="w-32"><div className={molduraNumero}><CampoNumero valor={novo.valor} casas={4} className="py-1.5" onConfirmar={(n) => setNovo({ ...novo, valor: n })} /></div></Campo>
+          <Campo rotulo="Valor" className="w-32"><div className={molduraNumero}><CampoNumero moeda valor={novo.valor} casas={4} className="py-1.5" onConfirmar={(n) => setNovo({ ...novo, valor: n })} /></div></Campo>
           <Botao variante="secundario" onClick={async () => {
             if (novo.servico.trim().length < 2) return setErro('Informe o serviço.');
             if (await gravar(() => inserir('fornecedor_servicos', { fornecedor_id: f.id, servico: novo.servico.trim(), unidade: novo.unidade, valor: novo.valor })))
@@ -220,14 +220,14 @@ export function MaoObraAba() {
                 {lista.filter((m) => m.etapa === g).map((m) => (
                   <tr key={m.id} className={linha(m.ativo)}>
                     <td className={td}><CampoCelula valor={m.funcao} onConfirmar={(v) => v.trim().length >= 2 && gravar(() => atualizar('ref_mao_obra', { id: m.id }, { funcao: v.trim() }))} /></td>
-                    <td className={td}><CampoNumero valor={Number(m.valor_hora)} onConfirmar={(v) => gravar(() => atualizar('ref_mao_obra', { id: m.id }, { valor_hora: v }))} /></td>
+                    <td className={td}><CampoNumero moeda valor={Number(m.valor_hora)} onConfirmar={(v) => gravar(() => atualizar('ref_mao_obra', { id: m.id }, { valor_hora: v }))} /></td>
                     <td className="px-2"><Caixa marcado={m.ativo} onChange={(ativo) => gravar(() => atualizar('ref_mao_obra', { id: m.id }, { ativo }))} /></td>
                   </tr>
                 ))}
               </Tabela>
               <div className="mt-2 flex items-end gap-2">
                 <Campo rotulo="Nova função" className="flex-1"><Entrada value={n.funcao} onChange={(e) => setNovo({ ...novo, [g]: { ...n, funcao: e.target.value } })} /></Campo>
-                <Campo rotulo="R$/h" className="w-24"><div className={molduraNumero}><CampoNumero valor={n.valor} className="py-1.5" onConfirmar={(v) => setNovo({ ...novo, [g]: { ...n, valor: v } })} /></div></Campo>
+                <Campo rotulo="R$/h" className="w-24"><div className={molduraNumero}><CampoNumero moeda valor={n.valor} className="py-1.5" onConfirmar={(v) => setNovo({ ...novo, [g]: { ...n, valor: v } })} /></div></Campo>
                 <Botao variante="secundario" aria-label="Adicionar função" onClick={async () => {
                   if (n.funcao.trim().length < 2) return setErro('Informe a função.');
                   const ordem = Math.max(0, ...lista.map((m) => m.ordem)) + 1;
@@ -263,7 +263,7 @@ export function MaquinarioAba() {
           {lista.map((m) => (
             <tr key={m.id} className={linha(m.ativo)}>
               <td className={td}><CampoCelula valor={m.nome} onConfirmar={(v) => v.trim().length >= 2 && gravar(() => atualizar('ref_maquinas', { id: m.id }, { nome: v.trim() }))} /></td>
-              <td className={td}><CampoNumero valor={Number(m.valor_hora)} onConfirmar={(v) => gravar(() => atualizar('ref_maquinas', { id: m.id }, { valor_hora: v }))} /></td>
+              <td className={td}><CampoNumero moeda valor={Number(m.valor_hora)} onConfirmar={(v) => gravar(() => atualizar('ref_maquinas', { id: m.id }, { valor_hora: v }))} /></td>
               <td className="px-2"><Caixa marcado={m.ativo} onChange={(ativo) => gravar(() => atualizar('ref_maquinas', { id: m.id }, { ativo }))} /></td>
             </tr>
           ))}
@@ -271,7 +271,7 @@ export function MaquinarioAba() {
       )}
       <div className="flex items-end gap-2">
         <Campo rotulo="Nova máquina" className="flex-1"><Entrada value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} placeholder="Ex.: Guilhotina" /></Campo>
-        <Campo rotulo="R$/h" className="w-28"><div className={molduraNumero}><CampoNumero valor={novo.valor} className="py-1.5" onConfirmar={(v) => setNovo({ ...novo, valor: v })} /></div></Campo>
+        <Campo rotulo="R$/h" className="w-28"><div className={molduraNumero}><CampoNumero moeda valor={novo.valor} className="py-1.5" onConfirmar={(v) => setNovo({ ...novo, valor: v })} /></div></Campo>
         <Botao onClick={async () => {
           if (novo.nome.trim().length < 2) return setErro('Informe o nome da máquina.');
           const ordem = Math.max(0, ...lista.map((m) => m.ordem)) + 1;

@@ -92,7 +92,7 @@ export function FrotaPage() {
           <p className="mb-3 text-sm text-suave">Preenche o R$/l dos novos trechos com veículo próprio. Pode ser alterado em cada linha.</p>
           <div className="flex items-center gap-2">
             <div className="w-32 rounded-lg border border-slate-300 bg-superficie dark:border-marinho-500">
-              <CampoNumero valor={preco ?? 0} casas={3} className="py-1.5"
+              <CampoNumero moeda valor={preco ?? 0} casas={3} className="py-1.5"
                 onConfirmar={(n) => n >= 0 && tentar(() => supabase.from('configuracoes').upsert({ chave: 'combustivel_preco_padrao', valor: n, atualizado_em: new Date().toISOString() }))} />
             </div>
             <span className="text-sm text-suave">R$/l {preco ? `(${moeda(preco)})` : '(não definido)'}</span>

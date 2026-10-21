@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { hojeISO, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, Entrada, Modal, Selecao } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, Entrada, Modal, Selecao, EntradaMoeda } from '@/shared/ui';
 import { aprovarProposta, enviarComprovante, moverProposta, registrarFollowup, reprovarProposta } from '../api';
 import type { Proposta, StatusProposta } from '../types';
 
@@ -62,7 +62,7 @@ export function AprovarModal({ proposta, onFechar }: { proposta: Proposta; onFec
           </Campo>
           <Campo rotulo="Nº do documento (PC, contrato…)"><Entrada value={f.numero_documento} onChange={set('numero_documento')} /></Campo>
           <Campo rotulo="Data da aprovação"><CampoData value={f.data_aprovacao} onChange={(v) => setF({ ...f, data_aprovacao: v })} /></Campo>
-          <Campo rotulo={`Valor aprovado (proposta: ${moeda(proposta.valor)})`}><Entrada inputMode="decimal" value={f.valor_aprovado} onChange={set('valor_aprovado')} /></Campo>
+          <Campo rotulo={`Valor aprovado (proposta: ${moeda(proposta.valor)})`}><EntradaMoeda value={f.valor_aprovado} onChange={(v) => setF({ ...f, valor_aprovado: v })} /></Campo>
         </div>
         <Campo rotulo="Comprovante * (PDF ou imagem)">
           <CampoArquivo arquivo={arquivo} onChange={setArquivo} accept=".pdf,image/*,.eml,.msg" />
@@ -90,7 +90,7 @@ export function ReprovarModal({ proposta, onFechar }: { proposta: Proposta; onFe
         </Campo>
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo rotulo="Concorrente vencedor"><Entrada value={f.concorrente} onChange={set('concorrente')} /></Campo>
-          <Campo rotulo="Valor do concorrente"><Entrada inputMode="decimal" value={f.valor_concorrente} onChange={set('valor_concorrente')} /></Campo>
+          <Campo rotulo="Valor do concorrente"><EntradaMoeda value={f.valor_concorrente} onChange={(v) => setF({ ...f, valor_concorrente: v })} /></Campo>
         </div>
         <Campo rotulo="Observações"><AreaTexto value={f.observacoes} onChange={set('observacoes')} /></Campo>
         <Rodape onFechar={onFechar} ocupado={m.isPending} rotulo="Reprovar" variante="perigo" />
