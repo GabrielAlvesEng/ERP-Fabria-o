@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Lock, Trash2, Upload, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, Selecao, Selo, Vazio, EntradaMoeda } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, CampoData, Carregando, Entrada, EntradaMoeda, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
   abrirArquivo, atualizarRascunho, enviarArquivoRevisao, listarArquivos, listarEventos, listarReprovacoes, listarRevisoes,
   moverProposta, obterAprovacao, obterProposta, removerArquivo,
@@ -67,7 +67,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-marinho-900/40" onMouseDown={onFechar}>
       <div className={`flex h-full w-full flex-col bg-superficie shadow-xl transition-[max-width] ${aba === 'Custos' || aba === 'Documentos' ? 'max-w-6xl' : aba === 'Kick-off' ? 'max-w-4xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
-        {!p ? <Vazio>Carregando…</Vazio> : (
+        {!p ? <Carregando /> : (
           <>
             <div className="border-b border-borda px-5 py-4">
               <div className="flex items-start justify-between gap-3">

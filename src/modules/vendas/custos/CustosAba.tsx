@@ -9,7 +9,7 @@ import { listarCatalogo } from '@/modules/engenharia/api';
 import type { MaterialCatalogo } from '@/modules/engenharia/regras';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro, moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Caixa, CampoCelula, CampoEscolha, CampoNumero, Campo, Entrada, Modal, Selecao, Selo, Vazio, type OpcaoEscolha } from '@/shared/ui';
+import { Aviso, Botao, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Carregando, Entrada, Modal, Selecao, Selo, type OpcaoEscolha, Vazio } from '@/shared/ui';
 import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
 import {
@@ -66,7 +66,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
     onError: (e) => setErro(mensagemErro(e)),
   });
 
-  if (!rev) return <Vazio>Carregando…</Vazio>;
+  if (!rev) return <Carregando />;
 
   return (
     <div className="space-y-4">
@@ -444,10 +444,9 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
               )}
             </div>
           ) : c.tipo === 'simnao' ? (
-            <select value={l.detalhe || 'Não'} disabled={!editavel} onChange={(e) => onSalvar({ detalhe: e.target.value, ...(e.target.value === 'Não' ? { detalhe2: '' } : {}) })}
-              className="w-full cursor-pointer rounded-md border border-transparent bg-transparent px-1 py-1 text-sm outline-none hover:border-slate-300 focus:border-roxo-500 dark:bg-marinho-800">
+            <Selecao compacto value={l.detalhe || 'Não'} disabled={!editavel} onChange={(e) => onSalvar({ detalhe: e.target.value, ...(e.target.value === 'Não' ? { detalhe2: '' } : {}) })}>
               <option>Sim</option><option>Não</option>
-            </select>
+            </Selecao>
           ) : c.tipo === 'idavolta' ? (
             <div className="flex justify-center"><Caixa marcado={Boolean(l.ida_volta)} disabled={!editavel} onChange={(v) => onSalvar({ ida_volta: v })} /></div>
           ) : c.tipo === 'leitura' ? (

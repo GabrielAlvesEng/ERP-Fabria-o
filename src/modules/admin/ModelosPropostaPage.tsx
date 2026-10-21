@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save } from 'lucide-react';
 import { mensagemErro } from '@/shared/lib/formato';
-import { Aviso, Botao, Cabecalho, Campo, Cartao, Entrada, Vazio } from '@/shared/ui';
+import { Aviso, Botao, Cabecalho, Campo, Carregando, Cartao, Entrada } from '@/shared/ui';
 import { lerPadroes, salvarPadrao, type Padroes } from '@/modules/vendas/documentos/api';
 import { EditorDocumento } from '@/modules/vendas/documentos/EditorDocumento';
 import { documentoPadrao, type DadosEmpresaFabriaco } from '@/modules/vendas/documentos/modelo';
@@ -46,7 +46,7 @@ export function ModelosPropostaPage() {
     setSalvando(false);
   }
 
-  if (isLoading || !p) return <Vazio>Carregando…</Vazio>;
+  if (isLoading || !p) return <Carregando />;
   return (
     <>
       <Cabecalho titulo="Modelos de proposta" subtitulo="Dados da Fabriaço e textos padrão das propostas técnica e comercial. Cada proposta começa com estes textos e pode ser ajustada na aba Documentos."
@@ -75,7 +75,7 @@ export function ModelosPropostaPage() {
             <EditorDocumento doc={p[aba]} onChange={(d) => setP({ ...p, [aba]: d })} editavel itens={EXEMPLO.itens} />
           </div>
           <div className="lg:sticky lg:top-16 lg:h-[calc(100vh-6rem)]">
-            <Suspense fallback={<Vazio>Carregando a prévia…</Vazio>}><Previa doc={p[aba]} dados={{ ...EXEMPLO, preparadoPor: p.empresa.responsavel }} empresa={p.empresa} /></Suspense>
+            <Suspense fallback={<Carregando texto="Carregando a prévia…" />}><Previa doc={p[aba]} dados={{ ...EXEMPLO, preparadoPor: p.empresa.responsavel }} empresa={p.empresa} /></Suspense>
           </div>
         </div>
       )}

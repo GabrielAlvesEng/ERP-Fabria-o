@@ -6,7 +6,7 @@ import { ExcluirProjetoModal } from './ExcluirProjetoModal';
 import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Carregando, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
 import { atualizarProjeto, custoMateriaisProposta, listarCatalogo, listarConjuntos, listarImportacoesCad, listarPecas, listarRefsEng, obterProjeto } from './api';
 import { LIMITE_DIFERENCA, estimar, resumoCompra, type RefsEng } from './biblioteca';
 import { descricaoDoItem } from './CampoBiblioteca';
@@ -38,7 +38,7 @@ export function ProjetoPage() {
   const { data: pecas = [] } = useQuery({ queryKey: ['eng', id, 'pecas'], queryFn: () => listarPecas(id) });
 
   if (error) return <Aviso>{mensagemErro(error)}</Aviso>;
-  if (!projeto) return <Vazio>Carregando…</Vazio>;
+  if (!projeto) return <Carregando />;
   const pct = progresso(conjuntos);
 
   return (

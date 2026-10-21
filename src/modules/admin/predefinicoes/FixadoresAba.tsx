@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Folder, Layers, Plus, Settings2 } from 'lucide-react';
-import { Aviso, AreaTexto, Botao, Caixa, Campo, CampoCelula, CampoNumero, Cartao, Entrada, Modal, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoCelula, CampoNumero, Carregando, Cartao, Entrada, Modal, Vazio } from '@/shared/ui';
 import { atualizar, inserir, listarFixadores, listarItens, type FixadorMaterial, type FixadorTipo, type ItemBiblioteca } from '@/modules/biblioteca/api';
 import { combinacoesNovas, compararTamanho, lerLista } from '@/modules/biblioteca/fixadores';
 import { CHAVES, Tabela, linha, molduraNumero, td, th, useGravar } from './comum';
@@ -37,7 +37,7 @@ export function FixadoresAba() {
       || compararTamanho({ medida: a.medida ?? '', comprimento: a.comprimento ?? '' }, { medida: b.medida ?? '', comprimento: b.comprimento ?? '' }))
     .slice(0, 200) : [];
 
-  if (isLoading || !base) return <Vazio>Carregando…</Vazio>;
+  if (isLoading || !base) return <Carregando />;
   return (
     <div className="space-y-4">
       {erro && <Aviso>{erro}</Aviso>}

@@ -146,6 +146,9 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - **Proposta com vendedor:** campo "Vendedor" em Nova proposta (padrão: quem cria, se for vendedor) e em Dados. O banco aceita só vendedor ativo; na criação por quem não é vendedor, a proposta fica sem vendedor.
     - **Kanban:** filtro por vendedor (incluindo "Sem vendedor") e o nome do vendedor no cartão.
     - O usuário do Gabriel virou o primeiro vendedor ("Gabriel Alves"), responsável pelas propostas existentes.
+63. **Selects e carregamento (21/10/2026, pedido do Gabriel):**
+    - **Select próprio do ERP** (`Selecao`) em todo o site, no lugar da lista padrão do navegador: lista com as cores, bordas e cantos do site nos temas claro e escuro, item escolhido marcado em roxo, busca quando há mais de 10 opções, teclado (setas, Enter, Esc, letra inicial) e abertura para cima quando não há espaço embaixo. Versão compacta nas tabelas.
+    - **Preloader:** na primeira carga, o símbolo da Fabriaço enche de baixo para cima com as próprias cores (roxo e grafite; no tema escuro, lilás e branco). Ele está no `index.html`, para aparecer antes do JavaScript, e some com um esmaecer quando a sessão é conferida. O mesmo símbolo animado aparece, menor, nos carregamentos de telas e componentes, e uma barra fina no topo mostra quando o ERP está buscando ou gravando dados (só se passar de 250 ms).
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

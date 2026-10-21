@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Box, Boxes, ChevronRight, Component, Copy, Flame, Folder, Nut, Package, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, mensagemErro } from '@/shared/lib/formato';
-import { Aviso, Botao, CampoCelula, CampoNumero, Selo } from '@/shared/ui';
+import { Aviso, Botao, CampoCelula, CampoNumero, Selecao, Selo } from '@/shared/ui';
 import { adicionarConjunto, adicionarPeca, atualizarConjunto, atualizarPeca, excluirItem, listarCatalogo, listarRefsEng } from './api';
 import { sugerirItem, type RefsEng } from './biblioteca';
 import { CampoBiblioteca } from './CampoBiblioteca';
@@ -166,10 +166,9 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
               <div className="w-16 rounded-lg border border-slate-300 dark:border-marinho-500"><CampoCelula valor={c.revisao} disabled={!editavel} onConfirmar={(v) => tentar(() => atualizarConjunto(c.id, { revisao: v || 'R0' }))} /></div>
             </label>
             <label className="block"><span className="mb-1 block text-[11px] text-suave">Situação</span>
-              <select value={c.status} disabled={!editavel} onChange={(e) => tentar(() => atualizarConjunto(c.id, { status: e.target.value as StatusConjunto }))}
-                className="cursor-pointer rounded-lg border border-slate-300 bg-superficie px-2 py-1.5 text-sm dark:border-marinho-500">
+              <Selecao className="w-40" value={c.status} disabled={!editavel} onChange={(e) => tentar(() => atualizarConjunto(c.id, { status: e.target.value as StatusConjunto }))}>
                 {(Object.keys(NOME_STATUS) as StatusConjunto[]).map((s) => <option key={s} value={s}>{NOME_STATUS[s]}</option>)}
-              </select>
+              </Selecao>
             </label>
           </div>
         </div>

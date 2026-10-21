@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { supabaseConfigurado } from '@/shared/lib/supabase';
+import { BarraCarregamento, esconderPreloader } from '@/shared/ui/Carregando';
 import { AnoProvider } from './AnoContext';
 import { Layout } from './Layout';
 import { LoginPage } from './LoginPage';
@@ -20,6 +22,8 @@ import { PredefinicoesPage } from '@/modules/admin/predefinicoes/PredefinicoesPa
 
 export function App() {
   const { session, carregando } = useAuth();
+  // O preloader do index.html cobre a tela até a sessão ser conferida.
+  useEffect(() => { if (carregando === false || !supabaseConfigurado) esconderPreloader(); }, [carregando]);
 
   if (!supabaseConfigurado) {
     return (
@@ -28,11 +32,12 @@ export function App() {
       </div>
     );
   }
-  if (carregando) return <div className="p-8 text-sm text-suave">Carregando…</div>;
+  if (carregando) return null;
   if (!session) return <LoginPage />;
 
   return (
     <AnoProvider>
+      <BarraCarregamento />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/vendas" element={<VendasLayout />}>

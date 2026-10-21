@@ -7,7 +7,7 @@ import { AlertTriangle, MessageSquarePlus, Plus, Search } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Cabecalho, Caixa, Entrada, Selecao, Selo } from '@/shared/ui';
+import { Aviso, Botao, Cabecalho, Caixa, Carregando, Entrada, Selecao, Selo } from '@/shared/ui';
 import { listarPropostas, moverProposta } from '../api';
 import { AGUARDANDO_RETORNO, ETAPAS_FINANCEIRO, STATUS_KANBAN, colunaKanban, type Proposta, type StatusProposta } from '../types';
 import { followupVencido, rotuloRevisao, tipoTransicao } from './regras';
@@ -118,7 +118,7 @@ export function PropostasPage() {
         <Caixa marcado={soVencidos} onChange={setSoVencidos}>Só follow-up vencido</Caixa>
       </div>
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
-      {isLoading ? <div className="text-sm text-suave">Carregando…</div> : (
+      {isLoading ? <Carregando /> : (
         <DndContext sensors={sensors} onDragEnd={aoSoltar}>
           <div className="flex gap-3 overflow-x-auto pb-4">
             {STATUS_KANBAN.map((s) => (

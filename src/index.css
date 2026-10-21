@@ -45,3 +45,7 @@ table, .tabular-nums { font-variant-numeric: tabular-nums; }
 .abas::-webkit-scrollbar { display: none; }
 .abas > * { flex-shrink: 0; white-space: nowrap; }
 @media (min-width: 768px) { .abas { flex-wrap: wrap; overflow-x: visible; } }
+
+/* Carregamento: barra do topo indo e voltando. */
+@keyframes barra-carregando { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+.barra-carregando { animation: barra-carregando 1.1s ease-in-out infinite; }

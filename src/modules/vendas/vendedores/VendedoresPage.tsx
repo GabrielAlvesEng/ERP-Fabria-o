@@ -4,7 +4,7 @@ import { Mail, Pencil, Phone, Plus, UserRound } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Caixa, Cabecalho, Campo, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Carregando, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import { listarPropostas } from '../api';
 import { listarUsuarios, listarVendedores, salvarVendedor, type Vendedor } from './api';
 import { resumoVendedor } from './regras';
@@ -27,7 +27,7 @@ export function VendedoresPage() {
       <Cabecalho titulo="Vendedores" subtitulo={`Equipe comercial e os números de ${ano}. O cadastro de vendedores é feito pelo RH.`}
         acoes={rh ? <Botao onClick={() => setEditando('novo')}><Plus size={15} /> Cadastrar vendedor</Botao> : undefined} />
       {semVendedor > 0 && <div className="mb-3"><Aviso tipo="info">{semVendedor} proposta(s) de {ano} sem vendedor. Escolha o vendedor na aba Dados da proposta.</Aviso></div>}
-      {isLoading ? <Vazio>Carregando…</Vazio> : ordenados.length === 0 ? <Vazio>Nenhum vendedor cadastrado.</Vazio> : (
+      {isLoading ? <Carregando /> : ordenados.length === 0 ? <Vazio>Nenhum vendedor cadastrado.</Vazio> : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {ordenados.map((v) => {
             const dele = propostas.filter((p) => p.responsavel_id === v.usuario_id);

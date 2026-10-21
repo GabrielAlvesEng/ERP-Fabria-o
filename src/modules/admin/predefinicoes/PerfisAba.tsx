@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Pencil, Plus, X } from 'lucide-react';
 import { moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Caixa, Campo, CampoEscolha, CampoNumero, Cartao, Entrada, Selecao, Vazio } from '@/shared/ui';
+import { Aviso, Botao, Caixa, Campo, CampoEscolha, CampoNumero, Carregando, Cartao, Entrada, Selecao } from '@/shared/ui';
 import { atualizar, inserir, listarMateriaisBase, listarPerfis, listarPesosPerfil, listarTipos, type Perfil } from '@/modules/biblioteca/api';
 import {
   FORMATOS, NPS, SCHS, descricaoPerfil, kgPorMetro, kgPorMetroTabela, lerMedida, precosPerfil, tuboSch, type Formato, type ModoPreco,
@@ -161,7 +161,7 @@ export function PerfisAba() {
         </Selecao>
         <span className="text-sm text-suave">{filtrados.length} perfil(is){filtrados.length > LIMITE ? `, mostrando ${LIMITE}: use a busca` : ''}</span>
       </div>
-      {isLoading ? <Vazio>Carregando…</Vazio> : (
+      {isLoading ? <Carregando /> : (
         <Tabela cabecalho={<><th className={th}>Perfil</th><th className={`${th} text-right`}>kg/m</th><th className={th}>Preço</th><th className={`${th} w-32 text-right`}>Valor</th><th className={`${th} text-right`}>R$/m</th><th className={`${th} text-right`}>R$/kg</th><th className={th}>Ativo</th><th /></>}>
           {filtrados.slice(0, LIMITE).map((p) => {
             const pr = precosPerfil(p.preco_modo, Number(p.valor), p.kg_m == null ? null : Number(p.kg_m));

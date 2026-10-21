@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
-import { CalendarDays, Check, ChevronDown, Paperclip, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import { CalendarDays, Check, Paperclip, X } from 'lucide-react';
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
@@ -36,15 +36,7 @@ export function Campo({ rotulo, erro, children, className }: { rotulo: string; e
 
 export const Entrada = (p: InputHTMLAttributes<HTMLInputElement>) => <input {...p} className={cx(campoBase, p.className)} />;
 export const AreaTexto = (p: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea rows={3} {...p} className={cx(campoBase, p.className)} />;
-// Select com seta própria (sem a seta padrão do navegador).
-export function Selecao({ className, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div className={cx('relative', className)}>
-      <select {...p} className={cx(campoBase, 'cursor-pointer appearance-none pr-9 disabled:cursor-not-allowed disabled:opacity-60')} />
-      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-    </div>
-  );
-}
+export { Selecao } from './Selecao';
 
 // Data: mostra sempre DD/MM/AAAA, guarda ISO (AAAA-MM-DD). O botão abre o calendário do navegador.
 function isoParaBR(iso: string) {
@@ -364,3 +356,4 @@ export function CampoEscolha({ valor, opcoes, onConfirmar, disabled, placeholder
     </>
   );
 }
+export { BarraCarregamento, Carregando, SimboloCarregando, esconderPreloader } from './Carregando';

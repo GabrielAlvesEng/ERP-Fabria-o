@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ClipboardList, Lock, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, CampoCelula, CampoData, CampoNumero, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, CampoCelula, CampoData, CampoNumero, Carregando, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import { adicionarItem, atualizarItem, atualizarKickoff, finalizarKickoff, iniciarKickoff, listarItens, listarKickoffs, removerItem, type Kickoff, type KickoffItem, type Marco } from './api';
 
 const APROVADAS = ['Aprovado', 'Finalizado', 'Emitido NF', 'Pago'];
@@ -29,7 +29,7 @@ export function KickoffAba({ propostaId, statusProposta, somenteLeitura = false 
     onError: (e) => setErro(mensagemErro(e)),
   });
 
-  if (isLoading) return <Vazio>Carregando…</Vazio>;
+  if (isLoading) return <Carregando />;
   if (!APROVADAS.includes(statusProposta)) return <Vazio>O kick-off fica disponível depois que a proposta é aprovada.</Vazio>;
 
   if (!k) {
