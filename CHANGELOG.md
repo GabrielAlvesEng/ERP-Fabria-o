@@ -158,3 +158,4 @@
   - Migration `20261021000031_imagens_documento.sql` aplicada: tipo `imagem_documento` em `proposta_arquivos`.
   - Imagem principal na capa e imagens com legenda no Escopo. A foto é reduzida no navegador antes do envio, e as imagens são baixadas para montar o PDF. No e-mail elas não aparecem como anexo.
   - Conferido no navegador com dados simulados: imagem de 1200×800 reduzida para 13 KB, registro do arquivo, miniatura, legenda salva, e PDF com a imagem na capa e no escopo conferido em imagem. 112 testes e build ok.
+- Capa com opção de **fundo claro** para impressão (fundo branco, detalhes em lavanda, logo colorida). Escolha por documento, com o padrão em Modelos de proposta. Conferida no PDF gerado.

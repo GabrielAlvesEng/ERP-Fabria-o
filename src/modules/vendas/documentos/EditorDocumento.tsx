@@ -22,7 +22,17 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens }
   return (
     <fieldset disabled={!editavel} className="space-y-3">
       <div className="rounded-xl bg-pagina p-3 ring-1 ring-borda">
-        <div className="mb-2 text-sm font-semibold">Capa</div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-semibold">Capa</span>
+          <div className="flex rounded-lg bg-superficie p-0.5 text-xs ring-1 ring-borda" title="Fundo claro gasta menos tinta na impressão">
+            {(['escuro', 'claro'] as const).map((f) => (
+              <button key={f} type="button" onClick={() => onChange({ ...doc, capa: { ...doc.capa, fundo: f } })}
+                className={`rounded-md px-2.5 py-1 ${(doc.capa.fundo ?? 'escuro') === f ? 'bg-roxo-600 font-semibold text-white' : 'text-suave'}`}>
+                {f === 'escuro' ? 'Fundo escuro' : 'Fundo claro (impressão)'}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="grid gap-2 sm:grid-cols-2">
           <Campo rotulo="Título · 1ª linha (assunto)"><Entrada value={doc.capa.linha1} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, linha1: e.target.value } })} placeholder="Ex.: Vedação Pneumática" /></Campo>
           <Campo rotulo="Título · 2ª linha (equipamento)"><Entrada value={doc.capa.linha2} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, linha2: e.target.value } })} placeholder="Ex.: Rosca MP" /></Campo>

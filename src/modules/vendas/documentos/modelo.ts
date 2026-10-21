@@ -24,7 +24,7 @@ export type TipoSecao = Secao['tipo'];
 
 export interface Documento {
   tipo: TipoDocumento;
-  capa: { linha1: string; linha2: string; subtitulo: string; imagem?: string };
+  capa: { linha1: string; linha2: string; subtitulo: string; imagem?: string; fundo?: 'escuro' | 'claro' };
   visao: { objeto: string; solucao: string; unidade: string }; // técnica: cartões do "Visão do documento"
   abertura: string; // comercial: parágrafo do "Olá, {contato}"
   explicacao?: string; // o que o vendedor escreveu para a IA (não sai no PDF)

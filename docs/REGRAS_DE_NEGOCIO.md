@@ -137,6 +137,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
       - Vão para a OpenAI só a explicação, o cliente, o local, o título e os itens. **Preços nunca vêm da IA.**
       - A IA preenche capa, visão, objetivo, aplicação, normas, competências, escopo e fora do escopo (técnica), e abertura, objetivo e descrição dos itens (comercial). Garantia, validade, confidencialidade e demais textos padrão não mudam.
     - **Imagens (entrega 4, 21/10/2026):** imagem principal na capa (quadro branco, como no modelo) e imagens com legenda no Escopo, duas por linha. A foto é reduzida no navegador (até 1600 px, JPEG) e guardada como arquivo da revisão (tipo "imagem do documento"), que não vai como anexo no e-mail. Tirar a imagem do documento não apaga o arquivo; a Lixeira apaga ao excluir a proposta de vez.
+    - **Fundo da capa escuro ou claro** (pedido do Gabriel, para economizar tinta na impressão), escolhido em cada proposta. O padrão é definido em Modelos de proposta.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

@@ -227,48 +227,53 @@ const dataCurta = (iso: string) => (iso ? new Date(`${iso.slice(0, 10)}T12:00:00
 
 function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; empresa: DadosEmpresaFabriaco; imagens: Record<string, string> }) {
   const comercial = doc.tipo === 'comercial';
+  // Fundo claro: economiza tinta na impressão (pedido do Gabriel); escuro é o visual dos modelos.
+  const claro = doc.capa.fundo === 'claro';
+  const T = claro
+    ? { fundo: '#ffffff', forma: '#f1eefc', circulo: '#e6f3f1', texto: C.texto, suave: C.suave, linha: C.borda, cartao: C.fundo, cartaoBorda: C.borda, pilula: '#cfc5f2', pilulaTexto: C.roxo, destaque: C.roxo, sub: '#4b5263', simbolo: 'simbolo.png', letreiro: 'letreiro.png', quadro: '#ffffff' }
+    : { fundo: C.navy, forma: C.navy2, circulo: C.teal, texto: '#ffffff', suave: '#aeb3c9', linha: '#2f3757', cartao: C.navy3, cartaoBorda: '#38406a', pilula: '#6c5aa8', pilulaTexto: '#d6cdf7', destaque: C.roxoClaro, sub: '#c7cbe0', simbolo: 'simbolo-escuro.png', letreiro: 'letreiro-escuro.png', quadro: '#ffffff' };
   return (
-    <Page size="A4" style={{ fontFamily: 'Geist', backgroundColor: C.navy, color: '#ffffff' }}>
+    <Page size="A4" style={{ fontFamily: 'Geist', backgroundColor: T.fundo, color: T.texto }}>
       <Svg style={{ position: 'absolute', top: 0, left: 0 }} width={595} height={841} viewBox="0 0 595 841">
-        <Polygon points="230,0 595,0 595,235 200,70" fill={C.navy2} />
-        <Circle cx={10} cy={690} r={120} fill={C.teal} />
+        <Polygon points="230,0 595,0 595,235 200,70" fill={T.forma} />
+        <Circle cx={10} cy={690} r={120} fill={T.circulo} />
       </Svg>
       <View style={{ position: 'absolute', top: 46, left: 46, right: 46, bottom: 46 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Image src={`${MARCA}simbolo-escuro.png`} style={{ width: 22, height: 24, marginRight: 8 }} />
-            <Image src={`${MARCA}letreiro-escuro.png`} style={{ width: 96, height: 15 }} />
+            <Image src={`${MARCA}${T.simbolo}`} style={{ width: 22, height: 24, marginRight: 8 }} />
+            <Image src={`${MARCA}${T.letreiro}`} style={{ width: 96, height: 15 }} />
           </View>
-          <Text style={{ fontSize: 6.5, color: '#aeb3c9', letterSpacing: 1.6, marginTop: 6 }}>MONTAGENS INDUSTRIAIS E CALDEIRARIA</Text>
+          <Text style={{ fontSize: 6.5, color: T.suave, letterSpacing: 1.6, marginTop: 6 }}>MONTAGENS INDUSTRIAIS E CALDEIRARIA</Text>
         </View>
-        <View style={{ borderWidth: 1, borderColor: '#6c5aa8', borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12 }}>
-          <Text style={{ fontSize: 7, fontWeight: 600, letterSpacing: 1.4, color: '#d6cdf7' }}>{comercial ? 'PROPOSTA COMERCIAL' : 'PROPOSTA TÉCNICA'} · R{d.revisao}</Text>
+        <View style={{ borderWidth: 1, borderColor: T.pilula, borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12 }}>
+          <Text style={{ fontSize: 7, fontWeight: 600, letterSpacing: 1.4, color: T.pilulaTexto }}>{comercial ? 'PROPOSTA COMERCIAL' : 'PROPOSTA TÉCNICA'} · R{d.revisao}</Text>
         </View>
       </View>
-      <View style={{ height: 0.5, backgroundColor: '#2f3757', marginTop: 26, marginBottom: 56 }} />
-      <Text style={{ fontSize: 7.5, fontWeight: 600, color: C.roxoClaro, letterSpacing: 2, marginBottom: 14 }}>{comercial ? 'PROPOSTA COMERCIAL / CONDIÇÕES DE FORNECIMENTO' : 'PROPOSTA TÉCNICA / ENGENHARIA'}</Text>
+      <View style={{ height: 0.5, backgroundColor: T.linha, marginTop: 26, marginBottom: 56 }} />
+      <Text style={{ fontSize: 7.5, fontWeight: 600, color: T.destaque, letterSpacing: 2, marginBottom: 14 }}>{comercial ? 'PROPOSTA COMERCIAL / CONDIÇÕES DE FORNECIMENTO' : 'PROPOSTA TÉCNICA / ENGENHARIA'}</Text>
       <Text style={{ fontSize: 31, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15 }}>{doc.capa.linha1 || d.titulo}</Text>
-      {doc.capa.linha2 ? <Text style={{ fontSize: 31, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15, color: C.roxoClaro }}>{doc.capa.linha2}</Text> : null}
-      {doc.capa.subtitulo ? <Text style={{ fontSize: 10.5, color: '#c7cbe0', marginTop: 14, maxWidth: 400, lineHeight: 1.5 }}>{doc.capa.subtitulo}</Text> : null}
+      {doc.capa.linha2 ? <Text style={{ fontSize: 31, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15, color: T.destaque }}>{doc.capa.linha2}</Text> : null}
+      {doc.capa.subtitulo ? <Text style={{ fontSize: 10.5, color: T.sub, marginTop: 14, maxWidth: 400, lineHeight: 1.5 }}>{doc.capa.subtitulo}</Text> : null}
       <View style={{ flexDirection: 'row', marginTop: 24 }}>
         {[['Cliente', d.cliente.nome], ['Unidade', d.cliente.local], ['Identificação', `${d.codigo} · R${d.revisao}`]].map(([r, val], i) => (
-          <View key={r} style={{ flex: 1, backgroundColor: C.navy3, borderRadius: 8, borderWidth: 0.5, borderColor: '#38406a', padding: 11, marginLeft: i ? 8 : 0 }}>
-            <Text style={{ fontSize: 6.5, color: '#aeb3c9', letterSpacing: 1.2, marginBottom: 5 }}>{r.toUpperCase()}</Text>
+          <View key={r} style={{ flex: 1, backgroundColor: T.cartao, borderRadius: 8, borderWidth: 0.5, borderColor: T.cartaoBorda, padding: 11, marginLeft: i ? 8 : 0 }}>
+            <Text style={{ fontSize: 6.5, color: T.suave, letterSpacing: 1.2, marginBottom: 5 }}>{r.toUpperCase()}</Text>
             <Text style={{ fontSize: 9.5, fontWeight: 600 }}>{val || '-'}</Text>
           </View>
         ))}
       </View>
       {doc.capa.imagem && imagens[doc.capa.imagem] ? (
-        <View style={{ marginTop: 18, height: 250, backgroundColor: '#ffffff', borderRadius: 10, padding: 10, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ marginTop: 18, height: 250, backgroundColor: T.quadro, borderRadius: 10, borderWidth: claro ? 0.5 : 0, borderColor: C.borda, padding: 10, alignItems: 'center', justifyContent: 'center' }}>
           <Image src={imagens[doc.capa.imagem]} style={{ maxHeight: 230, maxWidth: '100%', objectFit: 'contain' }} />
         </View>
       ) : null}
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 0.5, borderTopColor: '#2f3757', paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
-        <View><Text style={{ fontSize: 9, fontWeight: 700 }}>FABRIAÇO BRASIL</Text><Text style={{ fontSize: 7.5, color: '#aeb3c9', marginTop: 2 }}>{empresa.cidade}</Text></View>
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 0.5, borderTopColor: T.linha, paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <View><Text style={{ fontSize: 9, fontWeight: 700 }}>FABRIAÇO BRASIL</Text><Text style={{ fontSize: 7.5, color: T.suave, marginTop: 2 }}>{empresa.cidade}</Text></View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 7.5, color: '#aeb3c9' }}>{d.preparadoPor || empresa.responsavel} · {dataExtenso(d.emissao)}</Text>
-          <Text style={{ fontSize: 7.5, color: '#aeb3c9', marginTop: 2 }}>{empresa.site}</Text>
+          <Text style={{ fontSize: 7.5, color: T.suave }}>{d.preparadoPor || empresa.responsavel} · {dataExtenso(d.emissao)}</Text>
+          <Text style={{ fontSize: 7.5, color: T.suave, marginTop: 2 }}>{empresa.site}</Text>
         </View>
       </View>
       </View>
