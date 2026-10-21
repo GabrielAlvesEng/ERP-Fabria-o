@@ -91,3 +91,4 @@
   - Aplicado em: preços e valores-hora da aba Custos (preço unitário, mão de obra/pedágio, R$/l); Predefinições (valor/m ou valor/kg dos perfis, valor/kg e preço por material + tipo das chapas, itens, serviços dos fornecedores, mão de obra, maquinário); preço do combustível da Frota; valor da proposta (nova e detalhe), valor aprovado e valor do concorrente.
   - Conferido no navegador: edição grava o número certo (1.234,5 → 1234.5; "R$ 50" → 50; "2500,5" → R$ 2.500,50).
   - 99 testes.
+- Planejamento de Frota completa e cálculo automático de rotas em `docs/PLANEJAMENTO_FROTA_E_ROTAS.md` (3 combustíveis com histórico, ficha completa do veículo com fotos e eixos, botão Calcular rota com ida e volta por API via Edge Function do Supabase). Aguardando aprovação e escolha da API (recomendada: QualP).
