@@ -133,3 +133,4 @@
   - Migrations 0027 e 0028 registradas no histórico.
   - Telas publicadas. A limpeza automática não foi executada à mão. Na Lixeira há 1 proposta ("26-02-001 · Teste", excluída em 21/10), que será apagada sozinha em 20/11 se ninguém a restaurar.
   - **Não testado com login real.**
+- Planejamento de Vendedores (aba em Vendas e filtro no Kanban) em `docs/PLANEJAMENTO_VENDEDORES.md`, aguardando aprovação.
