@@ -10,6 +10,8 @@
   --borda: 228 228 234;
   --texto: 24 24 28;
   --suave: 100 100 112;
+  /* Séries dos gráficos (paleta categórica validada, ordem fixa). */
+  --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a; --serie-4: #eda100;
 }
 .dark {
   color-scheme: dark;
@@ -18,6 +20,7 @@
   --borda: 45 45 52;
   --texto: 236 236 240;
   --suave: 160 160 171;
+  --serie-1: #3987e5; --serie-2: #d95926; --serie-3: #199e70; --serie-4: #c98500;
 }
 
 body { @apply bg-pagina text-texto antialiased; font-feature-settings: 'cv11', 'ss01'; }
