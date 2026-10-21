@@ -6,8 +6,9 @@
 export type TipoDocumento = 'tecnica' | 'comercial';
 export type Marca3 = 'Sim' | 'Não' | 'N/A';
 
-export interface Cartao { titulo: string; texto: string }
+export interface Cartao { titulo: string; texto: string; imagens?: Figura[] } // imagens: cards ao lado do item (Escopo)
 export interface Figura { caminho: string; legenda: string }
+export const MAX_IMAGENS_ITEM = 5; // imagens por item: mais que isso não cabe ao lado do card numa página
 export interface LinhaMatriz { texto: string; cliente: boolean; fabriaco: boolean }
 
 export type Secao = { id: string; titulo: string; ativo: boolean } & (
@@ -183,8 +184,8 @@ export function documentoPadrao(tipo: TipoDocumento): Documento {
         { id: 'competencias', titulo: 'Competências', ativo: true, tipo: 'competencias', itens: COMPETENCIAS },
         { id: 'responsabilidades', titulo: 'Responsabilidades', ativo: true, tipo: 'matriz', itens: RESPONSABILIDADES },
         { id: 'documentacoes', titulo: 'Documentações', ativo: true, tipo: 'matriz', itens: DOCUMENTACOES },
-        { id: 'escopo', titulo: 'Escopo', ativo: true, tipo: 'cartoes', marcador: 'numero', cartoes: [], fecho: '',
-          intro: 'A presente proposta contempla o fornecimento de materiais, fabricação e instalação, conforme descrito a seguir:', dica: 'Etapas do serviço, uma por cartão.' },
+        { id: 'escopo', titulo: 'Escopo', ativo: true, tipo: 'cartoes', marcador: 'letra', cartoes: [], fecho: '',
+          intro: 'A presente proposta contempla o fornecimento de materiais, fabricação e instalação, conforme descrito a seguir:', dica: 'Etapas do serviço, uma por item, cada uma com as imagens que precisar.' },
         texto('fora', 'Fora do Escopo', FORA_DO_ESCOPO),
         { id: 'gestao', titulo: 'Gestão do Projeto', ativo: true, tipo: 'cartoes', marcador: 'letra', cartoes: GESTAO,
           intro: 'A gestão do projeto será realizada pela Fabriaço Brasil – Montagens Industriais e Caldeiraria, contemplando o planejamento, acompanhamento e controle das atividades necessárias, garantindo o atendimento aos requisitos técnicos, de qualidade e segurança estabelecidos pela {cliente}.',
@@ -284,7 +285,7 @@ export function aplicarTextosIA(doc: Documento, t: TextosIA): Documento {
       return novo?.trim() ? { ...s, texto: novo.trim() } : s;
     }
     if (s.tipo === 'competencias' && t.competencias) return { ...s, itens: s.itens.map((i) => ({ ...i, valor: t.competencias![i.nome] ?? i.valor })) };
-    if (s.tipo === 'cartoes' && s.id === 'escopo' && t.escopo?.length) return { ...s, intro: t.escopo_intro?.trim() || s.intro, cartoes: t.escopo.filter((c) => c.titulo.trim()) };
+    if (s.tipo === 'cartoes' && s.id === 'escopo' && t.escopo?.length) return { ...s, intro: t.escopo_intro?.trim() || s.intro, cartoes: t.escopo.filter((c) => c.titulo.trim()).map((c, i) => ({ titulo: c.titulo, texto: c.texto, imagens: s.cartoes[i]?.imagens })) };
     if (s.tipo === 'valores' && t.descricoes?.length) return { ...s, descricoes: { ...s.descricoes, ...Object.fromEntries(t.descricoes.map((d) => [d.letra, d.texto])) } };
     return s;
   });
@@ -297,6 +298,7 @@ export function aplicarTextosIA(doc: Documento, t: TextosIA): Documento {
   };
 }
 
-// Caminhos das imagens usadas no documento (capa e figuras), para baixar antes de montar o PDF.
+// Caminhos das imagens usadas no documento (capa, figuras da seção e imagens dos itens), para baixar antes de montar o PDF.
 export const imagensDoDocumento = (d: Documento): string[] =>
-  [d.capa.imagem, ...d.secoes.flatMap((s) => (s.tipo === 'cartoes' ? (s.figuras ?? []).map((f) => f.caminho) : []))].filter((c): c is string => Boolean(c));
+  [d.capa.imagem, ...d.secoes.flatMap((s) => (s.tipo === 'cartoes'
+    ? [...(s.figuras ?? []), ...s.cartoes.flatMap((c) => c.imagens ?? [])].map((f) => f.caminho) : []))].filter((c): c is string => Boolean(c));

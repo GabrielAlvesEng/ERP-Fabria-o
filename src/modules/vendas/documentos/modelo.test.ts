@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, marcadorCartao, nomeArquivo, numerar, substituir, trechos } from './modelo';
+import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, nomeArquivo, numerar, substituir, trechos } from './modelo';
 
 describe('documentos da proposta', () => {
   it('lê negrito', () => {
@@ -57,5 +57,18 @@ describe('documentos da proposta', () => {
     const val = c.secoes.find((s) => s.id === 'valores')!;
     expect(c.abertura).toBe('Olá.');
     expect(val.tipo === 'valores' && val.descricoes.A).toBe('Fabricação do cabeçote.');
+  });
+  it('imagens dos itens do escopo: entram no PDF e sobrevivem à IA', () => {
+    const d = documentoPadrao('tecnica');
+    const esc = d.secoes.find((s) => s.id === 'escopo')!;
+    if (esc.tipo !== 'cartoes') throw new Error('escopo');
+    expect(esc.marcador).toBe('letra');
+    esc.cartoes = [{ titulo: 'A', texto: '', imagens: [{ caminho: 'x/1.jpg', legenda: '' }, { caminho: 'x/2.jpg', legenda: 'Vista' }] }, { titulo: 'B', texto: '' }];
+    d.capa.imagem = 'x/capa.jpg';
+    expect(imagensDoDocumento(d)).toEqual(['x/capa.jpg', 'x/1.jpg', 'x/2.jpg']);
+    const t = aplicarTextosIA(d, { escopo: [{ titulo: 'ENGENHARIA', texto: 'Projeto.' }, { titulo: 'FABRICAÇÃO', texto: '' }, { titulo: 'MONTAGEM', texto: '' }] });
+    const novo = t.secoes.find((s) => s.id === 'escopo')!;
+    expect(novo.tipo === 'cartoes' && novo.cartoes.map((c) => c.imagens?.length ?? 0)).toEqual([2, 0, 0]);
+    expect(novo.tipo === 'cartoes' && novo.cartoes[0].titulo).toBe('ENGENHARIA');
   });
 });

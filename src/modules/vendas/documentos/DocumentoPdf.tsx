@@ -6,7 +6,7 @@ import geist600 from '@fontsource/geist-sans/files/geist-sans-latin-600-normal.w
 import geist700 from '@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff?url';
 import { moeda } from '@/shared/lib/formato';
 import {
-  blocos, marcadorCartao, numerar, substituir, type DadosEmpresaFabriaco, type Documento, type Secao, type Trecho, type Variaveis,
+  blocos, marcadorCartao, numerar, substituir, type Cartao, type DadosEmpresaFabriaco, type Documento, type Secao, type Trecho, type Variaveis,
 } from './modelo';
 
 // PDF da proposta (decisão 61), no visual dos modelos técnico e comercial enviados pelo Gabriel.
@@ -30,6 +30,8 @@ const C = {
   texto: '#1f2433', suave: '#6b7280', borda: '#e5e7eb', fundo: '#f6f7fb', verde: '#0f766e', verdeFundo: '#d9f2ee', vermelho: '#b42318', vermelhoFundo: '#fde2e1',
 };
 const MARCA = `${import.meta.env.BASE_URL}marca/pdf/`;
+// Cards de imagem ao lado do item (pt): 5 imagens por item cabem numa página.
+const IMG = { largura: 178, altura: 104, espaco: 8, ligacao: 26, saida: 16 };
 
 const s = StyleSheet.create({
   pagina: { fontFamily: 'Geist', fontSize: 9.5, color: C.texto, paddingTop: 54, paddingBottom: 56, paddingHorizontal: 46, lineHeight: 1.45 },
@@ -120,17 +122,46 @@ function ConteudoSecao({ secao, v, d, empresa, comercial, topo, imagens }: { sec
     case 'cartoes': {
       const comIntro = Boolean(secao.intro.trim());
       const comDestaque = Boolean(secao.destaque?.trim());
-      const cartao = (c: { titulo: string; texto: string }, i: number) => (
-            <View key={i} wrap={false} style={{ flexDirection: 'row', borderWidth: 0.5, borderColor: C.borda, borderLeftWidth: comercial ? 3 : 0.5, borderLeftColor: comercial ? C.roxo : C.borda, borderRadius: 6, backgroundColor: comercial ? '#ffffff' : C.fundo, padding: 10, marginBottom: 7 }}>
-              <View style={{ width: 22, height: 22, borderRadius: 4, backgroundColor: C.lavanda, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                <Text style={{ fontSize: 8.5, fontWeight: 700, lineHeight: 1, color: C.roxo }}>{marcadorCartao(secao.marcador, i)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 8.5, fontWeight: 700, marginBottom: 3 }}>{substituir(c.titulo, v).toUpperCase()}</Text>
-                <Text style={{ fontSize: 8, color: '#374151', lineHeight: 1.45 }}>{substituir(c.texto, v)}</Text>
-              </View>
-            </View>
+      const caixaCartao = { flexDirection: 'row' as const, borderWidth: 0.5, borderColor: C.borda, borderLeftWidth: comercial ? 3 : 0.5, borderLeftColor: comercial ? C.roxo : C.borda, borderRadius: 6, backgroundColor: comercial ? '#ffffff' : C.fundo, padding: 10 };
+      const miolo = (c: Cartao, i: number) => (
+        <>
+          <View style={{ width: 22, height: 22, borderRadius: 4, backgroundColor: C.lavanda, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+            <Text style={{ fontSize: 8.5, fontWeight: 700, lineHeight: 1, color: C.roxo }}>{marcadorCartao(secao.marcador, i)}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 8.5, fontWeight: 700, marginBottom: 3 }}>{substituir(c.titulo, v).toUpperCase()}</Text>
+            <Text style={{ fontSize: 8, color: '#374151', lineHeight: 1.45 }}>{substituir(c.texto, v)}</Text>
+          </View>
+        </>
       );
+      // Item com imagens: card do texto à esquerda, um card por imagem à direita e linhas ligando o item a cada imagem.
+      const cartao = (c: Cartao, i: number) => {
+        const figs = (c.imagens ?? []).filter((f) => imagens[f.caminho]);
+        if (!figs.length) return <View key={i} wrap={false} style={{ ...caixaCartao, marginBottom: 7 }}>{miolo(c, i)}</View>;
+        const coluna = figs.length * IMG.altura + (figs.length - 1) * IMG.espaco;
+        const centros = figs.map((_, k) => k * (IMG.altura + IMG.espaco) + IMG.altura / 2);
+        const ultimo = centros[centros.length - 1];
+        const tronco = IMG.ligacao / 2;
+        return (
+          <View key={i} wrap={false} style={{ flexDirection: 'row', marginBottom: 10 }}>
+            <View style={{ ...caixaCartao, flex: 1, minHeight: coluna }}>{miolo(c, i)}</View>
+            <Svg width={IMG.ligacao} height={Math.max(coluna, IMG.saida + 1)} viewBox={`0 0 ${IMG.ligacao} ${Math.max(coluna, IMG.saida + 1)}`}>
+              <Path d={`M0 ${IMG.saida} H${tronco} V${Math.max(ultimo, IMG.saida)}`} stroke={C.roxoClaro} strokeWidth={0.9} fill="none" />
+              {centros.map((y, k) => <Path key={k} d={`M${tronco} ${y} H${IMG.ligacao - 2}`} stroke={C.roxoClaro} strokeWidth={0.9} fill="none" />)}
+              <Circle cx={1.6} cy={IMG.saida} r={1.6} fill={C.roxo} />
+              {centros.map((y, k) => <Circle key={k} cx={IMG.ligacao - 2} cy={y} r={1.6} fill={C.roxo} />)}
+            </Svg>
+            <View style={{ width: IMG.largura }}>
+              {figs.map((f, k) => (
+                <View key={k} style={{ height: IMG.altura, marginTop: k ? IMG.espaco : 0, borderWidth: 0.5, borderColor: C.borda, borderRadius: 6, backgroundColor: '#ffffff', padding: 5 }}>
+                  <Image src={imagens[f.caminho]} style={{ flex: 1, objectFit: 'contain' }} />
+                  {f.legenda.trim() ? <Text style={{ fontSize: 6.5, color: C.suave, marginTop: 3, textAlign: 'center', lineHeight: 1.2 }}>{f.legenda}</Text> : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        );
+      };
       const destaque = comDestaque && (
         <View style={{ backgroundColor: C.lavanda, borderLeftWidth: 3, borderLeftColor: C.roxo, borderRadius: 4, padding: 10, marginBottom: 8 }}><TextoRico texto={secao.destaque!} v={v} /></View>
       );

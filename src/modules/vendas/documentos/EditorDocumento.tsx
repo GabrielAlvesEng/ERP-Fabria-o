@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { AreaTexto, Botao, Caixa, Campo, Entrada, Selecao } from '@/shared/ui';
-import { numerar, type Cartao, type Documento, type Marca3, type Secao } from './modelo';
+import { MAX_IMAGENS_ITEM, marcadorCartao, numerar, type Cartao, type Documento, type Figura, type Marca3, type Secao } from './modelo';
 
 export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<string, string> }
 
@@ -81,32 +81,58 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
       return <AreaTexto rows={Math.min(18, Math.max(5, s.texto.split('\n').length + 2))} value={s.texto} placeholder={s.dica} onChange={(e) => onChange({ ...s, texto: e.target.value })} />;
     case 'cartoes': {
       const setCartao = (i: number, c: Cartao) => onChange({ ...s, cartoes: s.cartoes.map((x, j) => (j === i ? c : x)) });
+      const setFiguras = (i: number, c: Cartao, l: Figura[]) => setCartao(i, { ...c, imagens: l.length ? l : undefined });
       return (
         <div className="space-y-2">
           <Campo rotulo="Introdução"><AreaTexto rows={3} value={s.intro} onChange={(e) => onChange({ ...s, intro: e.target.value })} /></Campo>
           {s.destaque !== undefined && <Campo rotulo="Destaque"><AreaTexto rows={2} value={s.destaque} onChange={(e) => onChange({ ...s, destaque: e.target.value })} /></Campo>}
-          {s.cartoes.map((c, i) => (
-            <div key={i} className="space-y-1 rounded-lg bg-pagina p-2 ring-1 ring-borda">
-              <div className="flex items-center gap-2">
-                <span className="w-6 text-center text-xs font-bold text-roxo-600">{s.marcador === 'letra' ? String.fromCharCode(65 + i) : i + 1}</span>
-                <Entrada value={c.titulo} onChange={(e) => setCartao(i, { ...c, titulo: e.target.value })} placeholder="Título" />
-                <button type="button" onClick={() => onChange({ ...s, cartoes: s.cartoes.filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Remover"><Trash2 size={14} /></button>
-              </div>
-              <AreaTexto rows={3} value={c.texto} onChange={(e) => setCartao(i, { ...c, texto: e.target.value })} placeholder="Descrição" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-medium text-suave">Itens{imagens ? ' · cada item pode ter suas imagens, que saem em cards ao lado do texto' : ''}</span>
+            <div className="flex rounded-lg bg-superficie p-0.5 text-xs ring-1 ring-borda">
+              {(['letra', 'numero'] as const).map((m) => (
+                <button key={m} type="button" onClick={() => onChange({ ...s, marcador: m })}
+                  className={`rounded-md px-2.5 py-1 ${s.marcador === m ? 'bg-roxo-600 font-semibold text-white' : 'text-suave'}`}>{m === 'letra' ? 'A, B, C' : '01, 02, 03'}</button>
+              ))}
             </div>
-          ))}
-          <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, cartoes: [...s.cartoes, { titulo: '', texto: '' }] })}><Plus size={14} /> Adicionar cartão</Botao>
-          {imagens && s.id === 'escopo' && (
+          </div>
+          {s.cartoes.map((c, i) => {
+            const figs = c.imagens ?? [];
+            return (
+              <div key={i} className="space-y-1.5 rounded-lg bg-pagina p-2 ring-1 ring-borda">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 shrink-0 text-center text-xs font-bold text-roxo-600 dark:text-roxo-100">{marcadorCartao(s.marcador, i)}</span>
+                  <Entrada value={c.titulo} onChange={(e) => setCartao(i, { ...c, titulo: e.target.value })} placeholder="Título" />
+                  <button type="button" onClick={() => onChange({ ...s, cartoes: s.cartoes.filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Remover item"><Trash2 size={14} /></button>
+                </div>
+                <AreaTexto rows={3} value={c.texto} onChange={(e) => setCartao(i, { ...c, texto: e.target.value })} placeholder="Descrição" />
+                {imagens && (
+                  <div className="space-y-1.5 pl-0 sm:pl-8">
+                    {figs.map((f, k) => (
+                      <div key={f.caminho + k} className="flex items-center gap-2">
+                        {imagens.urls[f.caminho] ? <img src={imagens.urls[f.caminho]} alt="" className="h-12 w-16 shrink-0 rounded object-cover ring-1 ring-borda" /> : <div className="h-12 w-16 shrink-0 rounded bg-superficie ring-1 ring-borda" />}
+                        <Entrada value={f.legenda} placeholder="Legenda (opcional)" onChange={(e) => setFiguras(i, c, figs.map((x, j) => (j === k ? { ...x, legenda: e.target.value } : x)))} />
+                        <button type="button" onClick={() => setFiguras(i, c, figs.filter((_, j) => j !== k))} className="rounded p-1 text-suave hover:text-red-600" title="Tirar a imagem do item"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                    {figs.length < MAX_IMAGENS_ITEM
+                      ? <EscolherImagem imagens={imagens} rotulo={figs.length ? 'Adicionar outra imagem' : 'Adicionar imagem ao item'} onEscolher={(cam) => setFiguras(i, c, [...figs, { caminho: cam, legenda: '' }])} />
+                      : <p className="text-xs text-suave">Máximo de {MAX_IMAGENS_ITEM} imagens por item (para caber na página).</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, cartoes: [...s.cartoes, { titulo: '', texto: '' }] })}><Plus size={14} /> Adicionar item</Botao>
+          {imagens && (s.figuras ?? []).length > 0 && (
             <div className="space-y-2 rounded-lg bg-pagina p-2 ring-1 ring-borda">
-              <div className="text-xs font-medium text-suave">Imagens (duas por linha, depois das etapas)</div>
+              <div className="text-xs font-medium text-suave">Imagens gerais da seção (modelo antigo, saem depois dos itens). Prefira colocar as imagens em cada item.</div>
               {(s.figuras ?? []).map((f, i) => (
                 <div key={f.caminho} className="flex items-center gap-2">
                   {imagens.urls[f.caminho] ? <img src={imagens.urls[f.caminho]} alt="" className="h-12 w-16 shrink-0 rounded object-cover ring-1 ring-borda" /> : <div className="h-12 w-16 shrink-0 rounded bg-superficie ring-1 ring-borda" />}
-                  <Entrada value={f.legenda} placeholder="Legenda (ex.: Vista do conjunto)" onChange={(e) => onChange({ ...s, figuras: (s.figuras ?? []).map((x, j) => (j === i ? { ...x, legenda: e.target.value } : x)) })} />
+                  <Entrada value={f.legenda} placeholder="Legenda" onChange={(e) => onChange({ ...s, figuras: (s.figuras ?? []).map((x, j) => (j === i ? { ...x, legenda: e.target.value } : x)) })} />
                   <button type="button" onClick={() => onChange({ ...s, figuras: (s.figuras ?? []).filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Tirar do documento"><Trash2 size={14} /></button>
                 </div>
               ))}
-              <EscolherImagem imagens={imagens} rotulo="Adicionar imagem" onEscolher={(c) => onChange({ ...s, figuras: [...(s.figuras ?? []), { caminho: c, legenda: '' }] })} />
             </div>
           )}
           <Campo rotulo="Fechamento"><AreaTexto rows={2} value={s.fecho} onChange={(e) => onChange({ ...s, fecho: e.target.value })} /></Campo>
