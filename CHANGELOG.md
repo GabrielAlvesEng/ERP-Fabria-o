@@ -134,3 +134,15 @@
   - Telas publicadas. A limpeza automática não foi executada à mão. Na Lixeira há 1 proposta ("26-02-001 · Teste", excluída em 21/10), que será apagada sozinha em 20/11 se ninguém a restaurar.
   - **Não testado com login real.**
 - Planejamento de Vendedores (aba em Vendas e filtro no Kanban) em `docs/PLANEJAMENTO_VENDEDORES.md`, aguardando aprovação.
+- **Gerador de propostas, entregas 1 e 2 (decisão 61):**
+  - Migration `20261021000029_documentos_proposta.sql` aplicada: `documento_padroes` (a Administração grava) e `proposta_documentos` (por revisão e tipo; só grava em revisão de rascunho com `vendas.editar`), mais a cópia dos documentos para a nova revisão.
+  - Pendente a `20261021000030_documentos_cascata.sql`, para a Lixeira levar os documentos ao excluir uma proposta definitivamente. Ela tem "delete", então precisa ser colada no SQL Editor. Até lá, excluir de vez uma proposta que tem documento dá erro e não apaga nada.
+  - PDF gerado no navegador com `@react-pdf/renderer` 4.3.0 (texto selecionável, fonte Geist, logos da marca em PNG), num pacote separado que só carrega quando a aba Documentos é aberta.
+  - Textos padrão tirados dos modelos, em `src/modules/vendas/documentos/modelo.ts`, com 7 testes novos (111 no total).
+  - Conferido no navegador com dados simulados: edição salva sozinha; PDFs técnico (8 páginas) e comercial (6 páginas) gerados e convertidos em imagem para conferência; "Gerar e anexar" enviou o arquivo para `propostas/{proposta}/{revisão}/…` e registrou o anexo; Modelos de proposta salvou os dados da empresa e a garantia alterada.
+  - Corrigido durante o teste:
+    - página vazia antes da capa (o desenho de fundo passava 0,11 pt da folha);
+    - títulos encavalados;
+    - títulos de seção sozinhos no pé da página;
+    - tabela de impostos espremida.
+  - **Não testado com login real, e a prévia não aparece no Chrome do Android** (use Baixar PDF).

@@ -12,11 +12,12 @@ import type { Arquivo, Proposta, StatusProposta } from '../types';
 import { rotuloRevisao, tipoTransicao, validadeAte } from './regras';
 import type { Pendente } from './PropostasPage';
 import { FollowupModal } from './TransicaoModais';
+import { DocumentosAba } from '../documentos/DocumentosAba';
 import { CustosAba } from '../custos/CustosAba';
 import { KickoffAba } from '../kickoff/KickoffAba';
 import { ExcluirModal } from './ExcluirModal';
 
-const abas = ['Dados', 'Custos', 'Revisões e arquivos', 'Aprovação', 'Kick-off', 'Histórico'] as const;
+const abas = ['Dados', 'Custos', 'Documentos', 'Revisões e arquivos', 'Aprovação', 'Kick-off', 'Histórico'] as const;
 const tiposArquivo: Record<Arquivo['tipo'], string> = { comercial: 'Proposta comercial', tecnica: 'Proposta técnica', documento_tecnico: 'Documento técnico', anexo: 'Anexo' };
 
 const proximos: Partial<Record<StatusProposta, StatusProposta[]>> = {
@@ -64,7 +65,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-marinho-900/40" onMouseDown={onFechar}>
-      <div className={`flex h-full w-full flex-col bg-superficie shadow-xl transition-[max-width] ${aba === 'Custos' ? 'max-w-6xl' : aba === 'Kick-off' ? 'max-w-4xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
+      <div className={`flex h-full w-full flex-col bg-superficie shadow-xl transition-[max-width] ${aba === 'Custos' || aba === 'Documentos' ? 'max-w-6xl' : aba === 'Kick-off' ? 'max-w-4xl' : 'max-w-2xl'}`} onMouseDown={(e) => e.stopPropagation()}>
         {!p ? <Vazio>Carregando…</Vazio> : (
           <>
             <div className="border-b border-borda px-5 py-4">
@@ -103,6 +104,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
             <div className="flex-1 overflow-y-auto p-5">
               {aba === 'Dados' && <AbaDados p={p} />}
               {aba === 'Custos' && <CustosAba proposta={p} />}
+              {aba === 'Documentos' && <DocumentosAba proposta={p} />}
               {aba === 'Revisões e arquivos' && <AbaRevisoes p={p} />}
               {aba === 'Aprovação' && <AbaAprovacao p={p} />}
               {aba === 'Kick-off' && <KickoffAba propostaId={p.id} statusProposta={p.status} />}

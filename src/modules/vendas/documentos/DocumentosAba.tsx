@@ -1,0 +1,119 @@
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Download, Eye, FileCheck2, PencilLine, RotateCcw } from 'lucide-react';
+import { useAuth } from '@/shared/auth/AuthProvider';
+import { mensagemErro } from '@/shared/lib/formato';
+import { Aviso, Botao, Vazio } from '@/shared/ui';
+import { enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
+import type { Proposta } from '@/modules/vendas/types';
+import { dadosDaProposta, lerDocumentos, lerPadroes, salvarDocumento } from './api';
+import { EditorDocumento } from './EditorDocumento';
+import { nomeArquivo, type Documento, type TipoDocumento } from './modelo';
+
+const Previa = lazy(() => import('./Previa'));
+
+// Aba Documentos da proposta (decisão 61): proposta técnica e comercial com textos editáveis, prévia A4 e PDF.
+export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
+  const { pode } = useAuth();
+  const qc = useQueryClient();
+  const [tipo, setTipo] = useState<TipoDocumento>('tecnica');
+  const [verPrevia, setVerPrevia] = useState(false);
+  const [msg, setMsg] = useState<{ tipo: 'info' | 'erro'; texto: string } | null>(null);
+  const [gerando, setGerando] = useState(false);
+  const { data: revisoes = [] } = useQuery({ queryKey: ['proposta', p.id, 'revisoes', p.revisao_atual, p.status], queryFn: () => listarRevisoes(p.id) });
+  const rev = revisoes.find((r) => r.numero === p.revisao_atual);
+  const { data: padroes } = useQuery({ queryKey: ['documento_padroes'], queryFn: lerPadroes });
+  const { data: salvos, isLoading } = useQuery({ queryKey: ['proposta_documentos', rev?.id], queryFn: () => lerDocumentos(rev!.id), enabled: Boolean(rev) });
+  const preparadoPor = padroes?.empresa.responsavel ?? '';
+  const { data: dados } = useQuery({
+    queryKey: ['proposta_documentos_dados', p.id, rev?.id, p.titulo, p.data_emissao, p.validade_dias, preparadoPor],
+    queryFn: () => dadosDaProposta(p, rev!.id, preparadoPor), enabled: Boolean(rev && padroes),
+  });
+  const editavel = Boolean(rev?.status === 'rascunho' && pode('vendas', 'editar'));
+
+  // Documento em edição: o salvo da revisão ou, se ainda não existe, o padrão.
+  const [docs, setDocs] = useState<Partial<Record<TipoDocumento, Documento>>>({});
+  useEffect(() => {
+    if (!salvos || !padroes) return;
+    setDocs({ tecnica: salvos.tecnica ?? padroes.tecnica, comercial: salvos.comercial ?? padroes.comercial });
+  }, [salvos, padroes]);
+  const doc = docs[tipo];
+
+  // Salva sozinho 1 s depois da última alteração.
+  const pendente = useRef<Partial<Record<TipoDocumento, Documento>>>({});
+  const [salvando, setSalvando] = useState<'' | 'salvando' | 'salvo'>('');
+  useEffect(() => {
+    if (!editavel || !rev || !Object.keys(pendente.current).length) return;
+    const t = setTimeout(async () => {
+      const lote = pendente.current; pendente.current = {};
+      setSalvando('salvando');
+      try {
+        for (const [k, d] of Object.entries(lote)) await salvarDocumento(rev.id, k as TipoDocumento, d!);
+        setSalvando('salvo');
+      } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); setSalvando(''); }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [docs, editavel, rev]);
+  const alterar = (d: Documento) => { pendente.current[tipo] = d; setDocs((x) => ({ ...x, [tipo]: d })); };
+
+  const itensResumo = useMemo(() => dados?.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) ?? [], [dados]);
+
+  async function gerarPdf(anexar: boolean) {
+    if (!doc || !dados || !padroes || !rev) return;
+    setMsg(null); setGerando(true);
+    try {
+      const { gerarBlob } = await import('./Previa');
+      const blob = await gerarBlob(doc, dados, padroes.empresa);
+      const nome = nomeArquivo(p.codigo, p.revisao_atual, p.titulo, tipo);
+      if (anexar) {
+        await enviarArquivoRevisao(p.id, rev.id, tipo, new File([blob], nome, { type: 'application/pdf' }));
+        qc.invalidateQueries({ queryKey: ['proposta', p.id] });
+        setMsg({ tipo: 'info', texto: `PDF anexado em Revisões e arquivos (${tipo === 'tecnica' ? 'técnica' : 'comercial'}, R${p.revisao_atual}). Vai junto no e-mail de envio.` });
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = nome;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }
+    } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); }
+    setGerando(false);
+  }
+
+  function restaurar() {
+    if (!padroes || !confirm(`Voltar a proposta ${tipo === 'tecnica' ? 'técnica' : 'comercial'} para os textos padrão? O que foi escrito nesta revisão será substituído.`)) return;
+    alterar(padroes[tipo]);
+  }
+
+  if (isLoading || !padroes || !doc) return <Vazio>Carregando…</Vazio>;
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex rounded-lg bg-pagina p-0.5 ring-1 ring-borda">
+          {(['tecnica', 'comercial'] as const).map((t) => (
+            <button key={t} type="button" onClick={() => setTipo(t)}
+              className={`rounded-md px-3 py-1.5 text-sm ${tipo === t ? 'bg-superficie font-semibold text-roxo-600 shadow-sm dark:text-roxo-100' : 'text-suave'}`}>
+              {t === 'tecnica' ? 'Proposta técnica' : 'Proposta comercial'}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {salvando && <span className="text-xs text-suave">{salvando === 'salvando' ? 'Salvando…' : 'Salvo'}</span>}
+          <Botao variante="secundario" className="lg:hidden" onClick={() => setVerPrevia(!verPrevia)}>{verPrevia ? <><PencilLine size={15} /> Editar</> : <><Eye size={15} /> Prévia</>}</Botao>
+          {editavel && <Botao variante="secundario" onClick={restaurar}><RotateCcw size={15} /> Textos padrão</Botao>}
+          <Botao variante="secundario" onClick={() => gerarPdf(false)} disabled={gerando || !dados}><Download size={15} /> Baixar PDF</Botao>
+          {editavel && <Botao onClick={() => gerarPdf(true)} disabled={gerando || !dados}><FileCheck2 size={15} /> {gerando ? 'Gerando…' : 'Gerar e anexar PDF'}</Botao>}
+        </div>
+      </div>
+      {!editavel && <Aviso tipo="info">{rev?.status === 'enviada' ? `A R${p.revisao_atual} já foi enviada: os textos ficam como foram enviados. Para mudar, crie uma nova revisão.` : 'Somente leitura.'}</Aviso>}
+      {msg && <Aviso tipo={msg.tipo === 'info' ? 'info' : undefined}>{msg.texto}</Aviso>}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className={verPrevia ? 'hidden lg:block' : ''}>
+          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} />
+        </div>
+        <div className={`lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:block'}`}>
+          {dados ? <Suspense fallback={<Vazio>Carregando a prévia…</Vazio>}><Previa doc={doc} dados={dados} empresa={padroes.empresa} /></Suspense> : <Vazio>Carregando os dados da proposta…</Vazio>}
+        </div>
+      </div>
+    </div>
+  );
+}

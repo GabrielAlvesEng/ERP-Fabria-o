@@ -14,6 +14,7 @@ import { ProjetosPage } from '@/modules/engenharia/ProjetosPage';
 import { ProjetoPage } from '@/modules/engenharia/ProjetoPage';
 import { AdminLayout, ExcluidasPage, SenhasPage } from '@/modules/admin/AdminPages';
 import { FrotaPage } from '@/modules/admin/FrotaPage';
+import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
 import { PredefinicoesPage } from '@/modules/admin/predefinicoes/PredefinicoesPage';
 
 export function App() {
@@ -47,6 +48,7 @@ export function App() {
             <Route index element={<SenhasPage />} />
             <Route path="excluidas" element={<ExcluidasPage />} />
             <Route path="frota" element={<FrotaPage />} />
+            <Route path="modelos" element={<ModelosPropostaPage />} />
             <Route path="predefinicoes" element={<PredefinicoesPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/vendas" replace />} />

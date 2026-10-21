@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AbasModulo } from '@/shared/ui/AbasModulo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { KeyRound, Library, RotateCcw, Trash2, Truck } from 'lucide-react';
+import { FileText, KeyRound, Library, RotateCcw, Trash2, Truck } from 'lucide-react';
 import { supabase } from '@/shared/lib/supabase';
 import { dataHoraBR, mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, Cabecalho, Campo, Cartao, Entrada, Modal, Selo, Vazio } from '@/shared/ui';
@@ -11,6 +11,7 @@ const abas = [
   { to: '/admin/excluidas', rotulo: 'Lixeira', icone: Trash2 },
   { to: '/admin/predefinicoes', rotulo: 'Predefinições', icone: Library },
   { to: '/admin/frota', rotulo: 'Frota (custos)', icone: Truck },
+  { to: '/admin/modelos', rotulo: 'Modelos de proposta', icone: FileText },
 ];
 
 export function AdminLayout() {

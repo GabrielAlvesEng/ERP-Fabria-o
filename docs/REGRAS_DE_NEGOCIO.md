@@ -125,6 +125,13 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - Excluído definitivamente **some do site**, com tudo ligado a ele: revisões, custos, arquivos, histórico, kick-off; no projeto, conjuntos, peças e importações.
     - Depois de **30 dias** na Lixeira, a limpeza diária (03:17, horário de Brasília) apaga sozinha.
     - O código nunca é reaproveitado. A auditoria interna do banco continua registrando, como em toda alteração.
+61. **Gerador de propostas (21/10/2026)** (`docs/PLANEJAMENTO_PROPOSTA_PDF.md`, aprovado; modelos "Novo Modelo de Proposta Técnica/Comercial" enviados pelo Gabriel):
+    - Aba **Documentos** na proposta, com a proposta técnica (16 seções) e a comercial (11 seções) no visual dos modelos, cada uma com editor e prévia em A4.
+    - O ERP preenche sozinho código, revisão, cliente, unidade, contato, datas, validade, dados das duas empresas e os **valores dos Custos**. Preço nunca é digitado no documento.
+    - **Gerar e anexar PDF** guarda o arquivo na revisão (técnica ou comercial), com o nome `Proposta {código}-R{n} FABRIAÇO - {título} - Técnica/Comercial.pdf`. O arquivo vai junto no e-mail de envio. **Baixar PDF** só baixa.
+    - Revisão enviada fica só leitura. A nova revisão começa com os textos da anterior.
+    - **Administração → Modelos de proposta**: dados da Fabriaço e textos padrão (sobre nós, normas, responsabilidades, documentações, fora do escopo, gestão, garantia de 18 meses, prazo, validade, confidencialidade, frete CIF, impostos padrão, pagamento 21 DDL). Os padrões foram confirmados pelo Gabriel: dados da Fabriaço e impostos do modelo, capa com assunto na 1ª linha e equipamento na 2ª.
+    - Textos por IA (OpenAI) e imagens na capa/escopo são as entregas 3 e 4.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

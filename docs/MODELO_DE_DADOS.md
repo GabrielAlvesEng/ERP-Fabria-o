@@ -107,3 +107,10 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
   - as internas `_apagar_projeto`, `_apagar_proposta` e `limpar_lixeira`.
 - Agendamento pg_cron `limpar-lixeira`, diário às 06:17 UTC: apaga o que está na Lixeira há mais de 30 dias.
 - Nova permissão `engenharia.excluir` (perfil Engenharia) e senha `excluir_projeto`.
+
+## Documentos da proposta (`20261021000029_documentos_proposta.sql`, `20261021000030_documentos_cascata.sql`)
+
+- `documento_padroes` (chave `empresa`, `tecnica` ou `comercial`; conteudo jsonb): dados da Fabriaço e textos padrão. Lê quem tem Vendas; grava a Administração.
+- `proposta_documentos` (revisao_id, tipo `tecnica`/`comercial`, conteudo jsonb, único por revisão e tipo). O conteúdo segue `Documento` em `src/modules/vendas/documentos/modelo.ts`. Grava só em revisão de rascunho, com `vendas.editar`.
+- O gatilho `copiar_documentos_revisao` copia os documentos da revisão anterior para a nova.
+- O PDF gerado vira um `proposta_arquivos` comum (tipo `tecnica`/`comercial`), no bucket `vendas`.

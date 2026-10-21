@@ -1,6 +1,6 @@
 # Geração automática de propostas (PDF técnico e comercial, textos por IA)
 
-Versão 3, 21/10/2026. **Estado: planejamento aguardando aprovação do Gabriel.**
+Versão 3, 21/10/2026. **Estado: aprovado. Entregas 1 e 2 implementadas (decisão 61); a 3 (IA) aguarda a chave da OpenAI; a 4 (imagens) vem depois.**
 
 Pedido (21/10): "quero fazer a parte de gerar propostas automáticas também" (item 8.11 do Documento Mestre). Respostas do Gabriel:
 - IA: **OpenAI (ChatGPT)**.
