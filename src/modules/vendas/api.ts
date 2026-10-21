@@ -42,7 +42,7 @@ export async function incluirContatoNoAno(contatoId: string, ano: number): Promi
 }
 
 // Propostas ------------------------------------------------------------------
-const camposProposta = '*, empresas(nome_fantasia), contatos!propostas_contato_id_fkey(nome), usuarios!propostas_responsavel_id_fkey(nome, vendedores(nome))';
+const camposProposta = '*, empresas(nome_fantasia), contatos!propostas_contato_id_fkey(nome), usuarios!propostas_responsavel_id_fkey(nome, vendedores!vendedores_usuario_id_fkey(nome))';
 
 export async function listarPropostas(ano: number): Promise<Proposta[]> {
   return ok(await supabase.from('propostas').select(camposProposta).eq('ano', ano).order('ordem_kanban'));

@@ -49,7 +49,7 @@ export function PropostasPage() {
   const [erro, setErro] = useState('');
   const hoje = hojeISO();
 
-  const { data: propostas = [], isLoading } = useQuery({ queryKey: ['propostas', ano], queryFn: () => listarPropostas(ano) });
+  const { data: propostas = [], isLoading, error: erroLista } = useQuery({ queryKey: ['propostas', ano], queryFn: () => listarPropostas(ano) });
 
   const filtradas = useMemo(() => {
     const t = busca.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -118,6 +118,7 @@ export function PropostasPage() {
         <Caixa marcado={soVencidos} onChange={setSoVencidos}>Só follow-up vencido</Caixa>
       </div>
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
+      {erroLista && <div className="mb-3"><Aviso>Não foi possível carregar as propostas: {mensagemErro(erroLista)}</Aviso></div>}
       {isLoading ? <EsqueletoKanban /> : (
         <DndContext sensors={sensors} onDragEnd={aoSoltar}>
           <div className="flex gap-3 overflow-x-auto pb-4">
