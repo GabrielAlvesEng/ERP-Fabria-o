@@ -92,3 +92,9 @@
   - Conferido no navegador: edição grava o número certo (1.234,5 → 1234.5; "R$ 50" → 50; "2500,5" → R$ 2.500,50).
   - 99 testes.
 - Planejamento de Frota completa e cálculo automático de rotas em `docs/PLANEJAMENTO_FROTA_E_ROTAS.md` (3 combustíveis com histórico, ficha completa do veículo com fotos e eixos, botão Calcular rota com ida e volta por API via Edge Function do Supabase). Aguardando aprovação e escolha da API (recomendada: QualP).
+- **Frota completa (decisão 55):**
+  - Migration `20261021000024_frota_completa.sql` aplicada (a ferramenta de migrations travava; aplicada em blocos pequenos pelo SQL, cada um conferido): `combustivel_precos` com histórico e a visão `combustivel_precos_atuais`; ficha completa em `ref_veiculos` (placa única, tipo, eixos, combustível, documentos, situação); `veiculo_fotos` com limite de 3 no banco; bucket privado `frota` (5 MB, JPG/PNG/WEBP); `custo_linhas.ida_volta`, com o total calculado no banco e copiado para novas revisões. Conferido no banco: ida e volta 1 × (180 ÷ 4 × 6,20 + 35,40) × 2 = R$ 628,80.
+  - Tela Administração → Frota refeita: cartões dos veículos com foto, placa, combustível, consumo e eixos; ficha com todos os campos e até 3 fotos; preço dos 3 combustíveis com histórico.
+  - Seção Viagem: o veículo escolhido preenche km/l e R$/l pelo combustível (flex = gasolina); caixa "Ida e volta"; rótulos "Km (ida)" e "Pedágio (ida)".
+  - Conferido no navegador com dados simulados (nada gravado): preço do etanol e da gasolina gravados como linhas novas do histórico; placa inválida recusada; veículo novo gravado só com os campos da ficha (placa DEF-4567 → DEF4567); foto enviada para `veiculos/{id}/…` e registrada; Munck a diesel preencheu 4 km/l e R$ 5,90; "Ida e volta" gravou `ida_volta`. 100 testes e build ok. **Não testado com login real.**
+  - Cálculo automático pela API QualP aguarda o contrato e a chave (segredo `ROTAS_API_KEY` no Supabase).

@@ -86,6 +86,14 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
 53. **Biblioteca de Materiais na Engenharia (21/10/2026)** (`docs/PLANEJAMENTO_BIBLIOTECA_ENGENHARIA.md`, aprovado com todas as recomendações): cada peça pode apontar para um item da biblioteca; o ERP **sugere** (chapa do mesmo material e espessura, perfil lido da descrição do CAD, comercial/fixador pela descrição) e a **Engenharia confirma**. Peso do CAD continua valendo; nos perfis o ERP calcula o peso pela biblioteca (kg/m × comprimento) e avisa quando a diferença passa de **5%**. Custo estimado: chapas peso × valor/kg (da chapa ou do material + Chapa Lisa), perfis comprimento × valor/m, comerciais valor do item. Resumo para compra: chapas em kg e chapas inteiras pela chapa padrão do material e espessura (1250 × 3000, ou a maior cadastrada), perfis em metros e **barras de 6 m**, comerciais somados. Mostra o custo de materiais da proposta aprovada ao lado do custo estimado do projeto (só leitura).
 54. **Migrations aprovadas de antemão (21/10/2026):** o Gabriel disse "eu aprovo todas as migrations a partir daqui, não me pergunte mais". As migrations do projeto "ERP Fabriaço" passam a ser aplicadas sem pedir confirmação, seguindo as mesmas regras de sempre (testadas antes em transação desfeita quando mexem em dados, pequenas e ordenadas, sem editar migration já aplicada, sem apagar dados, registradas no CHANGELOG). Não vale para apagar dados, tabelas, usuários ou arquivos, nem para reset, que continuam pedindo confirmação no momento (CLAUDE.md).
 
+55. **Frota completa e ida e volta (21/10/2026)** (`docs/PLANEJAMENTO_FROTA_E_ROTAS.md`, respostas do Gabriel: "QualP API", "sempre gasolina", campos "sim", "apenas 3 fotos no máximo"; *amplia* a decisão 42 e a parte de veículos da decisão 50):
+    - Preço de **gasolina, etanol e diesel** em Administração → Frota, com histórico (cada mudança é uma linha nova, com data e autor). O preço único antigo virou o da gasolina.
+    - Ficha do veículo: apelido, placa (única), tipo (carro, utilitário, caminhão, munck, outro), marca, modelo, ano, cor, RENAVAM, chassi, eixos (2 a 9), combustível (gasolina, etanol, diesel ou flex), consumo km/l, capacidade (kg) e passageiros, vencimento do licenciamento e do seguro, próxima revisão (km e data), situação (ativo, em manutenção, vendido/inativo) e observações. Só veículo **ativo** aparece nos custos. Nada é apagado.
+    - **Até 3 fotos** por veículo (JPG, PNG ou WEBP, até 5 MB), em espaço privado do Storage; o limite vale também no banco.
+    - **Flex calcula sempre com gasolina.** Escolher o veículo na seção Viagem preenche o km/l e o R$/l pelo combustível dele.
+    - **Ida e volta** na linha de Veículo próprio e Veículo alugado: km e pedágio digitados são os da ida e contam 2 vezes (veículo próprio: viagens × (combustível + pedágio) × 2; alugado: diárias × diária + (combustível + pedágio) × 2).
+    - **Cálculo automático da rota: API QualP** (escolha do Gabriel), por uma Edge Function do Supabase com a chave guardada como segredo `ROTAS_API_KEY`. **Aguarda o Gabriel contratar o plano e cadastrar a chave**; até lá, km e pedágio são digitados.
+
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
@@ -122,6 +130,7 @@ Detalhes completos em `DOCUMENTO_MESTRE.md`, seção 8. Resumo:
 - [ ] Arquivos da Logo Moderna (SVG) para trocar a marca provisória, o favicon e os ícones do celular (decisão 51).
 - [ ] Fornecedor real dos serviços de laser e dobra hoje em "A definir" (decisão 49).
 - [ ] Confirmar as recomendações implementadas nas decisões 47 a 50 (etapa financeira pelo detalhe, veículo alugado, fornecedores com serviços, preço de chapa por material + tipo, base de pesos de mercado, campos de fixadores e consumíveis, migração da lista de preços).
+- [ ] Contratar a API QualP e cadastrar a chave no Supabase (Edge Functions → Secrets, nome `ROTAS_API_KEY`) para liberar o botão "Calcular rota" (decisão 55).
 - [ ] Conferir a base de pesos de I e U laminados e preencher o kg/m das 18 vigas W/I/U da lista antiga que vieram sem peso.
 
 As demais perguntas marcadas [DECIDIR] no `docs/PLANEJAMENTO_VENDAS.md` continuam abertas até o Gabriel responder ou aprovar as recomendações.

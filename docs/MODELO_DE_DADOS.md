@@ -78,3 +78,10 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `projeto_pecas.bib_tipo` (chapa, perfil, item), `bib_id` (id em `bib_chapas`, `bib_perfis` ou `bib_itens`) e `bib_confirmado`; os dois primeiros vazios juntos ou preenchidos juntos.
 - Políticas de leitura `bib_*_ler` passam a aceitar `engenharia.ler`.
 - Peso, custo e resumo para compra são calculados na tela (`src/modules/engenharia/biblioteca.ts`), não gravados.
+
+## Frota completa (`20261021000024_frota_completa.sql`)
+
+- `combustivel_precos` (combustivel gasolina/etanol/diesel, preco, vigente_desde, criado_por): histórico, só inserção; a visão `combustivel_precos_atuais` dá o preço mais recente de cada um. Lê quem tem `custos.ler` ou `admin.editar`; grava `admin.editar`.
+- `ref_veiculos` ganhou placa (única, maiúscula), tipo, marca, modelo, ano, cor, renavam, chassi, eixos (2 a 9), combustivel (gasolina, etanol, diesel, flex), capacidade_kg, passageiros, licenciamento_vence, seguro_vence, revisao_km, revisao_data, situacao (ativo, manutencao, vendido) e observacoes. O gatilho `sincronizar_veiculo_ativo` mantém `ativo = (situacao = 'ativo')`.
+- `veiculo_fotos` (veiculo_id, caminho único, nome, ordem): no máximo 3 por veículo (gatilho `limitar_fotos_veiculo`). Arquivos no bucket privado `frota`, em `veiculos/{veiculo_id}/…` (5 MB, JPG/PNG/WEBP).
+- `custo_linhas.ida_volta`: na Viagem, combustível e pedágio contam 2 vezes; `copiar_custos` leva o campo para a nova revisão.

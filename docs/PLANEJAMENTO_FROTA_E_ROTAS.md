@@ -1,6 +1,8 @@
 # Frota completa e cálculo automático de rotas
 
-Versão 1, 21/10/2026. **Estado: planejamento aguardando aprovação do Gabriel e a escolha da API.**
+Versão 2, 21/10/2026. **Estado: entregas 1 e 2 implementadas (decisão 55); entrega 3 aguarda o contrato da QualP e a chave.**
+
+Respostas do Gabriel: 1) QualP API (perguntou se há jeito gratuito, ver seção 5); 2) flex sempre com gasolina; 3) campos da ficha aprovados; 4) no máximo 3 fotos por veículo. As seções abaixo foram mantidas como planejadas; onde a resposta mudou o plano, vale a decisão 55 (flex = gasolina, 3 fotos, km e pedágio da ida contados 2 vezes até a API chegar).
 
 Pedido (21/10): preço dos 3 combustíveis (gasolina, álcool/etanol, diesel); cadastro completo dos veículos da empresa (placa, informações, fotos, combustível que usa…); cálculo automático do valor da rota por uma API de distância + pedágios, com opção de ida e volta.
 
@@ -61,3 +63,10 @@ Até a chave chegar, as entregas 1 e 2 já funcionam com km e pedágio digitados
 2. Veículo flex: calcular com o combustível mais barato por km (recomendado) ou sempre gasolina?
 3. Os campos da ficha do veículo servem? Falta algum (ex.: motorista responsável, cartão de combustível)?
 4. Fotos: até 10 por veículo, com até 5 MB cada, serve?
+
+## 5. Existe jeito gratuito? (pergunta do Gabriel)
+Pesquisado em 21/10/2026:
+- **Distância grátis existe, pedágio brasileiro grátis e confiável não.** OpenRouteService proíbe uso comercial no plano gratuito; o servidor público do OSRM é só para demonstração; nenhum dos dois traz pedágio.
+- Os dados abertos da ANTT têm a localização das praças federais, mas não um cálculo de rota com tarifa por eixo, e as rodovias estaduais (ARTESP, a maioria das praças em SP) não têm base aberta equivalente.
+- Google Routes tem cota mensal gratuita, mas exige cartão cadastrado e o pedágio no Brasil não é garantido.
+- **Alternativa sem custo já possível:** rotas salvas — a primeira vez que uma rota (origem, destino, eixos) é usada, os km e o pedágio são digitados (com a ajuda dos botões Qualp e Google Maps que já existem) e o ERP reaproveita nas próximas propostas. Pode ser feita se o Gabriel quiser enquanto a QualP não é contratada.

@@ -37,14 +37,15 @@ export interface CustoLinha {
   consumo: number | null;
   combustivel: number | null;
   bib_id?: string | null;
+  ida_volta?: boolean;
 }
 
-export type CampoLinha = 'grupo' | 'descricao' | 'detalhe' | 'detalhe2' | 'quantidade' | 'fator' | 'valor_unitario' | 'material' | 'adicional' | 'consumo' | 'combustivel';
+export type CampoLinha = 'grupo' | 'descricao' | 'detalhe' | 'detalhe2' | 'quantidade' | 'fator' | 'valor_unitario' | 'material' | 'adicional' | 'consumo' | 'combustivel' | 'ida_volta';
 
 export interface Coluna {
   campo: CampoLinha;
   rotulo: string;
-  tipo: 'texto' | 'numero' | 'material' | 'catalogo' | 'escolha' | 'simnao' | 'veiculo' | 'leitura';
+  tipo: 'texto' | 'numero' | 'material' | 'catalogo' | 'escolha' | 'simnao' | 'veiculo' | 'leitura' | 'idavolta';
   largura?: string;
   pesoMateriais?: boolean; // botão "usar peso dos materiais" (galvanização e zincagem)
   rota?: boolean;          // botões de rota (Qualp e mapa) no destino da frota
@@ -157,22 +158,24 @@ export const SECOES: DefSecao[] = [
         { campo: 'descricao', rotulo: 'Veículo', tipo: 'veiculo', largura: 'min-w-[160px]' },
         { campo: 'detalhe', rotulo: 'Origem', tipo: 'texto', largura: 'min-w-[130px]' },
         { campo: 'detalhe2', rotulo: 'Destino', tipo: 'texto', largura: 'min-w-[150px]', rota: true },
-        { campo: 'fator', rotulo: 'Km por viagem', tipo: 'numero', largura: 'w-24' },
+        { campo: 'ida_volta', rotulo: 'Ida e volta', tipo: 'idavolta', largura: 'w-20' },
+        { campo: 'fator', rotulo: 'Km (ida)', tipo: 'numero', largura: 'w-24' },
         { campo: 'quantidade', rotulo: 'Viagens', tipo: 'numero', largura: 'w-20' },
         { campo: 'consumo', rotulo: 'Km/l', tipo: 'numero', largura: 'w-20' },
         { campo: 'combustivel', rotulo: 'R$/l', tipo: 'numero', largura: 'w-24' },
-        { campo: 'adicional', rotulo: 'Pedágio por viagem', tipo: 'numero', largura: 'w-28' },
+        { campo: 'adicional', rotulo: 'Pedágio (ida)', tipo: 'numero', largura: 'w-28' },
       ] },
       { grupo: 'Veículo alugado', adicionar: 'veículo alugado', colunas: [
         { campo: 'descricao', rotulo: 'Veículo / locadora', tipo: 'texto', largura: 'min-w-[160px]' },
         { campo: 'detalhe', rotulo: 'Origem', tipo: 'texto', largura: 'min-w-[120px]' },
         { campo: 'detalhe2', rotulo: 'Destino', tipo: 'texto', largura: 'min-w-[140px]', rota: true },
+        { campo: 'ida_volta', rotulo: 'Ida e volta', tipo: 'idavolta', largura: 'w-20' },
         { campo: 'quantidade', rotulo: 'Diárias', tipo: 'numero', largura: 'w-20' },
         { campo: 'valor_unitario', rotulo: 'Valor da diária', tipo: 'numero', largura: 'w-28' },
-        { campo: 'fator', rotulo: 'Km total', tipo: 'numero', largura: 'w-24' },
+        { campo: 'fator', rotulo: 'Km (ida)', tipo: 'numero', largura: 'w-24' },
         { campo: 'consumo', rotulo: 'Km/l', tipo: 'numero', largura: 'w-20' },
         { campo: 'combustivel', rotulo: 'R$/l', tipo: 'numero', largura: 'w-24' },
-        { campo: 'adicional', rotulo: 'Pedágio total', tipo: 'numero', largura: 'w-28' },
+        { campo: 'adicional', rotulo: 'Pedágio (ida)', tipo: 'numero', largura: 'w-28' },
       ] },
       { grupo: 'Alimentação', adicionar: 'alimentação', colunas: [
         { campo: 'descricao', rotulo: 'Descrição', tipo: 'texto' },
@@ -244,15 +247,16 @@ export function reordenar<T extends { id: string; ordem: number }>(lista: T[], d
 }
 
 // Mesma regra do gatilho ajustar_linha_custo no banco.
-export function totalLinha(l: Pick<CustoLinha, 'secao' | 'grupo' | 'quantidade' | 'fator' | 'valor_unitario'> & Partial<Pick<CustoLinha, 'adicional' | 'consumo' | 'combustivel'>>): number {
+export function totalLinha(l: Pick<CustoLinha, 'secao' | 'grupo' | 'quantidade' | 'fator' | 'valor_unitario'> & Partial<Pick<CustoLinha, 'adicional' | 'consumo' | 'combustivel' | 'ida_volta'>>): number {
   const q = Number(l.quantidade), f = Number(l.fator), v = Number(l.valor_unitario), a = Number(l.adicional ?? 0);
   const c = Number(l.consumo ?? 0);
   const combustivel = c > 0 ? (f / c) * Number(l.combustivel ?? 0) : 0; // km ÷ km/l × R$/l
+  const mult = l.ida_volta ? 2 : 1; // ida e volta: km e pedágio contam 2 vezes (decisão 55)
   let t: number;
   if (l.grupo === 'Veículo próprio' && (l.secao === 'viagem' || l.secao === 'frota')) {
-    t = q * (combustivel + a);
+    t = q * (combustivel + a) * mult;
   } else if (l.secao === 'viagem' && l.grupo === 'Veículo alugado') {
-    t = q * v + combustivel + a;
+    t = q * v + (combustivel + a) * mult;
   } else if (l.secao === 'acabamentos') {
     t = (l.grupo === 'Acabamento em inox' ? 1 : q) * v + a;
   } else if ((l.secao === 'materiais' && GRUPOS_ITEM.includes(l.grupo as GrupoMaterial)) || l.secao === 'frete' || (l.secao === 'viagem' && l.grupo === 'Hospedagem')) {

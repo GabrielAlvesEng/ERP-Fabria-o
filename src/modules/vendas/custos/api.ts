@@ -101,14 +101,20 @@ export async function removerLinha(id: string): Promise<void> {
   ok(await supabase.from('custo_linhas').delete().eq('id', id));
 }
 
-export interface RefVeiculo { id: string; nome: string; consumo_km_l: number; ativo: boolean }
+export type Combustivel = 'gasolina' | 'etanol' | 'diesel';
+export interface RefVeiculo { id: string; nome: string; placa: string; consumo_km_l: number; combustivel: Combustivel | 'flex'; eixos: number; ativo: boolean }
 
-// Veículos ativos e preço padrão do combustível (Administração → Frota), para a seção Viagem.
-export async function listarVeiculosECombustivel(): Promise<{ veiculos: RefVeiculo[]; combustivelPadrao: number | null }> {
+// Veículos ativos e preço atual de cada combustível (Administração → Frota, decisão 55), para a seção Viagem.
+export async function listarVeiculosECombustivel(): Promise<{ veiculos: RefVeiculo[]; precos: Partial<Record<Combustivel, number>> }> {
   const [v, c] = await Promise.all([
-    supabase.from('ref_veiculos').select('id, nome, consumo_km_l, ativo').eq('ativo', true).order('ordem').order('nome'),
-    supabase.from('configuracoes').select('valor').eq('chave', 'combustivel_preco_padrao').maybeSingle(),
+    supabase.from('ref_veiculos').select('id, nome, placa, consumo_km_l, combustivel, eixos, ativo').eq('ativo', true).order('ordem').order('nome'),
+    supabase.from('combustivel_precos_atuais').select('combustivel, preco'),
   ]);
-  const preco = Number(ok(c)?.valor);
-  return { veiculos: ok(v) ?? [], combustivelPadrao: Number.isFinite(preco) && preco > 0 ? preco : null };
+  const precos: Partial<Record<Combustivel, number>> = {};
+  for (const x of (ok(c) ?? []) as { combustivel: Combustivel; preco: number }[]) precos[x.combustivel] = Number(x.preco);
+  return { veiculos: ok(v) ?? [], precos };
 }
+
+// Preço por litro usado para o veículo: o do combustível dele; flex usa sempre gasolina (decisão 55).
+export const precoDoVeiculo = (v: Pick<RefVeiculo, 'combustivel'> | undefined, precos: Partial<Record<Combustivel, number>>) =>
+  precos[!v || v.combustivel === 'flex' ? 'gasolina' : v.combustivel] ?? null;

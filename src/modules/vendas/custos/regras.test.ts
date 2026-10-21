@@ -48,6 +48,11 @@ describe('totais por linha (iguais ao gatilho do banco)', () => {
     // 3 diárias × 250 + 600 km ÷ 10 km/l × 6 + 80 de pedágio (mesmo teste do banco)
     expect(totalLinha(linha('viagem', 3, 600, 250, { grupo: 'Veículo alugado', consumo: 10, combustivel: 6, adicional: 80 }))).toBe(1190);
   });
+  it('ida e volta: km e pedágio contam 2 vezes (mesmo teste do banco)', () => {
+    expect(totalLinha(linha('viagem', 1, 180, 0, { grupo: 'Veículo próprio', consumo: 4, combustivel: 6.2, adicional: 35.4, ida_volta: true }))).toBe(628.8);
+    // alugado: as diárias não dobram
+    expect(totalLinha(linha('viagem', 3, 600, 250, { grupo: 'Veículo alugado', consumo: 10, combustivel: 6, adicional: 80, ida_volta: true }))).toBe(1630);
+  });
   it('frete terceirizado e hospedagem ignoram o fator', () => {
     expect(totalLinha(linha('frete', 2, 7, 1500))).toBe(3000);
     expect(totalLinha(linha('viagem', 4, 9, 200, { grupo: 'Hospedagem' }))).toBe(800);

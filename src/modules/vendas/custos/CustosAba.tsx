@@ -9,12 +9,12 @@ import { listarCatalogo } from '@/modules/engenharia/api';
 import type { MaterialCatalogo } from '@/modules/engenharia/regras';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro, moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, CampoCelula, CampoEscolha, CampoNumero, Campo, Entrada, Modal, Selecao, Selo, Vazio, type OpcaoEscolha } from '@/shared/ui';
+import { Aviso, Botao, Caixa, CampoCelula, CampoEscolha, CampoNumero, Campo, Entrada, Modal, Selecao, Selo, Vazio, type OpcaoEscolha } from '@/shared/ui';
 import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
 import {
   adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarReferencias, listarVeiculosECombustivel, removerLinha, reordenarLinhas,
-  type Referencias, type RefVeiculo,
+  precoDoVeiculo, type Combustivel, type Referencias, type RefVeiculo,
 } from './api';
 import {
   LINK_QUALP, SECOES, linkMapa, pesoChapa, pesoMateriais, reordenar, resumoItem, secoesVisiveis, totalLinha, totalSecao,
@@ -23,6 +23,7 @@ import {
 import { precosPerfil } from '@/modules/biblioteca/regras';
 
 const celula = 'px-1 py-1 align-middle';
+const NOME_COMB: Record<string, string> = { gasolina: 'gasolina', etanol: 'etanol', diesel: 'diesel', flex: 'flex (gasolina)' };
 // Colunas em reais nas linhas de custo (preço, mão de obra/pedágio e combustível): mostram R$.
 const CAMPOS_MOEDA: string[] = ['valor_unitario', 'adicional', 'combustivel'];
 
@@ -111,7 +112,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
           key={item.id}
           item={item}
           linhas={linhas.filter((l) => l.item_id === item.id)}
-          listas={{ catalogo, refs, veiculos: frota?.veiculos ?? [], combustivelPadrao: frota?.combustivelPadrao ?? null }}
+          listas={{ catalogo, refs, veiculos: frota?.veiculos ?? [], precos: frota?.precos ?? {} }}
           editavel={editavel}
           onErro={(e) => setErro(mensagemErro(e))}
           onLinha={trocarLinha}
@@ -132,7 +133,7 @@ function blocosDaSecao(s: DefSecao, linhas: CustoLinha[]): Bloco[] | null {
 }
 
 const REF_VAZIA: Referencias = { chapas: [], precosChapa: [], perfis: [], itens: [], servicos: [], maoObra: [], maquinas: [] };
-interface Listas { catalogo: MaterialCatalogo[]; refs: Referencias; veiculos: RefVeiculo[]; combustivelPadrao: number | null }
+interface Listas { catalogo: MaterialCatalogo[]; refs: Referencias; veiculos: RefVeiculo[]; precos: Partial<Record<Combustivel, number>> }
 
 function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarregar, onExcluido }: {
   item: CustoItem; linhas: CustoLinha[]; listas: Listas; editavel: boolean;
@@ -162,7 +163,7 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarre
   }
   async function novaLinha(secao: Secao, grupo = '') {
     const ordem = Math.max(0, ...linhas.map((l) => l.ordem)) + 1;
-    const padrao = secao === 'viagem' && (grupo === 'Veículo próprio' || grupo === 'Veículo alugado') ? { quantidade: 1, fator: 0, combustivel: listas.combustivelPadrao }
+    const padrao = secao === 'viagem' && (grupo === 'Veículo próprio' || grupo === 'Veículo alugado') ? { quantidade: 1, fator: 0, combustivel: listas.precos.gasolina ?? null }
       : secao === 'maquinas' ? { detalhe: 'Não' }
       : secao === 'acabamentos' && grupo === 'Acabamento em inox' ? { quantidade: 1 } : {};
     try { await adicionarLinha(item.id, { secao, grupo, ordem, ...padrao }); onRecarregar(); setAbertas((a) => ({ ...a, [secao]: true })); } catch (e) { onErro(e); }
@@ -371,7 +372,7 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
     if (secao === 'mao_obra') return refs.maoObra.filter((m) => !l.grupo || m.etapa === l.grupo).map((m) => ({ valor: m.funcao, detalhe: `${moeda(m.valor_hora)}/h` }));
     if (secao === 'maquinas' && l.detalhe === 'Sim') return refs.servicos.map((x) => ({ valor: servicoRotulo(x), detalhe: `${moeda(x.valor)}/h` }));
     if (secao === 'maquinas') return refs.maquinas.map((m) => ({ valor: m.nome, detalhe: `${moeda(m.valor_hora)}/h` }));
-    if (c.tipo === 'veiculo') return listas.veiculos.map((v) => ({ valor: v.nome, detalhe: `${Number(v.consumo_km_l).toLocaleString('pt-BR')} km/l` }));
+    if (c.tipo === 'veiculo') return listas.veiculos.map((v) => ({ valor: v.nome, detalhe: [v.placa, `${Number(v.consumo_km_l).toLocaleString('pt-BR')} km/l`, NOME_COMB[v.combustivel]].filter(Boolean).join(' · ') }));
     return [];
   }
 
@@ -398,7 +399,8 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
     }
     if (c.tipo === 'veiculo') {
       const ref = listas.veiculos.find((x) => x.nome === v);
-      return onSalvar({ descricao: v, ...(ref ? { consumo: Number(ref.consumo_km_l) } : {}) });
+      const preco = ref ? precoDoVeiculo(ref, listas.precos) : null;
+      return onSalvar({ descricao: v, ...(ref ? { consumo: Number(ref.consumo_km_l) } : {}), ...(preco ? { combustivel: preco } : {}) });
     }
     if (secao === 'maquinas' && l.detalhe === 'Sim') {
       const ref = refs.servicos.find((x) => servicoRotulo(x) === v);
@@ -443,6 +445,8 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
               className="w-full cursor-pointer rounded-md border border-transparent bg-transparent px-1 py-1 text-sm outline-none hover:border-slate-300 focus:border-roxo-500 dark:bg-marinho-800">
               <option>Sim</option><option>Não</option>
             </select>
+          ) : c.tipo === 'idavolta' ? (
+            <div className="flex justify-center"><Caixa marcado={Boolean(l.ida_volta)} disabled={!editavel} onChange={(v) => onSalvar({ ida_volta: v })} /></div>
           ) : c.tipo === 'leitura' ? (
             <span className="px-2 text-sm text-suave" title={secao === 'maquinas' ? 'Escolha o serviço de um fornecedor (Terceirizada = Sim)' : undefined}>{String(l[c.campo] ?? '') || '—'}</span>
           ) : c.tipo === 'catalogo' || c.tipo === 'material' || c.tipo === 'escolha' || c.tipo === 'veiculo' ? (
