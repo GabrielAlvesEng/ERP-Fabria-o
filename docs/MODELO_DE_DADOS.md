@@ -29,6 +29,7 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 ## Assinatura (`20261020000006_assinatura_email.sql`)
 
 - `usuarios.assinatura`; RPC `salvar_minha_assinatura(texto)`
+- `usuarios.assinatura_html` e `assinatura_atualizada_em` (decisão 66): assinatura importada do Outlook, em HTML com imagens embutidas; RPC `salvar_minha_assinatura_html(html)` grava só a do próprio usuário. A coluna `assinatura` (texto) não é mais usada.
 
 ## Engenharia (`20261020000007_engenharia.sql`)
 

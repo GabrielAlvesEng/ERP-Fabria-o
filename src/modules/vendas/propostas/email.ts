@@ -54,15 +54,38 @@ function escaparHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Sem assinatura: o vendedor usa a que já está no Outlook/Thunderbird (pedido do Gabriel, 21/10/2026).
-export function montarEml(p: { para: string[]; cc: string[]; assunto: string; corpo: string; anexos: Anexo[]; data?: Date }): string {
+// Imagens embutidas (data:) da assinatura viram partes "cid:" do e-mail: o Outlook não mostra data: URIs.
+export function separarImagens(html: string): { html: string; imagens: { cid: string; tipo: string; base64: string }[] } {
+  const imagens: { cid: string; tipo: string; base64: string }[] = [];
+  const novo = html.replace(/(<img\b[^>]*?\bsrc\s*=\s*)(["'])data:(image\/[\w.+-]+);base64,([^"']+)\2/gi, (_, antes: string, aspas: string, tipo: string, dados: string) => {
+    const cid = `assinatura${imagens.length + 1}@fabriaco`;
+    imagens.push({ cid, tipo, base64: dados.replace(/\s+/g, '') });
+    return `${antes}${aspas}cid:${cid}${aspas}`;
+  });
+  return { html: novo, imagens };
+}
+
+// Texto puro da assinatura (versão sem HTML do e-mail).
+export function textoDoHtml(html: string): string {
+  return html.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|tr|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter((l, i, a) => l || (i > 0 && a[i - 1])).join('\n').trim();
+}
+
+// Assinatura: a que o vendedor importou do Outlook (decisão 66), em HTML, no fim da mensagem.
+export function montarEml(p: { para: string[]; cc: string[]; assunto: string; corpo: string; assinaturaHtml?: string; anexos: Anexo[]; data?: Date }): string {
   const misto = `misto_${Math.random().toString(36).slice(2)}`;
   const alt = `alt_${Math.random().toString(36).slice(2)}`;
-  const texto = p.corpo;
+  const assinatura = separarImagens(p.assinaturaHtml?.trim() ?? '');
+  const textoAssinatura = assinatura.html ? textoDoHtml(assinatura.html) : '';
+  const texto = textoAssinatura ? `${p.corpo}\n\n${textoAssinatura}` : p.corpo;
+  const rel = `rel_${Math.random().toString(36).slice(2)}`;
   const html =
     `<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">` +
     p.corpo.split('\n').map((l) => (l ? `<p style="margin:0">${escaparHtml(l)}</p>` : '<p style="margin:0">&nbsp;</p>')).join('') +
-    `</div>`;
+    `</div>` +
+    (assinatura.html ? `<p style="margin:0">&nbsp;</p>${assinatura.html}` : '');
+  const parteHtml = ['Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', quebrar76(b64utf8(html))];
   const linhas = [
     `To: ${p.para.join(', ')}`,
     ...(p.cc.length ? [`Cc: ${p.cc.join(', ')}`] : []),
@@ -81,10 +104,17 @@ export function montarEml(p: { para: string[]; cc: string[]; assunto: string; co
     '',
     quebrar76(b64utf8(texto)),
     `--${alt}`,
-    'Content-Type: text/html; charset="utf-8"',
-    'Content-Transfer-Encoding: base64',
-    '',
-    quebrar76(b64utf8(html)),
+    ...(assinatura.imagens.length
+      ? [
+        `Content-Type: multipart/related; boundary="${rel}"`, '',
+        `--${rel}`, ...parteHtml,
+        ...assinatura.imagens.flatMap((im, i) => [
+          `--${rel}`, `Content-Type: ${im.tipo}; name="assinatura${i + 1}"`, 'Content-Transfer-Encoding: base64',
+          `Content-ID: <${im.cid}>`, `Content-Disposition: inline; filename="assinatura${i + 1}"`, '', quebrar76(im.base64),
+        ]),
+        `--${rel}--`,
+      ]
+      : parteHtml),
     `--${alt}--`,
   ];
   for (const a of p.anexos) {

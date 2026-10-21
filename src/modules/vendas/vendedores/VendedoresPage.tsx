@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Mail, Pencil, Phone, Plus, UserRound } from 'lucide-react';
+import { Mail, PenLine, Pencil, Phone, Plus, UserRound } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
@@ -8,11 +8,14 @@ import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Entrada, EsqueletoCar
 import { listarPropostas } from '../api';
 import { listarUsuarios, listarVendedores, salvarVendedor, type Vendedor } from './api';
 import { resumoVendedor } from './regras';
+import { AssinaturaModal, useMinhaAssinatura } from './AssinaturaModal';
 
 // Vendas → Vendedores (decisão 62): a equipe com os números do ano. Cadastro e edição só para o RH (permissão rh.editar).
 export function VendedoresPage() {
   const { ano } = useAno();
-  const { pode } = useAuth();
+  const { pode, session } = useAuth();
+  const [assinando, setAssinando] = useState(false);
+  const { data: minha } = useMinhaAssinatura();
   const { data: vendedores = [], isLoading } = useQuery({ queryKey: ['vendedores'], queryFn: listarVendedores });
   const { data: propostas = [] } = useQuery({ queryKey: ['propostas', ano], queryFn: () => listarPropostas(ano) });
   const [editando, setEditando] = useState<Vendedor | 'novo' | null>(null);
@@ -58,6 +61,12 @@ export function VendedoresPage() {
                   <Numero rotulo="Valor aprovado" valor={moeda(r.valorAprovado)} destaque />
                 </div>
                 {r.vencidos > 0 && <div className="mt-2"><Selo cor="amarelo">{r.vencidos} follow-up(s) vencido(s)</Selo></div>}
+                {v.usuario_id === session?.user.id && (
+                  <button type="button" onClick={() => setAssinando(true)} className="mt-3 flex w-full items-center justify-between gap-2 rounded-lg bg-pagina px-3 py-2 text-left text-xs ring-1 ring-borda hover:ring-roxo-300">
+                    <span className="flex items-center gap-1.5 font-medium"><PenLine size={14} className="text-roxo-500 dark:text-roxo-300" /> Minha assinatura de e-mail</span>
+                    <span className={minha?.html ? 'text-petroleo-600 dark:text-petroleo-100' : 'text-suave'}>{minha?.html ? 'Importada do Outlook' : 'Importar do Outlook'}</span>
+                  </button>
+                )}
                 {dele.length > 0 && (
                   <button type="button" onClick={() => setAberto(aberto === v.usuario_id ? null : v.usuario_id)} className="mt-3 text-xs font-medium text-roxo-600 hover:underline dark:text-roxo-100">
                     {aberto === v.usuario_id ? 'Esconder propostas' : `Ver as ${dele.length} proposta(s)`}
@@ -78,6 +87,7 @@ export function VendedoresPage() {
           })}
         </div>
       )}
+      {assinando && <AssinaturaModal onFechar={() => setAssinando(false)} />}
       {editando && <FichaVendedor vendedor={editando === 'novo' ? null : editando} jaVendedores={vendedores.map((v) => v.usuario_id)} onFechar={() => setEditando(null)} />}
     </>
   );

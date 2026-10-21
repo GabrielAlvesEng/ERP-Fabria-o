@@ -6,6 +6,7 @@ import { hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Entrada, Modal } from '@/shared/ui';
 import { listarArquivos, listarContatos, listarRevisoes, moverProposta } from '../api';
 import type { Proposta } from '../types';
+import { PreviaAssinatura, useMinhaAssinatura } from '../vendedores/AssinaturaModal';
 import { assuntoProposta, baixarArquivo, blobParaBase64, codigoComRevisao, corpoPadrao, emailValido, montarEml, separarEmails, type Anexo } from './email';
 
 export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; onFechar: () => void }) {
@@ -15,6 +16,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
   const rev = revisoes.find((r) => r.numero === proposta.revisao_atual);
   const { data: arquivos = [] } = useQuery({ queryKey: ['proposta', proposta.id, 'arquivos', rev?.id], queryFn: () => listarArquivos([rev!.id]).then((l) => l.filter((a) => a.tipo !== 'imagem_documento')), enabled: Boolean(rev) });
 
+  const { data: minhaAssinatura } = useMinhaAssinatura();
   const contato = contatos.find((c) => c.id === proposta.contato_id);
   const [para, setPara] = useState<string | null>(null);
   const [cc, setCc] = useState<string[]>([]);
@@ -60,7 +62,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
           if (error || !blob) throw new Error(`Não foi possível baixar o anexo ${a.nome}.`);
           anexos.push({ nome: a.nome, tipo: blob.type || 'application/pdf', base64: await blobParaBase64(blob) });
         }
-        eml = montarEml({ para: paraLista, cc: ccLista, assunto, corpo: corpoValor, anexos });
+        eml = montarEml({ para: paraLista, cc: ccLista, assunto, corpo: corpoValor, assinaturaHtml: minhaAssinatura?.html, anexos });
       }
       // 2) move para Enviados (congela a revisão) e registra para quem foi
       await moverProposta(proposta.id, 'Enviados', {
@@ -119,7 +121,12 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
             </Campo>
             <Campo rotulo="Assunto"><Entrada value={assunto} onChange={(e) => setAssunto(e.target.value)} /></Campo>
             <Campo rotulo="Mensagem"><AreaTexto rows={9} value={corpoValor} onChange={(e) => setCorpo(e.target.value)} /></Campo>
-            <p className="text-xs text-suave">A assinatura não vai daqui: use a que já está configurada no seu Outlook ou Thunderbird (veja abaixo).</p>
+            <div>
+              <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Assinatura</div>
+              {minhaAssinatura?.html
+                ? <><PreviaAssinatura html={minhaAssinatura.html} altura={120} /><p className="mt-1 text-xs text-suave">A sua, importada do Outlook. Para trocar: Vendas → Vendedores → Minha assinatura de e-mail.</p></>
+                : <Aviso tipo="info">Você ainda não importou sua assinatura do Outlook: o e-mail vai sem assinatura. Importe uma vez em Vendas → Vendedores → Minha assinatura de e-mail.</Aviso>}
+            </div>
 
             <div>
               <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Anexos da R{proposta.revisao_atual}</div>
@@ -149,8 +156,8 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
             <div className="mb-1 flex items-center gap-1 font-semibold"><Mail size={13} /> Como o e-mail abre</div>
             O sistema baixa o arquivo <b>Proposta {codigoComRevisao(proposta.codigo, proposta.revisao_atual)}.eml</b>. Abra o arquivo:
             <ul className="ml-4 mt-1 list-disc">
-              <li><b>Outlook (instalado no computador):</b> abre como mensagem nova, com anexos. Se a sua assinatura não aparecer sozinha, clique no fim do texto e use <b>Mensagem → Assinatura</b>. Confira e clique em Enviar.</li>
-              <li><b>Thunderbird:</b> abre a mensagem; use <b>Editar como nova mensagem</b> (Ctrl+E). A assinatura da sua conta costuma entrar nesse momento; se não entrar, confira se o remetente (De) é a sua conta. Clique em Enviar.</li>
+              <li><b>Outlook (instalado no computador):</b> abre como mensagem nova, com anexos. Confira e clique em Enviar.</li>
+              <li><b>Thunderbird:</b> abre a mensagem; use <b>Editar como nova mensagem</b> (Ctrl+E). Clique em Enviar.</li>
               <li><b>Outlook no navegador (365 web):</b> ainda não abre arquivos .eml. Use o Outlook instalado ou anexe os PDFs manualmente por enquanto.</li>
             </ul>
           </div>

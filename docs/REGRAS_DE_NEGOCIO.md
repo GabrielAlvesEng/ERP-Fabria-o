@@ -157,6 +157,11 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
 65. **Envio da proposta por e-mail (21/10/2026, pedido do Gabriel; *altera* a decisão 32):**
     - **CC só com contatos da mesma empresa** do contato que recebe a proposta (antes apareciam todos os contatos, com os da empresa primeiro). E-mails de fora ainda podem ser digitados no campo "Outros e-mails".
     - **Sem assinatura no ERP:** o campo de assinatura saiu e o e-mail gerado (.eml) vai sem assinatura, para usar a que já está configurada no Outlook ou no Thunderbird. A assinatura que estava salva no usuário continua guardada no banco, só não é mais usada. Observação: o Outlook pode não colocar a assinatura sozinho ao abrir um .eml; nesse caso, Mensagem → Assinatura.
+66. **Assinatura do Outlook no e-mail da proposta (21/10/2026, pedido do Gabriel; *substitui* "sem assinatura no ERP" da decisão 65):**
+    - Cada vendedor importa **uma vez** o arquivo .htm da sua assinatura do Outlook (pasta `%APPDATA%\Microsoft\Signatures`), com as imagens da pasta "_arquivos", no **próprio cartão em Vendas → Vendedores** ("Minha assinatura de e-mail"). Só o próprio usuário troca a sua (função `salvar_minha_assinatura_html`).
+    - O ERP limpa o arquivo (tira scripts, formulários, eventos e os desenhos VML do Outlook), embute as imagens e mostra a prévia. Se faltar imagem, ele avisa quais e deixa escolher depois.
+    - Todo e-mail de proposta gerado vai com essa assinatura no fim, em HTML, com as imagens dentro do e-mail (não como anexo). Sem assinatura importada, o e-mail vai só com a mensagem e a tela de envio avisa.
+    - Mudou a assinatura no Outlook: importar de novo. Se o Thunderbird também colocar a assinatura dele ao "Editar como nova mensagem", ela pode sair duas vezes: nesse caso, apague a do Thunderbird na mensagem.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
