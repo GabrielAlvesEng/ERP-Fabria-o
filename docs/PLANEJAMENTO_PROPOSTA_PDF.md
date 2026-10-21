@@ -1,6 +1,6 @@
 # Geração automática de propostas (PDF técnico e comercial)
 
-Versão 1, 21/10/2026. **Estado: planejamento aguardando os modelos atuais e a aprovação do Gabriel.**
+Versão 2, 21/10/2026. **Estado: planejamento aguardando os modelos atuais, a escolha da IA e a aprovação do Gabriel.**
 
 Pedido (21/10): "quero fazer a parte de gerar propostas automáticas também". É o item 8.11 do Documento Mestre, que estava reservado para depois, com autorização.
 
@@ -26,9 +26,20 @@ Pedido (21/10): "quero fazer a parte de gerar propostas automáticas também". �
 2. Gerar PDF, guardar na revisão e anexar no e-mail.
 3. Imagens e desenhos nas seções.
 
+## 4. Textos gerados por IA (pedido do Gabriel, 21/10)
+Hoje os textos da proposta são escritos pelo ChatGPT: vocês explicam a proposta e ele preenche tudo. **Dá para fazer isso dentro do ERP:**
+1. Na aba Documento, um campo **"Explique a proposta"**: você escreve (ou cola) a explicação, do jeito que faz hoje no ChatGPT.
+2. O botão **Gerar textos com IA** manda a explicação junto com o que o ERP já sabe: cliente, itens A/B/C com quantidades e preços dos Custos, materiais e prazos. Manda também os **modelos e exemplos** da Fabriaço, para a IA escrever no padrão de vocês.
+3. A IA devolve **cada seção preenchida** (escopo de cada item, premissas, exclusões, condições). Você revisa, edita o que quiser e gera o PDF.
+4. **Os preços nunca são escritos pela IA:** vêm sempre dos Custos, para não haver valor inventado.
+5. **Segurança:** a chamada passa por uma função do Supabase (Edge Function). A chave da IA fica guardada como segredo no Supabase, nunca no site nem no chat, e só usuário logado com permissão de Vendas usa.
+6. **Custo:** paga-se por uso à empresa da IA, alguns centavos por proposta. Serve OpenAI (a mesma do ChatGPT) ou Anthropic (Claude); a função é a mesma para as duas.
+
 ## O que preciso do Gabriel
 1. **Os modelos atuais** (Word ou PDF) da proposta **comercial** e da **técnica**, de preferência 1 ou 2 propostas reais já enviadas. Vou copiar o layout, as seções e os textos padrão.
 2. **Dois documentos ou um só?** Hoje há anexo Comercial e Técnico separados por revisão. Recomendo manter os dois, gerados do mesmo lugar.
 3. **Valores no PDF:** mostrar preço por item e total (recomendado)? Mostrar o imposto separado ou só o preço final?
 4. **Condições comerciais padrão:** pagamento, prazo de entrega, validade, frete, garantia e o que não está incluso. Pode mandar o texto que vocês usam hoje.
 5. **Quem pode editar os modelos:** só a Administração (recomendado)?
+6. **IA:** qual usar, OpenAI (ChatGPT) ou Anthropic (Claude)? Precisa criar uma conta de API na empresa escolhida e gerar a chave. A chave é cadastrada por você no Supabase (Edge Functions → Secrets, nome `IA_API_KEY`), nunca colada no chat.
+7. **O texto (prompt) que vocês usam hoje no ChatGPT**, se tiverem um padrão, e 1 ou 2 conversas de exemplo. Servem de base para a IA do ERP escrever igual.

@@ -118,6 +118,13 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - abas numa linha só, que rola de lado (no computador continuam quebrando linha);
     - margens menores dentro da caixa de conteúdo.
     - Correções de formatação: os cartões da Frota e o preço dos combustíveis passavam da largura da tela.
+60. **Exclusão de projetos e Lixeira (21/10/2026)** (`docs/PLANEJAMENTO_LIXEIRA.md`; *substitui* "exclusão sempre lógica" e a lista "Propostas excluídas"):
+    - Excluir projeto funciona como excluir proposta: justificativa obrigatória e, se o projeto tem peças ou conjuntos, a senha nova **"Excluir Projeto"**. A proposta continua aprovada.
+    - Excluir (proposta ou projeto) **cancela**: o item sai das telas e vai para a **Lixeira** da Administração.
+    - Na Lixeira: **Restaurar** ou **Excluir definitivamente**. A exclusão definitiva é só da Administração, com o código digitado e a senha do tipo.
+    - Excluído definitivamente **some do site**, com tudo ligado a ele: revisões, custos, arquivos, histórico, kick-off; no projeto, conjuntos, peças e importações.
+    - Depois de **30 dias** na Lixeira, a limpeza diária (03:17, horário de Brasília) apaga sozinha.
+    - O código nunca é reaproveitado. A auditoria interna do banco continua registrando, como em toda alteração.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
@@ -157,7 +164,6 @@ Detalhes completos em `DOCUMENTO_MESTRE.md`, seção 8. Resumo:
 - [ ] Confirmar as recomendações implementadas nas decisões 47 a 50 (etapa financeira pelo detalhe, veículo alugado, fornecedores com serviços, preço de chapa por material + tipo, base de pesos de mercado, campos de fixadores e consumíveis, migração da lista de preços).
 - [ ] Contratar a API QualP e cadastrar a chave no Supabase (Edge Functions → Secrets, nome `ROTAS_API_KEY`) para liberar o botão "Calcular rota" (decisão 55).
 - [ ] Fixadores: conferir as pastas de material de porca rebite, cupilha, parabolt e anéis de trava, e a grade inicial de tamanhos (decisão 58).
-- [ ] Exclusão de projetos e Lixeira com apagamento definitivo/30 dias: planejamento em `docs/PLANEJAMENTO_LIXEIRA.md`, aguardando confirmação.
 - [ ] Conferir a base de pesos de I e U laminados e preencher o kg/m das 18 vigas W/I/U da lista antiga que vieram sem peso.
 
 As demais perguntas marcadas [DECIDIR] no `docs/PLANEJAMENTO_VENDAS.md` continuam abertas até o Gabriel responder ou aprovar as recomendações.

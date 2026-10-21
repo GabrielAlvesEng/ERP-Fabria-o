@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, ClipboardList, Download, FileUp, ListTree, Network, Settings2, Table2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ClipboardList, Download, FileUp, ListTree, Network, Settings2, Table2, Trash2 } from 'lucide-react';
+import { ExcluirProjetoModal } from './ExcluirProjetoModal';
 import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
@@ -29,6 +30,8 @@ export function ProjetoPage() {
   const [aba, setAba] = useState<Aba>('arvore');
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const navegar = useNavigate();
   const { pode } = useAuth();
   const { data: projeto, error } = useQuery({ queryKey: ['eng', id, 'projeto'], queryFn: () => obterProjeto(id) });
   const { data: conjuntos = [] } = useQuery({ queryKey: ['eng', id, 'conjuntos'], queryFn: () => listarConjuntos(id) });
@@ -53,6 +56,9 @@ export function ProjetoPage() {
         <div className="flex flex-wrap items-end gap-4 text-sm">
           {pode('engenharia', 'editar') && (
             <Botao variante="secundario" onClick={() => setImportando(true)}><FileUp size={15} /> {projeto.importado_cad_em ? 'Atualizar do SolidWorks' : 'Importar do SolidWorks'}</Botao>
+          )}
+          {pode('engenharia', 'excluir') && (
+            <Botao variante="secundario" onClick={() => setExcluindo(true)}><Trash2 size={15} /> Excluir</Botao>
           )}
           <Indicador rotulo="Conjuntos" valor={String(conjuntos.filter((c) => !c.removido_cad_em).length)} />
           <Indicador rotulo="Peças e itens" valor={String(pecas.filter((p) => !p.removido_cad_em).length)} />
@@ -80,6 +86,7 @@ export function ProjetoPage() {
       {aba === 'kickoff' && <KickoffAba propostaId={projeto.proposta_id} statusProposta="Aprovado" somenteLeitura />}
       {aba === 'dados' && <DadosProjeto projeto={projeto} />}
       {importando && <ImportarSolidworks projeto={projeto} conjuntos={conjuntos} pecas={pecas} onFechar={() => setImportando(false)} />}
+      {excluindo && <ExcluirProjetoModal projeto={projeto} onFechar={() => setExcluindo(false)} onExcluido={() => navegar('/engenharia')} />}
     </div>
   );
 }

@@ -5,7 +5,8 @@ import { mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Campo, Entrada, Modal } from '@/shared/ui';
 import type { Proposta } from '../types';
 
-// Exclusão lógica (planejamento 4.8): rascunho nunca enviado só pede justificativa; enviada pede a senha administrativa.
+// Exclusão (planejamento 4.8; decisão 60): rascunho nunca enviado só pede justificativa; enviada pede a senha administrativa.
+// A proposta vai para a Lixeira por 30 dias.
 export function ExcluirModal({ proposta, onFechar, onExcluida }: { proposta: Proposta; onFechar: () => void; onExcluida: () => void }) {
   const qc = useQueryClient();
   const [just, setJust] = useState('');
@@ -45,7 +46,7 @@ export function ExcluirModal({ proposta, onFechar, onExcluida }: { proposta: Pro
     <Modal aberto titulo={`Excluir a proposta ${proposta.codigo}?`} onFechar={onFechar}>
       <form className="space-y-3" onSubmit={enviar}>
         <Aviso tipo="info">
-          A proposta sai das listas, mas nada é apagado: histórico, revisões e arquivos ficam guardados, e a Administração pode restaurá-la. O código {proposta.codigo} não é reaproveitado.
+          A proposta vai para a Lixeira da Administração. Lá ela pode ser restaurada ou excluída definitivamente; se ninguém fizer nada, é apagada sozinha em 30 dias. O código {proposta.codigo} não é reaproveitado.
         </Aviso>
         {erro && <Aviso>{erro}</Aviso>}
         <Campo rotulo="Justificativa *"><AreaTexto value={just} onChange={(e) => setJust(e.target.value)} placeholder="Ex.: proposta criada em duplicidade" /></Campo>

@@ -1,6 +1,12 @@
 # Exclusão de projetos e Lixeira (propostas e projetos)
 
-Versão 1, 21/10/2026. **Estado: planejamento aguardando confirmação do Gabriel**, porque muda uma regra aprovada (exclusão "sempre lógica", seção "Implementado conforme recomendação") e passa a apagar dados de verdade.
+Versão 2, 21/10/2026. **Estado: aprovado (decisão 60), em implementação.** Respostas do Gabriel:
+1. pode apagar sozinho em 30 dias;
+2. senha nova "Excluir Projeto";
+3. excluir **cancela** (vai para a Lixeira); excluir definitivamente **some do site**, sem registro mínimo visível;
+4. só a Administração exclui definitivamente (recomendação, não contestada).
+
+A auditoria interna do banco continua registrando a exclusão (tabela `auditoria`, que não aparece no site), como em toda alteração do ERP.
 
 Pedido (21/10): botão para excluir projetos, igual ao das propostas; propostas e projetos excluídos aparecem na Administração, com a opção **excluir definitivamente**; se ninguém fizer nada, eles são **apagados automaticamente em 30 dias**.
 
