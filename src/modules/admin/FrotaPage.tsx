@@ -8,7 +8,7 @@ import { Aviso, Botao, Cabecalho, Caixa, Campo, CampoCelula, CampoNumero, Cartao
 interface Veiculo { id: string; nome: string; consumo_km_l: number; ativo: boolean }
 
 // Administração → Frota (decisão 42): veículos com consumo e preço padrão do combustível,
-// usados na seção "Frota e fretes" dos custos da proposta.
+// usados na seção "Viagem" dos custos da proposta (decisão 50).
 export function FrotaPage() {
   const qc = useQueryClient();
   const [erro, setErro] = useState('');
@@ -58,10 +58,10 @@ export function FrotaPage() {
 
   return (
     <>
-      <Cabecalho titulo="Frota (custos)" subtitulo="Veículos e combustível usados na seção Frota e fretes das propostas. Mudar aqui não altera propostas já lançadas." />
+      <Cabecalho titulo="Frota (custos)" subtitulo="Veículos e combustível usados na seção Viagem das propostas (veículo próprio e alugado). Mudar aqui não altera propostas já lançadas." />
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <Cartao className="p-0">
+        <Cartao className="overflow-hidden p-0">
           {isLoading ? <Vazio>Carregando…</Vazio> : (
             <table className="w-full text-sm">
               <thead className="bg-pagina text-left text-xs uppercase text-suave">

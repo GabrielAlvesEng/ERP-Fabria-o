@@ -103,7 +103,7 @@ export async function removerLinha(id: string): Promise<void> {
 
 export interface RefVeiculo { id: string; nome: string; consumo_km_l: number; ativo: boolean }
 
-// Veículos ativos e preço padrão do combustível (Administração → Frota), para a seção Frota e fretes.
+// Veículos ativos e preço padrão do combustível (Administração → Frota), para a seção Viagem.
 export async function listarVeiculosECombustivel(): Promise<{ veiculos: RefVeiculo[]; combustivelPadrao: number | null }> {
   const [v, c] = await Promise.all([
     supabase.from('ref_veiculos').select('id, nome, consumo_km_l, ativo').eq('ativo', true).order('ordem').order('nome'),

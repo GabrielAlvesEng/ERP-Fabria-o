@@ -193,8 +193,8 @@ function PainelConjunto({ projetoCodigo, conjunto: c, conjuntos, pecas, onSeleci
           {editavel && (
             <form onSubmit={criarFilho} className="mt-3 flex gap-2">
               <input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder={c.tipo === 'geral' ? 'Nome da nova submontagem (ex.: Estrutura)' : 'Nome do novo conjunto (ex.: Coluna)'}
-                className="flex-1 rounded-lg border border-slate-300 bg-superficie px-3 py-1.5 text-sm outline-none focus:border-roxo-500 dark:border-marinho-500" />
-              <Botao type="submit" disabled={!novoNome.trim()}><Plus size={15} /> {c.tipo === 'geral' ? 'Submontagem' : 'Conjunto'}</Botao>
+                className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-superficie px-3 py-1.5 text-sm outline-none focus:border-roxo-500 dark:border-marinho-500" />
+              <Botao type="submit" className="shrink-0" disabled={!novoNome.trim()}><Plus size={15} /> {c.tipo === 'geral' ? 'Submontagem' : 'Conjunto'}</Botao>
             </form>
           )}
         </div>

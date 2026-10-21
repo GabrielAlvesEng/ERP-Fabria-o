@@ -1,6 +1,6 @@
 # Redesign visual do ERP (estilo Stripe)
 
-Versão 1, 20/10/2026. **Estado: etapa 1 feita em 20/10/2026 (decisão 51), com marca provisória até chegarem os SVGs da Logo Moderna. Etapas 2 a 4 aguardam autorização.**
+Versão 1, 20/10/2026. **Estado: etapas 1 a 4 feitas (decisões 51 e 52). Falta só trocar a marca provisória pelos SVGs da Logo Moderna.** Na etapa 2 a rosca usa as 4 colunas do Kanban (não as 7 etapas), porque rosca só se lê bem com até 6 fatias.
 
 Regra geral (do pedido): só aparência e animação. Nada muda em dados, textos, regras, rotas, banco, nomes de campos ou códigos. Uma etapa por vez; depois de cada uma, testes + build + resumo do que mudou.
 

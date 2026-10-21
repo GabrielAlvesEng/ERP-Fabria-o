@@ -138,7 +138,9 @@ export function CampoArquivo({ arquivo, onChange, accept }: { arquivo: File | nu
 }
 
 export function Cartao({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx('rounded-xl bg-superficie p-5 shadow-sm ring-1 ring-borda', className)}>{children}</div>;
+  // Espaçamento padrão p-5, a não ser que a tela passe o próprio (p-0, p-4…).
+  const temPadding = /(^|\s)p-\d/.test(className ?? '');
+  return <div className={cx('rounded-xl bg-superficie shadow-sm ring-1 ring-borda', !temPadding && 'p-5', className)}>{children}</div>;
 }
 
 export function Selo({ children, cor = 'cinza' }: { children: ReactNode; cor?: 'cinza' | 'roxo' | 'verde' | 'vermelho' | 'amarelo' | 'azul' }) {
