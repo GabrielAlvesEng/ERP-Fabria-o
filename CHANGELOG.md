@@ -127,3 +127,9 @@
   - Parte 2 (`20261021000028_lixeira_apagar.sql`: funções de excluir definitivamente, limpeza diária de 30 dias com pg_cron e permissões de execução) **ainda não aplicada**: o conector do Supabase pede confirmação do Gabriel para comandos com "delete", e a confirmação não chegou a tempo nas tentativas.
   - Telas prontas e compilando: botão Excluir no projeto, senhas Excluir Proposta e Excluir Projeto, e a Lixeira com Restaurar e Excluir definitivamente (código + senha), que também remove do Storage os arquivos das propostas apagadas. **Não publicadas** até a parte 2 entrar.
 - Planejamento das propostas automáticas (versão 3) com base nos modelos enviados pelo Gabriel (técnica com 16 seções, comercial com 11) e na escolha da OpenAI para os textos: `docs/PLANEJAMENTO_PROPOSTA_PDF.md`, aguardando aprovação.
+- **Lixeira (decisão 60), concluída:**
+  - Parte 2 aplicada. O Gabriel colou no SQL Editor as funções com "delete", porque a confirmação do conector não chegava até ele. As outras funções e o agendamento foram aplicados pelo Claude.
+  - Conferido no banco: as 9 funções existem. As de apagar (`_apagar_projeto`, `_apagar_proposta`, `limpar_lixeira`) não podem ser chamadas por usuários. O `anon` não executa nenhuma delas. Há um único agendamento pg_cron `limpar-lixeira`, às 06:17 UTC (03:17 em Brasília).
+  - Migrations 0027 e 0028 registradas no histórico.
+  - Telas publicadas. A limpeza automática não foi executada à mão. Na Lixeira há 1 proposta ("26-02-001 · Teste", excluída em 21/10), que será apagada sozinha em 20/11 se ninguém a restaurar.
+  - **Não testado com login real.**

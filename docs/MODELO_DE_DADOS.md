@@ -95,3 +95,15 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `bib_fixador_tipos` (nome, rotulo_a, rotulo_b vazio = sem comprimento, ordem, ativo), `bib_fixador_materiais` (nome, ordem, ativo) e `bib_fixador_tipo_materiais` (quais materiais cada tipo tem, com ativo).
 - `bib_itens` ganhou `fixador_tipo_id`, `fixador_material_id`, `medida` e `comprimento` (únicos juntos). O gatilho `montar_descricao_fixador` monta descrição e material; renomear tipo ou material atualiza os itens.
 - Leitura: custos, engenharia ou admin; gravação: admin.editar.
+
+## Lixeira (`20261021000027_lixeira.sql`, `20261021000028_lixeira_apagar.sql`)
+
+- `projetos.excluido_em`, `excluido_por`, `exclusao_justificativa`. Projeto excluído não aparece pelas políticas de leitura e edição.
+- `arquivos_a_remover` (bucket, caminho): arquivos do Storage de propostas apagadas de vez. A tela da Lixeira os remove pela API do Storage (política `vendas_remover_lixeira`) e confirma com `confirmar_arquivos_removidos`.
+- Funções:
+  - `excluir_projeto`, que pede senha `excluir_projeto` quando há peças ou conjuntos;
+  - `projetos_excluidos` e `restaurar_projeto`;
+  - `apagar_definitivo`, só para a Administração, com o código digitado e a senha do tipo;
+  - as internas `_apagar_projeto`, `_apagar_proposta` e `limpar_lixeira`.
+- Agendamento pg_cron `limpar-lixeira`, diário às 06:17 UTC: apaga o que está na Lixeira há mais de 30 dias.
+- Nova permissão `engenharia.excluir` (perfil Engenharia) e senha `excluir_projeto`.

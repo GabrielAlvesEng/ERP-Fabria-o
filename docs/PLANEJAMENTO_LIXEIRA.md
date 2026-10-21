@@ -1,6 +1,6 @@
 # Exclusão de projetos e Lixeira (propostas e projetos)
 
-Versão 2, 21/10/2026. **Estado: aprovado (decisão 60), em implementação.** Respostas do Gabriel:
+Versão 2, 21/10/2026. **Estado: implementado (decisão 60).** Respostas do Gabriel:
 1. pode apagar sozinho em 30 dias;
 2. senha nova "Excluir Projeto";
 3. excluir **cancela** (vai para a Lixeira); excluir definitivamente **some do site**, sem registro mínimo visível;
