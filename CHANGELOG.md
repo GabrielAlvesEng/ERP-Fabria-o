@@ -120,3 +120,5 @@
   - margem interna menor no celular;
   - correções: Frota passava 19 px da tela (coluna da grade sem `min-w-0` e linha de combustível com larguras fixas); "Propostas excluídas" protegida contra resposta vazia.
   - Conferido no navegador simulando um iPhone 13 (390 px), com dados simulados: as 10 telas dos módulos e o detalhe da proposta cabem na largura, o menu abre e fecha ao navegar, nos temas claro e escuro. **Não testado num celular de verdade.**
+- Custos: rótulo "Imposto (%)" e campos do item alinhados pela base (o rótulo longo desalinhava o campo). Publicado sem teste, a pedido do Gabriel.
+- Planejamento da geração automática de propostas em PDF em `docs/PLANEJAMENTO_PROPOSTA_PDF.md`, aguardando os modelos atuais e a aprovação.
