@@ -13,6 +13,7 @@ import { rotuloRevisao, tipoTransicao, validadeAte } from './regras';
 import type { Pendente } from './PropostasPage';
 import { FollowupModal } from './TransicaoModais';
 import { DocumentosAba } from '../documentos/DocumentosAba';
+import { CampoVendedor } from '../vendedores/CampoVendedor';
 import { CustosAba } from '../custos/CustosAba';
 import { KickoffAba } from '../kickoff/KickoffAba';
 import { ExcluirModal } from './ExcluirModal';
@@ -131,7 +132,7 @@ function AbaDados({ p }: { p: Proposta }) {
   const m = useMutation({
     mutationFn: () =>
       atualizarRascunho(p.id, {
-        titulo: f.titulo, descricao: f.descricao, valor: Number(numeroBR(String(f.valor)) || 0), prazo_previsto: f.prazo_previsto,
+        titulo: f.titulo, responsavel_id: f.responsavel_id, descricao: f.descricao, valor: Number(numeroBR(String(f.valor)) || 0), prazo_previsto: f.prazo_previsto,
         validade_dias: f.validade_dias || null, condicoes_comerciais: f.condicoes_comerciais, observacoes: f.observacoes, data_emissao: f.data_emissao,
       }),
     onSuccess: () => {
@@ -150,6 +151,7 @@ function AbaDados({ p }: { p: Proposta }) {
       {msg && <Aviso tipo="info">{msg}</Aviso>}
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo rotulo="Título do fornecimento" className="sm:col-span-2"><Entrada value={f.titulo} onChange={set('titulo')} disabled={!editavel} /></Campo>
+        <Campo rotulo="Vendedor" className="sm:col-span-2"><CampoVendedor valor={f.responsavel_id} onChange={(id) => setF({ ...f, responsavel_id: id })} disabled={!editavel} /></Campo>
         <Campo rotulo="Descrição" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} disabled={!editavel} /></Campo>
         <Campo rotulo="Valor (R$)"><EntradaMoeda value={String(f.valor)} onChange={(v) => set('valor')({ target: { value: v } })} disabled={!editavel} /></Campo>
         <Campo rotulo="Data de emissão"><CampoData value={f.data_emissao} onChange={(v) => setF({ ...f, data_emissao: v })} disabled={!editavel} /></Campo>

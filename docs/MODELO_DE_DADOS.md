@@ -114,3 +114,9 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `proposta_documentos` (revisao_id, tipo `tecnica`/`comercial`, conteudo jsonb, único por revisão e tipo). O conteúdo segue `Documento` em `src/modules/vendas/documentos/modelo.ts`. Grava só em revisão de rascunho, com `vendas.editar`.
 - O gatilho `copiar_documentos_revisao` copia os documentos da revisão anterior para a nova.
 - O PDF gerado vira um `proposta_arquivos` comum (tipo `tecnica`/`comercial`), no bucket `vendas`.
+
+## Vendedores (`20261021000032_vendedores.sql`)
+
+- `vendedores` (usuario_id PK → usuarios, nome, cargo, telefone, observacoes, ativo). Lê quem tem `vendas.ler` ou `rh.ler`; grava quem tem `rh.editar`.
+- `propostas.responsavel_id` é o vendedor. O gatilho `validar_vendedor_proposta` aceita só vendedor ativo: na criação, se não for vendedor, deixa a proposta sem vendedor; numa troca, recusa.
+- Permissões novas `rh.ler` e `rh.editar`, mais o perfil RH. A Administração tem acesso total.

@@ -9,6 +9,7 @@ import { DashboardPage } from '@/modules/vendas/dashboard/DashboardPage';
 import { EmpresasPage } from '@/modules/vendas/empresas/EmpresasPage';
 import { ContatosPage } from '@/modules/vendas/contatos/ContatosPage';
 import { PropostasPage } from '@/modules/vendas/propostas/PropostasPage';
+import { VendedoresPage } from '@/modules/vendas/vendedores/VendedoresPage';
 import { EngenhariaLayout } from '@/modules/engenharia/EngenhariaLayout';
 import { ProjetosPage } from '@/modules/engenharia/ProjetosPage';
 import { ProjetoPage } from '@/modules/engenharia/ProjetoPage';
@@ -39,6 +40,7 @@ export function App() {
             <Route path="empresas" element={<EmpresasPage />} />
             <Route path="contatos" element={<ContatosPage />} />
             <Route path="propostas" element={<PropostasPage />} />
+            <Route path="vendedores" element={<VendedoresPage />} />
           </Route>
           <Route path="/engenharia" element={<EngenhariaLayout />}>
             <Route index element={<ProjetosPage />} />

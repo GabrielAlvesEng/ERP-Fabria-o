@@ -74,7 +74,7 @@ export interface Proposta {
   ordem_kanban: number;
   empresas?: { nome_fantasia: string } | null;
   contatos?: { nome: string } | null;
-  usuarios?: { nome: string } | null;
+  usuarios?: { nome: string; vendedores?: { nome: string } | { nome: string }[] | null } | null;
 }
 
 export interface Revisao {

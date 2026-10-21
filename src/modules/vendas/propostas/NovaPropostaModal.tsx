@@ -1,3 +1,6 @@
+import { useAuth } from '@/shared/auth/AuthProvider';
+import { CampoVendedor } from '../vendedores/CampoVendedor';
+import { listarVendedores } from '../vendedores/api';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { hojeISO, mensagemErro, numeroBR } from '@/shared/lib/formato';
@@ -9,9 +12,16 @@ const FORMATO = /^\d{2}-\d{2,}-\d{3,}$/;
 
 export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; onFechar: () => void; onCriada: (id: string) => void }) {
   const qc = useQueryClient();
+  const { session } = useAuth();
   const { data: empresas = [] } = useQuery({ queryKey: ['empresas'], queryFn: listarEmpresas });
   const { data: contatos = [] } = useQuery({ queryKey: ['contatos'], queryFn: listarContatos });
-  const [f, setF] = useState({ empresa_id: '', contato_id: '', titulo: '', descricao: '', valor: '', prazo_previsto: '', validade_dias: '', condicoes_comerciais: '' });
+  // Vendedor padrão: quem está criando, se for vendedor ativo (decisão 62).
+  const { data: vendedores = [] } = useQuery({ queryKey: ['vendedores'], queryFn: listarVendedores });
+  useEffect(() => {
+    const eu = vendedores.find((v) => v.usuario_id === session?.user.id && v.ativo);
+    if (eu) setF((x) => (x.responsavel_id ? x : { ...x, responsavel_id: eu.usuario_id }));
+  }, [vendedores, session?.user.id]);
+  const [f, setF] = useState({ responsavel_id: null as string | null, empresa_id: '', contato_id: '', titulo: '', descricao: '', valor: '', prazo_previsto: '', validade_dias: '', condicoes_comerciais: '' });
   // Código semi-automático (decisão 44): o ERP sugere; só vai para o banco se o usuário editar.
   const [sugestao, setSugestao] = useState('');
   const [codigo, setCodigo] = useState('');
@@ -92,6 +102,7 @@ export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; on
           </>
         )}
         <Campo rotulo="Título do fornecimento *" className="sm:col-span-2"><Entrada value={f.titulo} onChange={set('titulo')} /></Campo>
+        <Campo rotulo="Vendedor" className="sm:col-span-2"><CampoVendedor valor={f.responsavel_id} onChange={(id) => setF({ ...f, responsavel_id: id })} /></Campo>
         <Campo rotulo="Descrição" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} /></Campo>
         <Campo rotulo="Valor (R$)"><EntradaMoeda value={f.valor} onChange={(v) => setF({ ...f, valor: v })} /></Campo>
         <Campo rotulo="Prazo previsto"><Entrada value={f.prazo_previsto} onChange={set('prazo_previsto')} placeholder="ex.: 30 dias" /></Campo>

@@ -1,6 +1,6 @@
 # Vendedores (Vendas)
 
-Versão 1, 21/10/2026. **Estado: planejamento aguardando aprovação do Gabriel.**
+Versão 1, 21/10/2026. **Estado: implementado (decisão 62)**, com as respostas do Gabriel: login obrigatório, cadastro só pelo RH, comissão depois no Financeiro, um vendedor por proposta.
 
 Pedido (21/10):
 - aba **Vendedores** em Vendas, para ver a equipe e cadastrar vendedores (o controle completo de funcionários fica no RH, Roadmap item 8);

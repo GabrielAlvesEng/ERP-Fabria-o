@@ -159,3 +159,7 @@
   - Imagem principal na capa e imagens com legenda no Escopo. A foto é reduzida no navegador antes do envio, e as imagens são baixadas para montar o PDF. No e-mail elas não aparecem como anexo.
   - Conferido no navegador com dados simulados: imagem de 1200×800 reduzida para 13 KB, registro do arquivo, miniatura, legenda salva, e PDF com a imagem na capa e no escopo conferido em imagem. 112 testes e build ok.
 - Capa com opção de **fundo claro** para impressão (fundo branco, detalhes em lavanda, logo colorida). Escolha por documento, com o padrão em Modelos de proposta. Conferida no PDF gerado.
+- **Vendedores (decisão 62):**
+  - Migration `20261021000032_vendedores.sql` aplicada: permissões `rh.ler` e `rh.editar`, perfil RH, tabela `vendedores` (um por usuário, com nome, cargo, telefone, observações e ativo) e o gatilho `validar_vendedor_proposta`. Conferido no banco: Gabriel Alves cadastrado como vendedor, e `vendedores` sem privilégio para anon.
+  - Aba Vendedores, campo Vendedor na proposta, e filtro e nome do vendedor no Kanban. Números calculados por `resumoVendedor`, com 2 testes novos (114 no total).
+  - Conferido no navegador com dados simulados: cartões e números de dois vendedores, cadastro listando só usuários que ainda não são vendedores, e filtro do Kanban por vendedor e "Sem vendedor". **Não testado com login real.**

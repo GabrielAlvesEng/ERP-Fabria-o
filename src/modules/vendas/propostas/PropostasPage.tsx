@@ -1,3 +1,4 @@
+import { nomeVendedor } from '../vendedores/api';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +34,7 @@ export function PropostasPage() {
   const qc = useQueryClient();
   const [busca, setBusca] = useState('');
   const [empresa, setEmpresa] = useState('');
+  const [vendedor, setVendedor] = useState('');
   const [soVencidos, setSoVencidos] = useState(false);
   const [nova, setNova] = useState(false);
   const [aberta, setAberta] = useState<string | null>(null);
@@ -53,13 +55,19 @@ export function PropostasPage() {
     const t = busca.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     return propostas.filter((p) => {
       const txt = `${p.codigo} ${p.titulo} ${p.empresas?.nome_fantasia ?? ''} ${p.contatos?.nome ?? ''}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-      return (!t || txt.includes(t)) && (!empresa || p.empresa_id === empresa) && (!soVencidos || (AGUARDANDO_RETORNO.includes(p.status) && followupVencido(p.proximo_followup, hoje)));
+      return (!t || txt.includes(t)) && (!empresa || p.empresa_id === empresa) && (!vendedor || (vendedor === 'sem' ? !p.responsavel_id : p.responsavel_id === vendedor)) && (!soVencidos || (AGUARDANDO_RETORNO.includes(p.status) && followupVencido(p.proximo_followup, hoje)));
     });
-  }, [propostas, busca, empresa, soVencidos, hoje]);
+  }, [propostas, busca, empresa, vendedor, soVencidos, hoje]);
 
   const empresasDoAno = useMemo(() => {
     const m = new Map<string, string>();
     propostas.forEach((p) => m.set(p.empresa_id, p.empresas?.nome_fantasia ?? ''));
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [propostas]);
+  // Vendedores com propostas no ano (filtro do Kanban, decisão 62).
+  const vendedoresDoAno = useMemo(() => {
+    const m = new Map<string, string>();
+    propostas.forEach((p) => p.responsavel_id && m.set(p.responsavel_id, nomeVendedor(p)));
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [propostas]);
 
@@ -101,6 +109,11 @@ export function PropostasPage() {
         <Selecao className="max-w-xs" value={empresa} onChange={(e) => setEmpresa(e.target.value)}>
           <option value="">Todas as empresas</option>
           {empresasDoAno.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+        </Selecao>
+        <Selecao className="max-w-xs" value={vendedor} onChange={(e) => setVendedor(e.target.value)}>
+          <option value="">Todos os vendedores</option>
+          {vendedoresDoAno.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+          {propostas.some((p) => !p.responsavel_id) && <option value="sem">Sem vendedor</option>}
         </Selecao>
         <Caixa marcado={soVencidos} onChange={setSoVencidos}>Só follow-up vencido</Caixa>
       </div>
@@ -168,6 +181,7 @@ function Card({ p, hoje, onAbrir, onFollowup }: { p: Proposta; hoje: string; onA
       </div>
       <div className="mt-1 line-clamp-2 font-medium">{p.titulo}</div>
       <div className="mt-1 text-xs text-suave">{p.empresas?.nome_fantasia} · {p.contatos?.nome}</div>
+      {nomeVendedor(p) && <div className="mt-0.5 text-[11px] text-suave">Vendedor: <span className="font-medium text-texto">{nomeVendedor(p)}</span></div>}
       <div className="mt-2 flex items-center justify-between text-xs">
         <span className="font-semibold">{moeda(p.valor)}</span>
         {aguardando && (
