@@ -62,7 +62,7 @@ export function FrotaPage() {
       <Cabecalho titulo="Frota" subtitulo="Veículos da empresa e preço dos combustíveis, usados na seção Viagem das propostas. Mudar aqui não altera propostas já lançadas."
         acoes={<Botao onClick={() => setAberto('novo')}><Plus size={15} /> Novo veículo</Botao>} />
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-        <div>
+        <div className="min-w-0">
           {isLoading ? <Vazio>Carregando…</Vazio> : veiculos.length === 0 ? <Vazio>Nenhum veículo cadastrado.</Vazio> : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {veiculos.map((v) => {
@@ -131,11 +131,11 @@ function CartaoCombustiveis() {
       <div className="space-y-2">
         {COMBUSTIVEIS.map((c) => (
           <div key={c} className="flex items-center gap-3">
-            <span className="w-20 text-sm font-medium">{NOME_COMB[c]}</span>
-            <div className="w-36 shrink-0 rounded-lg border border-slate-300 bg-superficie dark:border-marinho-500">
+            <span className="w-16 shrink-0 text-sm font-medium">{NOME_COMB[c]}</span>
+            <div className="w-32 shrink-0 rounded-lg border border-slate-300 bg-superficie dark:border-marinho-500">
               <CampoNumero moeda valor={Number(atual(c)?.preco ?? 0)} casas={3} className="py-1.5" onConfirmar={(n) => salvar(c, n)} />
             </div>
-            <span className="w-24 text-xs text-suave">{atual(c) ? `desde ${dataBR(atual(c)!.vigente_desde)}` : 'não definido'}</span>
+            <span className="min-w-0 flex-1 text-xs text-suave">{atual(c) ? `desde ${dataBR(atual(c)!.vigente_desde)}` : 'não definido'}</span>
           </div>
         ))}
       </div>

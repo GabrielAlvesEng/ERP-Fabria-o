@@ -80,7 +80,7 @@ export function ExcluidasPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc('propostas_excluidas');
       if (error) throw error;
-      return data as Excluida[];
+      return (data ?? []) as Excluida[];
     },
   });
   const restaurar = useMutation({

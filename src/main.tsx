@@ -12,6 +12,9 @@ import '@fontsource/geist-mono/400.css';
 import '@fontsource/geist-mono/600.css';
 import './index.css';
 
+// iPhone ignora o "sem zoom" da meta viewport no gesto de pinça: bloqueia aqui para o ERP se comportar como aplicativo.
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

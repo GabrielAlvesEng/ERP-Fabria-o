@@ -66,7 +66,7 @@ export function ProjetoPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-x-1 border-b border-borda">
+      <div className="abas gap-x-1 border-b border-borda">
         {abas.map((a) => (
           <button key={a.id} onClick={() => setAba(a.id)} className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm ${aba === a.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'} transition-colors duration-150`}>
             <a.icone size={15} /> {a.rotulo}

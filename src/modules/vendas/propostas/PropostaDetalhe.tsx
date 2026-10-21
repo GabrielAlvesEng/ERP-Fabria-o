@@ -95,7 +95,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
               </div>
               {erro && <div className="mt-2"><Aviso>{erro}</Aviso></div>}
             </div>
-            <div className="flex flex-wrap gap-x-1 border-b border-borda px-3">
+            <div className="abas gap-x-1 border-b border-borda px-3">
               {abas.filter((a) => a !== 'Custos' || pode('custos', 'ler')).map((a) => (
                 <button key={a} onClick={() => setAba(a)} className={`-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors duration-150 ${aba === a ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>{a}</button>
               ))}

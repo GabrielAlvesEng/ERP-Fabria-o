@@ -112,6 +112,12 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
       - Grampo Tipo U vazio, para cadastrar.
     - "Gerar vários" cria combinações de medidas × comprimentos. Tamanhos e pastas são desativados, nunca apagados.
     - Busca da proposta por palavras em qualquer ordem ("allen m8 inox").
+59. **Celular com jeito de aplicativo (21/10/2026)** (pedido do Gabriel; *substitui*, no celular, os ícones de módulos no topo da decisão 51):
+    - sem zoom (pinça, toque duplo e zoom automático ao tocar em campo);
+    - **menu lateral** aberto pelo botão ☰, com a logo, os módulos, o e-mail e Sair; fecha ao escolher, ao tocar fora ou com Esc;
+    - abas numa linha só, que rola de lado (no computador continuam quebrando linha);
+    - margens menores dentro da caixa de conteúdo.
+    - Correções de formatação: os cartões da Frota e o preço dos combustíveis passavam da largura da tela.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

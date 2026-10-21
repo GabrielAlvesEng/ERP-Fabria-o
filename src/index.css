@@ -24,9 +24,24 @@
 }
 
 body { @apply bg-pagina text-texto antialiased; font-feature-settings: 'cv11', 'ss01'; }
+/* Celular com jeito de aplicativo: sem zoom por toque duplo, sem destaque azul ao tocar, sem "puxar" a página inteira. */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+
 /* Números alinhados em valores, tabelas e códigos. */
 table, .tabular-nums { font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
 }
+
+/* Menu lateral do celular. */
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+@keyframes deslizar { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { [class*='animate-['] { animation: none !important; } }
+
+/* Linha de abas: no celular uma linha só que rola de lado (sem barra visível); no computador quebra de linha. */
+.abas { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.abas::-webkit-scrollbar { display: none; }
+.abas > * { flex-shrink: 0; white-space: nowrap; }
+@media (min-width: 768px) { .abas { flex-wrap: wrap; overflow-x: visible; } }

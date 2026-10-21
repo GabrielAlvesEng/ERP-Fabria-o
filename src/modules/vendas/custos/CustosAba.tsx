@@ -91,7 +91,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 border-b border-borda">
+      <div className="abas items-center gap-1 border-b border-borda">
         {itens.map((i) => (
           <button key={i.id} onClick={() => setItemId(i.id)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-150 ${item?.id === i.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>

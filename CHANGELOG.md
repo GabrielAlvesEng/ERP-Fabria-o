@@ -113,3 +113,10 @@
   - Campo de escolha busca por palavras em qualquer ordem.
   - Conferido no navegador com dados simulados: adicionar, gerar 3 combinações que faltavam, busca geral, pastas do anel (Aço mola) e escolha na proposta ("allen m8 zinc" → R$ 0,85/pç). 104 testes e build ok.
 - Planejamento da exclusão de projetos e da Lixeira em `docs/PLANEJAMENTO_LIXEIRA.md`, aguardando confirmação (muda a regra de exclusão sempre lógica).
+- **Celular (decisão 59):**
+  - meta viewport sem zoom e com `viewport-fit=cover`, metas de aplicativo para iPhone/Android, bloqueio do gesto de pinça no iPhone (o Safari ignora o `user-scalable=no`) e `touch-action: manipulation` contra zoom por toque duplo;
+  - menu lateral (☰) no lugar dos ícones de módulos no topo;
+  - estilo `.abas` (linha única com rolagem lateral no celular) nas abas dos módulos, do projeto, da proposta, dos itens de custo e das Predefinições;
+  - margem interna menor no celular;
+  - correções: Frota passava 19 px da tela (coluna da grade sem `min-w-0` e linha de combustível com larguras fixas); "Propostas excluídas" protegida contra resposta vazia.
+  - Conferido no navegador simulando um iPhone 13 (390 px), com dados simulados: as 10 telas dos módulos e o detalhe da proposta cabem na largura, o menu abre e fecha ao navegar, nos temas claro e escuro. **Não testado num celular de verdade.**
