@@ -74,7 +74,7 @@ export function ModelosPropostaPage() {
             </div>
             <EditorDocumento doc={p[aba]} onChange={(d) => setP({ ...p, [aba]: d })} editavel itens={EXEMPLO.itens} />
           </div>
-          <div className="lg:sticky lg:top-16 lg:h-[calc(100vh-6rem)]">
+          <div className="lg:sticky lg:top-2 lg:h-[calc(100dvh-6rem)]">
             <Suspense fallback={<EsqueletoPagina />}><Previa doc={p[aba]} dados={{ ...EXEMPLO, preparadoPor: p.empresa.responsavel }} empresa={p.empresa} /></Suspense>
           </div>
         </div>

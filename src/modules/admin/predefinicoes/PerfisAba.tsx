@@ -69,7 +69,7 @@ export function PerfisAba() {
   function editar(p: Perfil) {
     setF({ id: p.id, material: nomeMat(p.cod_mat), tipo_id: p.tipo_id, a: p.a_txt, b: p.b_txt, c: p.c_txt, parede: p.parede_txt,
       kgManual: p.kg_m_manual, kg: Number(p.kg_m ?? 0), modo: p.preco_modo, valor: Number(p.valor) });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('area-principal')?.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const filtrados = useMemo(() => {

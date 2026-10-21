@@ -54,7 +54,7 @@ export function ChapasAba() {
   function editar(c: Chapa) {
     setF({ id: c.id, material: nomeMat(c.cod_mat), tipo_id: c.tipo_id, esp: c.espessura_txt, larg: Number(c.largura_mm), comp: Number(c.comprimento_mm),
       pesoManual: c.peso_manual, peso: Number(c.peso_kg), valorKg: c.valor_kg == null ? null : Number(c.valor_kg) });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('area-principal')?.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const filtradas = useMemo(() => {

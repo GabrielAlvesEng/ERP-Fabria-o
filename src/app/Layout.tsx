@@ -32,17 +32,17 @@ export function Layout() {
   }, [gaveta]);
 
   return (
-    <div className="flex min-h-screen bg-pagina">
+    <div className="flex h-[100dvh] overflow-hidden bg-pagina">
       {/* Sidebar clara com borda fina (redesign, decisão 51); no escuro, grafite. */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-borda bg-superficie md:flex">
+      <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-borda bg-superficie md:flex">
         <div className="px-5 py-5"><Marca /></div>
         <div className="px-5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-suave">Módulos</div>
         <ListaModulos menu={menu} />
         <Rodape email={session?.user.email} sair={sair} />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-1 border-b border-borda bg-superficie/90 px-2 backdrop-blur sm:gap-3 sm:px-4">
+      <div className="flex h-full min-w-0 flex-1 flex-col">
+        <header className="z-30 flex h-14 shrink-0 items-center justify-between gap-1 border-b border-borda bg-superficie/90 px-2 backdrop-blur sm:gap-3 sm:px-4">
           <div className="flex items-center gap-1 md:hidden">
             <button onClick={() => setGaveta(true)} className="rounded-lg p-2 text-texto hover:bg-pagina dark:hover:bg-marinho-700" aria-label="Abrir menu"><Menu size={20} /></button>
             <Marca compacta />
@@ -74,9 +74,13 @@ export function Layout() {
             </aside>
           </div>
         )}
-        <main className="mx-auto w-full min-w-0 max-w-[1600px] flex-1 p-3 sm:p-4 md:p-6">
-          <div key={local.pathname.split('/')[1]} className="entrar"><Outlet /></div>
-        </main>
+        {/* Só a área do conteúdo rola: a barra de rolagem fica dentro dela e o espaço já fica reservado,
+            para a página não "encolher" quando uma aba tem rolagem. */}
+        <div id="area-principal" className="area-rolagem min-h-0 flex-1 overflow-y-auto">
+          <main className="mx-auto w-full min-w-0 max-w-[1600px] p-3 sm:p-4 md:p-6">
+            <div key={local.pathname.split('/')[1]} className="entrar"><Outlet /></div>
+          </main>
+        </div>
       </div>
     </div>
   );
