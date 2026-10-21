@@ -83,11 +83,12 @@ export function sugerirItem(p: PecaBib, refs: RefsEng): { tipo: TipoBib; id: str
     const achado = candidatos.find((x) => iguais(medidasPerfil(x, formatoDe.get(x.tipo_id)!), lido.medidas));
     return achado ? { tipo, id: achado.id, descricao: achado.descricao } : null;
   }
-  if (tipo === 'item') {
+  // Sem pista de tipo (ex.: rodízio do CAD sem COD_OP): tenta os comerciais pela descrição.
+  if (tipo === 'item' || tipo === null) {
     const d = norm(p.descricao);
     if (!d) return null;
     const achado = refs.itens.find((x) => norm(x.descricao) === d) ?? refs.itens.find((x) => norm(x.descricao).startsWith(d) || d.startsWith(norm(x.descricao)));
-    return achado ? { tipo, id: achado.id, descricao: achado.descricao } : null;
+    return achado ? { tipo: 'item', id: achado.id, descricao: achado.descricao } : null;
   }
   return null;
 }
@@ -169,10 +170,11 @@ export function resumoCompra(linhas: (PecaBib & { qtdTotal: number })[], refs: R
   for (const p of linhas) {
     const e = estimar(p, refs);
     const custo = e.custoUnit == null ? null : e.custoUnit * p.qtdTotal;
-    if (e.tipo === 'chapa' && p.cod_mat && Number(p.espessura) > 0) {
-      const esp = Number(p.espessura);
+    if (e.tipo === 'chapa' && p.cod_mat) {
+      const esp = Number(p.espessura) > 0 ? Number(p.espessura) : 0;
       const kg = (e.pesoUsado ?? 0) * p.qtdTotal;
-      somar(`chapa|${p.cod_mat}|${esp}`, { chave: '', grupo: 'Chapas', descricao: `Chapa ${nomeMaterial(p.cod_mat)} ${esp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} mm`, unidade: 'kg' }, kg, custo);
+      const desc = esp ? `Chapa ${nomeMaterial(p.cod_mat)} ${esp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} mm` : `Chapa ${nomeMaterial(p.cod_mat)} (espessura não informada)`;
+      somar(`chapa|${p.cod_mat}|${esp}`, { chave: '', grupo: 'Chapas', descricao: desc, unidade: 'kg' }, kg, custo);
     } else if (e.tipo === 'perfil' && e.item) {
       const m = (Number(p.comprimento) || 0) / 1000 * p.qtdTotal;
       somar(`perfil|${e.item.id}`, { chave: '', grupo: 'Perfis', descricao: e.item.descricao, unidade: 'm' }, m, custo);
@@ -188,8 +190,9 @@ export function resumoCompra(linhas: (PecaBib & { qtdTotal: number })[], refs: R
     let compra = '';
     if (l.grupo === 'Chapas') {
       const [, cod, esp] = l.chave.split('|');
-      const ch = chapaPadrao(refs, cod, Number(esp));
-      compra = ch && Number(ch.peso_kg) > 0
+      const ch = Number(esp) > 0 ? chapaPadrao(refs, cod, Number(esp)) : null;
+      compra = !(Number(esp) > 0) ? 'Informe a espessura das peças para estimar as chapas'
+        : ch && Number(ch.peso_kg) > 0
         ? `${Math.ceil(l.quantidade / Number(ch.peso_kg))} chapa(s) de ${Number(ch.largura_mm).toLocaleString('pt-BR')} × ${Number(ch.comprimento_mm).toLocaleString('pt-BR')}`
         : 'Cadastre a chapa inteira na biblioteca para estimar as chapas';
     } else if (l.grupo === 'Perfis') compra = `${Math.ceil(l.quantidade / BARRA_PADRAO_M - 1e-9)} barra(s) de ${BARRA_PADRAO_M} m`;

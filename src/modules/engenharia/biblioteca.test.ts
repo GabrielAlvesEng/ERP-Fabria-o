@@ -50,6 +50,7 @@ describe('sugestão da biblioteca', () => {
   it('material diferente não casa', () => expect(sugerirItem(peca({ descricao: 'TUBO REDONDO Ø1.1/4" X 1,5', comprimento: 880.5, cod_mat: 'AC-003' }), refs)).toBeNull());
   it('chapa: a de 1250 x 3000 do mesmo material e espessura', () => expect(sugerirItem(peca({ descricao: 'CHAPA 2,00', espessura: 2, cod_op: ['LC'] }), refs)?.id).toBe('c2'));
   it('comercial pela descrição, sem acento e maiúsculas', () => expect(sugerirItem(peca({ descricao: 'RODIZIO AJAX Ø2"', cod_op: ['CM'] }), refs)?.id).toBe('i1'));
+  it('peça sem COD_OP que é comercial (rodízio do CAD da bancada)', () => expect(sugerirItem(peca({ descricao: 'RODIZIO AJAX Ø2"', cod_op: [] }), refs)).toEqual({ tipo: 'item', id: 'i1', descricao: 'Rodízio Ajax Ø2"' }));
   it('sem correspondência', () => expect(sugerirItem(peca({ descricao: 'Motorredutor 1 CV', cod_op: ['CM'] }), refs)).toBeNull());
 });
 
@@ -95,6 +96,10 @@ describe('resumo para compra', () => {
   it('comerciais somados; sem item fica para ligar', () => {
     expect(r.find((l) => l.grupo === 'Comerciais')?.custo).toBe(270);
     expect(r.find((l) => l.grupo === 'Sem item')?.compra).toBe('Ligar a um item da biblioteca');
+  });
+  it('chapa sem espessura fica em Chapas, pedindo a espessura', () => {
+    const r2 = resumoCompra([{ ...peca({ descricao: 'Chapa base 300x300', peso_unit: 5.2, cod_op: ['LC'] }), qtdTotal: 4 }], refs, () => 'AISI 304');
+    expect(r2[0]).toMatchObject({ grupo: 'Chapas', quantidade: 20.8, custo: 800.8, compra: 'Informe a espessura das peças para estimar as chapas' });
   });
   it('chapa padrão sem 1250 x 3000 usa a maior', () => expect(chapaPadrao({ ...refs, chapas: [refs.chapas[0]] }, 'IN-001', 2)?.id).toBe('c1'));
 });

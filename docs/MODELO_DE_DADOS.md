@@ -72,3 +72,9 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `custo_linhas.secao` aceita `frete` e `viagem` (as antigas continuam para revisões enviadas); `custo_linhas.bib_id` guarda o item da biblioteca escolhido.
 - `ajustar_linha_custo` com as fórmulas de veículo alugado, frete, hospedagem e fixadores/consumíveis.
 - `converter_secoes_antigas(revisão)` converte um rascunho para as seções atuais sem mudar valores; `copiar_custos` chama ao criar nova revisão.
+
+## Biblioteca na Engenharia (`20261021000022_biblioteca_engenharia.sql`, `20261021000023_biblioteca_leitura_engenharia.sql`)
+
+- `projeto_pecas.bib_tipo` (chapa, perfil, item), `bib_id` (id em `bib_chapas`, `bib_perfis` ou `bib_itens`) e `bib_confirmado`; os dois primeiros vazios juntos ou preenchidos juntos.
+- Políticas de leitura `bib_*_ler` passam a aceitar `engenharia.ler`.
+- Peso, custo e resumo para compra são calculados na tela (`src/modules/engenharia/biblioteca.ts`), não gravados.

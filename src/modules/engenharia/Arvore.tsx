@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Box, Boxes, ChevronRight, Component, Copy, Flame, Folder, Nut, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { Box, Boxes, ChevronRight, Component, Copy, Flame, Folder, Nut, Package, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, CampoCelula, CampoNumero, Selo } from '@/shared/ui';
-import { adicionarConjunto, adicionarPeca, atualizarConjunto, atualizarPeca, excluirItem, listarCatalogo } from './api';
+import { adicionarConjunto, adicionarPeca, atualizarConjunto, atualizarPeca, excluirItem, listarCatalogo, listarRefsEng } from './api';
+import { sugerirItem, type RefsEng } from './biblioteca';
+import { CampoBiblioteca } from './CampoBiblioteca';
 import {
   COD_OPS, NOME_OP, NOME_PASTA, NOME_STATUS, lerMaterial, montarArvore, multiplicador, pastaDaPeca, rotuloMaterial,
   type CodOp, type Conjunto, type No, type Pasta, type Peca, type StatusConjunto,
@@ -21,6 +23,8 @@ const ICONE_PASTA: Record<Pasta, typeof Folder> = { fabricada: Folder, fixador: 
 
 // Código curto para a árvore: só a parte depois do código do projeto (00-00-000, 0A-01-000).
 export const codigoCurto = (codigo: string, projeto: string) => (codigo.startsWith(projeto + '-') ? codigo.slice(projeto.length + 1) : codigo);
+
+const REFS_VAZIAS: RefsEng = { chapas: [], perfis: [], itens: [], tipos: [], precosChapa: [] };
 
 export function ArvoreView({ projetoCodigo, conjuntos, pecas, selecionado, onSelecionar }: {
   projetoCodigo: string; conjuntos: Conjunto[]; pecas: Peca[]; selecionado: string | null; onSelecionar: (id: string) => void;
@@ -220,7 +224,13 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
   const [nova, setNova] = useState({ descricao: '', quantidade: 1, cod_op: [] as CodOp[] });
   const tentar = async (fn: () => Promise<unknown>) => { try { await fn(); onRecarregar(); } catch (e) { onErro(mensagemErro(e)); } };
   const { data: catalogo = [] } = useQuery({ queryKey: ['catalogo_materiais'], queryFn: listarCatalogo, staleTime: 10 * 60_000 });
+  const { data: refs = REFS_VAZIAS } = useQuery({ queryKey: ['bib', 'eng_refs'], queryFn: listarRefsEng, staleTime: 5 * 60_000 });
   const porPasta = (p: Pasta) => pecas.filter((x) => pastaDaPeca(x) === p).sort((a, b) => a.seq - b.seq);
+  // Sugestões da biblioteca ainda não confirmadas (decisão 53): aceitar todas de uma vez.
+  const sugestoes = editavel ? pecas.filter((p) => !p.bib_id && !p.removido_cad_em).map((p) => ({ p, s: sugerirItem(p, refs) })).filter((x) => x.s) : [];
+  async function aceitarTodas() {
+    await tentar(() => Promise.all(sugestoes.map(({ p, s }) => atualizarPeca(p.id, { bib_tipo: s!.tipo, bib_id: s!.id, bib_confirmado: true }))));
+  }
 
   async function adicionar(e: FormEvent) {
     e.preventDefault();
@@ -231,7 +241,13 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
 
   return (
     <div className="rounded-2xl bg-superficie p-4 ring-1 ring-borda">
-      <div className="mb-2 flex items-center gap-2 font-semibold">Peças e itens {conjunto.tipo === 'geral' ? 'da montagem geral' : conjunto.tipo === 'submontagem' ? 'desta submontagem' : conjunto.tipo === 'soldado' ? 'deste conjunto soldado (lista de corte)' : 'deste conjunto'} <Selo>{pecas.length}</Selo></div>
+      <div className="mb-2 flex flex-wrap items-center gap-2 font-semibold">Peças e itens {conjunto.tipo === 'geral' ? 'da montagem geral' : conjunto.tipo === 'submontagem' ? 'desta submontagem' : conjunto.tipo === 'soldado' ? 'deste conjunto soldado (lista de corte)' : 'deste conjunto'} <Selo>{pecas.length}</Selo>
+        {sugestoes.length > 0 && (
+          <Botao variante="secundario" tamanho="sm" className="ml-auto font-normal" onClick={aceitarTodas} title="Liga cada peça ao item sugerido da Biblioteca de Materiais">
+            <Sparkles size={13} /> Aceitar {sugestoes.length} sugest{sugestoes.length === 1 ? 'ão' : 'ões'} da biblioteca
+          </Botao>
+        )}
+      </div>
 
       {(['fabricada', 'fixador', 'comercial'] as Pasta[]).map((pasta) => {
         const lista = porPasta(pasta);
@@ -245,11 +261,11 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
             </button>
             {abertas[pasta] && (
               <div className="overflow-x-auto px-2 pb-2">
-                <table className="w-full min-w-[820px] text-sm">
+                <table className="w-full min-w-[1060px] text-sm">
                   <thead className="text-left text-[11px] uppercase text-suave">
                     <tr>
                       <th className="w-24 px-2 py-1">Código</th><th className="min-w-[220px] px-2 py-1">Descrição</th><th className="w-20 px-2 py-1 text-right">Qtd</th>
-                      <th className="w-32 px-2 py-1">COD_OP</th><th className="w-40 px-2 py-1">Material</th><th className="w-20 px-2 py-1 text-right">Esp.</th>
+                      <th className="w-32 px-2 py-1">COD_OP</th><th className="w-40 px-2 py-1">Material</th><th className="px-2 py-1">Biblioteca</th><th className="w-20 px-2 py-1 text-right">Esp.</th>
                       <th className="w-24 px-2 py-1 text-right">Peso un. (kg)</th><th className="w-20 px-2 py-1 text-right">Total</th><th className="w-8" />
                     </tr>
                   </thead>
@@ -261,6 +277,7 @@ function PecasDoConjunto({ conjunto, pecas, mult, editavel, onErro, onRecarregar
                         <td className="px-1"><CampoNumero valor={p.quantidade} casas={3} disabled={!editavel} onConfirmar={(n) => n > 0 && tentar(() => atualizarPeca(p.id, { quantidade: n }))} /></td>
                         <td className="px-1"><SeletorOps valor={p.cod_op} disabled={!editavel} onChange={(ops) => tentar(() => atualizarPeca(p.id, { cod_op: ops }))} /></td>
                         <td className="px-1"><CampoCelula valor={rotuloMaterial(p)} lista="lista-cod-mat" disabled={!editavel} placeholder="COD_MAT (ex.: IN-001)" onConfirmar={(v) => tentar(() => atualizarPeca(p.id, lerMaterial(v, catalogo)))} /></td>
+                        <td className="px-1 py-0.5"><CampoBiblioteca peca={p} refs={refs} editavel={editavel && !p.removido_cad_em} onSalvar={(d) => tentar(() => atualizarPeca(p.id, d))} /></td>
                         <td className="px-1"><CampoNumero valor={p.espessura ?? 0} casas={2} disabled={!editavel} onConfirmar={(n) => tentar(() => atualizarPeca(p.id, { espessura: n || null }))} /></td>
                         <td className="px-1"><CampoNumero valor={p.peso_unit ?? 0} casas={3} disabled={!editavel} onConfirmar={(n) => tentar(() => atualizarPeca(p.id, { peso_unit: n || null }))} /></td>
                         <td className="px-2 text-right font-medium tabular-nums" title="Quantidade total no projeto">{(Number(p.quantidade) * mult).toLocaleString('pt-BR')}</td>

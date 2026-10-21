@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ClipboardList, Download, FileUp, ListTree, Network, Settings2, Table2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ClipboardList, Download, FileUp, ListTree, Network, Settings2, Table2 } from 'lucide-react';
 import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { dataHoraBR, mensagemErro } from '@/shared/lib/formato';
+import { dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, Selecao, Selo, Vazio } from '@/shared/ui';
-import { atualizarProjeto, listarConjuntos, listarImportacoesCad, listarPecas, obterProjeto } from './api';
+import { atualizarProjeto, custoMateriaisProposta, listarCatalogo, listarConjuntos, listarImportacoesCad, listarPecas, listarRefsEng, obterProjeto } from './api';
+import { LIMITE_DIFERENCA, estimar, resumoCompra, type RefsEng } from './biblioteca';
+import { descricaoDoItem } from './CampoBiblioteca';
 import { ArvoreView } from './Arvore';
 import { ImportarSolidworks } from './ImportarSolidworks';
 import { MapaView } from './Mapa';
@@ -86,72 +88,155 @@ function Indicador({ rotulo, valor }: { rotulo: string; valor: string }) {
   return <div><div className="text-xs text-suave">{rotulo}</div><div className="font-semibold tabular-nums">{valor}</div></div>;
 }
 
+const REFS_VAZIAS: RefsEng = { chapas: [], perfis: [], itens: [], tipos: [], precosChapa: [] };
+const num = (n: number | null) => (n == null ? '' : String(n).replace('.', ','));
+const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
+function baixarCsv(nome: string, linhas: (string | number | null)[][]) {
+  const csv = linhas.map((r) => r.map((c) => esc(String(c ?? ''))).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+}
+
 function ListaMateriais({ projeto }: { projeto: Projeto }) {
+  const { pode } = useAuth();
   const { data: conjuntos = [] } = useQuery({ queryKey: ['eng', projeto.id, 'conjuntos'], queryFn: () => listarConjuntos(projeto.id) });
   const { data: pecas = [] } = useQuery({ queryKey: ['eng', projeto.id, 'pecas'], queryFn: () => listarPecas(projeto.id) });
+  const { data: refs = REFS_VAZIAS } = useQuery({ queryKey: ['bib', 'eng_refs'], queryFn: listarRefsEng, staleTime: 5 * 60_000 });
+  const { data: catalogo = [] } = useQuery({ queryKey: ['catalogo_materiais'], queryFn: listarCatalogo, staleTime: 10 * 60_000 });
+  const { data: proposta } = useQuery({ queryKey: ['eng', projeto.id, 'custo_proposta'], queryFn: () => custoMateriaisProposta(projeto.proposta_id), enabled: pode('custos', 'ler') });
+  const [visao, setVisao] = useState<'pecas' | 'compra'>('pecas');
   const [pasta, setPasta] = useState<Pasta | ''>('');
   const [op, setOp] = useState<CodOp | ''>('');
   const [verRemovidos, setVerRemovidos] = useState(false);
   const temRemovidos = pecas.some((p) => p.removido_cad_em) || conjuntos.some((c) => c.removido_cad_em);
-  const linhas = useMemo(() => listaMateriais(pecas, conjuntos, verRemovidos).filter((l) => (!pasta || l.pasta === pasta) && (!op || l.cod_op.includes(op))), [pecas, conjuntos, pasta, op, verRemovidos]);
-  const pesoTotal = linhas.reduce((s, l) => s + (l.pesoTotal ?? 0), 0);
-  const qtdTotal = linhas.reduce((s, l) => s + l.qtdTotal, 0);
+  const linhas = useMemo(() => listaMateriais(pecas, conjuntos, verRemovidos).filter((l) => (!pasta || l.pasta === pasta) && (!op || l.cod_op.includes(op)))
+    .map((l) => ({ ...l, est: estimar(l, refs) })), [pecas, conjuntos, pasta, op, verRemovidos, refs]);
+  const ativas = linhas.filter((l) => !l.removido);
+  const pesoTotal = ativas.reduce((s, l) => s + (l.pesoTotal ?? 0), 0);
+  const qtdTotal = ativas.reduce((s, l) => s + l.qtdTotal, 0);
+  const custoTotal = ativas.reduce((s, l) => s + (l.est.custoUnit ?? 0) * l.qtdTotal, 0);
+  const nomeMaterial = (cod: string | null) => catalogo.find((c) => c.cod_mat === cod)?.nome ?? cod ?? '';
+  // O resumo usa todas as peças ativas do projeto (sem os filtros de pasta e operação).
+  const resumo = useMemo(() => resumoCompra(listaMateriais(pecas, conjuntos, false), refs, nomeMaterial), [pecas, conjuntos, refs, catalogo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const custoResumo = resumo.reduce((s, l) => s + (l.custo ?? 0), 0);
+  const semCusto = useMemo(() => listaMateriais(pecas, conjuntos, false).filter((l) => estimar(l, refs).custoUnit == null).length, [pecas, conjuntos, refs]);
 
   function exportarCsv() {
-    const cab = ['Código', 'Descrição', 'Conjunto', 'COD_OP', 'COD_MAT', 'Material', 'Espessura', 'Qtd no conjunto', 'Qtd total', 'Peso un. (kg)', 'Peso total (kg)'];
-    const num = (n: number | null) => (n == null ? '' : String(n).replace('.', ','));
-    const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const csv = [cab, ...linhas.map((l) => [l.codigo, l.descricao, l.conjunto, l.cod_op.join('/'), l.cod_mat ?? '', l.material, num(l.espessura), num(l.quantidade), num(l.qtdTotal), num(l.peso_unit), num(l.pesoTotal)])]
-      .map((r) => r.map((c) => esc(String(c))).join(';')).join('\r\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
-    a.download = `Lista de materiais ${projeto.codigo}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    if (visao === 'compra') {
+      return baixarCsv(`Resumo para compra ${projeto.codigo}.csv`, [['Grupo', 'Material / item', 'Quantidade', 'Unidade', 'Comprar', 'Custo estimado (R$)'],
+        ...resumo.map((l) => [l.grupo, l.descricao, num(l.quantidade), l.unidade, l.compra, num(l.custo)])]);
+    }
+    baixarCsv(`Lista de materiais ${projeto.codigo}.csv`, [['Código', 'Descrição', 'Conjunto', 'COD_OP', 'COD_MAT', 'Material', 'Item da biblioteca', 'Espessura', 'Qtd no conjunto', 'Qtd total', 'Peso un. (kg)', 'Peso total (kg)', 'Custo un. (R$)', 'Custo total (R$)'],
+      ...linhas.map((l) => [l.codigo, l.descricao, l.conjunto, l.cod_op.join('/'), l.cod_mat ?? '', l.material, l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) ?? '' : '', num(l.espessura), num(l.quantidade), num(l.qtdTotal), num(l.peso_unit), num(l.pesoTotal), num(l.est.custoUnit), num(l.est.custoUnit == null ? null : Math.round(l.est.custoUnit * l.qtdTotal * 100) / 100)])]);
   }
 
   return (
-    <Cartao className="p-0">
-      <div className="flex flex-wrap items-center gap-2 border-b border-borda p-3">
-        <Selecao value={pasta} onChange={(e) => setPasta(e.target.value as Pasta | '')} className="w-48">
-          <option value="">Todas as pastas</option>
-          {(Object.keys(NOME_PASTA) as Pasta[]).map((p) => <option key={p} value={p}>{NOME_PASTA[p]}</option>)}
-        </Selecao>
-        <Selecao value={op} onChange={(e) => setOp(e.target.value as CodOp | '')} className="w-40">
-          <option value="">Todas as operações</option>
-          {COD_OPS.map((o) => <option key={o} value={o}>{o}</option>)}
-        </Selecao>
-        {temRemovidos && <Caixa marcado={verRemovidos} onChange={setVerRemovidos}>Mostrar removidos do CAD</Caixa>}
-        <span className="ml-auto text-sm text-suave">{linhas.length} itens · {qtdTotal.toLocaleString('pt-BR')} unidades · {pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</span>
-        <button onClick={exportarCsv} disabled={!linhas.length} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-roxo-600 hover:bg-roxo-50 disabled:opacity-40 dark:hover:bg-marinho-700"><Download size={15} /> Excel (CSV)</button>
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Cartao className="p-4"><div className="text-xs text-suave">Peso total</div><div className="mt-1 text-xl font-semibold tabular-nums">{pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</div></Cartao>
+        <Cartao className="p-4">
+          <div className="text-xs text-suave">Custo de materiais estimado (biblioteca)</div>
+          <div className="mt-1 text-xl font-semibold tabular-nums text-petroleo-600 dark:text-teal-300">{moeda(custoResumo)}</div>
+          {semCusto > 0 && <div className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">{semCusto} item(ns) sem preço na biblioteca ficaram de fora</div>}
+        </Cartao>
+        <Cartao className="p-4">
+          <div className="text-xs text-suave">Materiais na proposta{proposta ? ` (R${proposta.revisao})` : ''}</div>
+          {proposta ? (
+            <>
+              <div className="mt-1 text-xl font-semibold tabular-nums">{moeda(proposta.total)}</div>
+              <div className={`mt-0.5 text-xs ${custoResumo > proposta.total ? 'text-amber-600 dark:text-amber-400' : 'text-suave'}`}>
+                {custoResumo > proposta.total ? `Projeto ${moeda(custoResumo - proposta.total)} acima do orçado` : `Dentro do orçado (folga de ${moeda(proposta.total - custoResumo)})`}
+              </div>
+            </>
+          ) : <div className="mt-1 text-sm text-suave">{pode('custos', 'ler') ? 'A proposta não tem custos de materiais lançados.' : 'Sem acesso aos custos da proposta.'}</div>}
+        </Cartao>
       </div>
-      {linhas.length === 0 ? <Vazio>Nenhuma peça lançada na árvore.</Vazio> : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-pagina text-left text-xs uppercase text-suave">
-              <tr>
-                <th className="px-3 py-2">Código</th><th className="px-3 py-2">Descrição</th><th className="px-3 py-2">COD_OP</th><th className="px-3 py-2">Material</th>
-                <th className="px-3 py-2 text-right">Esp.</th><th className="px-3 py-2 text-right">Qtd/conj.</th><th className="px-3 py-2 text-right">Qtd total</th><th className="px-3 py-2 text-right">Peso total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {linhas.map((l) => (
-                <tr key={l.id} className={`border-t border-borda ${l.removido ? 'text-slate-400 line-through' : ''}`}>
-                  <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
-                  <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-suave no-underline">{l.removido ? 'Removido do CAD' : NOME_PASTA[l.pasta]}</div></td>
-                  <td className="px-3 py-1.5"><div className="flex flex-wrap gap-0.5">{l.cod_op.map((o) => <span key={o} className={`rounded px-1 font-mono text-[10px] font-semibold text-white ${o === 'CM' ? 'bg-amber-500' : 'bg-roxo-500'}`}>{o}</span>)}</div></td>
-                  <td className="px-3 py-1.5">{rotuloMaterial(l) || '—'}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{l.espessura == null ? '—' : Number(l.espessura).toLocaleString('pt-BR')}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{Number(l.quantidade).toLocaleString('pt-BR')}</td>
-                  <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{l.qtdTotal.toLocaleString('pt-BR')}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{l.pesoTotal == null ? '—' : `${l.pesoTotal.toLocaleString('pt-BR')} kg`}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      <Cartao className="overflow-hidden p-0">
+        <div className="flex flex-wrap items-center gap-2 border-b border-borda p-3">
+          <div className="inline-flex rounded-lg bg-pagina p-0.5 ring-1 ring-borda">
+            {([['pecas', 'Peças'], ['compra', 'Resumo para compra']] as const).map(([v, r]) => (
+              <button key={v} onClick={() => setVisao(v)} className={`rounded-md px-3 py-1 text-sm transition-colors duration-150 ${visao === v ? 'bg-superficie font-semibold text-roxo-600 shadow-sm dark:text-roxo-100' : 'text-suave hover:text-texto'}`}>{r}</button>
+            ))}
+          </div>
+          {visao === 'pecas' && (
+            <>
+              <Selecao value={pasta} onChange={(e) => setPasta(e.target.value as Pasta | '')} className="w-48">
+                <option value="">Todas as pastas</option>
+                {(Object.keys(NOME_PASTA) as Pasta[]).map((p) => <option key={p} value={p}>{NOME_PASTA[p]}</option>)}
+              </Selecao>
+              <Selecao value={op} onChange={(e) => setOp(e.target.value as CodOp | '')} className="w-40">
+                <option value="">Todas as operações</option>
+                {COD_OPS.map((o) => <option key={o} value={o}>{o}</option>)}
+              </Selecao>
+              {temRemovidos && <Caixa marcado={verRemovidos} onChange={setVerRemovidos}>Mostrar removidos do CAD</Caixa>}
+            </>
+          )}
+          <span className="ml-auto text-sm text-suave">{visao === 'pecas' ? `${linhas.length} itens · ${qtdTotal.toLocaleString('pt-BR')} unidades · ${moeda(custoTotal)}` : `${resumo.length} linhas de compra`}</span>
+          <button onClick={exportarCsv} disabled={visao === 'pecas' ? !linhas.length : !resumo.length} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-roxo-600 hover:bg-roxo-50 disabled:opacity-40 dark:text-roxo-100 dark:hover:bg-marinho-700"><Download size={15} /> Excel (CSV)</button>
         </div>
-      )}
-    </Cartao>
+        {visao === 'compra' ? (
+          resumo.length === 0 ? <Vazio>Nenhuma peça lançada na árvore.</Vazio> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-pagina text-left text-xs uppercase text-suave">
+                  <tr><th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Material / item</th><th className="px-3 py-2 text-right">Quantidade</th><th className="px-3 py-2">Comprar</th><th className="px-3 py-2 text-right">Custo estimado</th></tr>
+                </thead>
+                <tbody>
+                  {resumo.map((l) => (
+                    <tr key={l.chave} className="border-t border-borda">
+                      <td className="px-3 py-1.5 text-suave">{l.grupo}</td>
+                      <td className="px-3 py-1.5">{l.descricao}</td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {l.unidade}</td>
+                      <td className={`px-3 py-1.5 ${l.grupo === 'Sem item' || l.compra.startsWith('Cadastre') || l.compra.startsWith('Informe') ? 'text-amber-600 dark:text-amber-400' : ''}`}>{l.compra}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{l.custo == null ? '—' : moeda(l.custo)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot><tr className="border-t border-borda font-semibold"><td className="px-3 py-2" colSpan={4}>Total estimado</td><td className="px-3 py-2 text-right tabular-nums">{moeda(custoResumo)}</td></tr></tfoot>
+              </table>
+            </div>
+          )
+        ) : linhas.length === 0 ? <Vazio>Nenhuma peça lançada na árvore.</Vazio> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-pagina text-left text-xs uppercase text-suave">
+                <tr>
+                  <th className="px-3 py-2">Código</th><th className="px-3 py-2">Descrição</th><th className="px-3 py-2">COD_OP</th><th className="px-3 py-2">Material</th><th className="px-3 py-2">Biblioteca</th>
+                  <th className="px-3 py-2 text-right">Esp.</th><th className="px-3 py-2 text-right">Qtd/conj.</th><th className="px-3 py-2 text-right">Qtd total</th><th className="px-3 py-2 text-right">Peso total</th><th className="px-3 py-2 text-right">Custo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((l) => {
+                  const avisa = l.est.diferenca != null && l.est.diferenca > LIMITE_DIFERENCA;
+                  return (
+                    <tr key={l.id} className={`border-t border-borda ${l.removido ? 'text-slate-400 line-through' : ''}`}>
+                      <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
+                      <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-suave no-underline">{l.removido ? 'Removido do CAD' : NOME_PASTA[l.pasta]}</div></td>
+                      <td className="px-3 py-1.5"><div className="flex flex-wrap gap-0.5">{l.cod_op.map((o) => <span key={o} className={`rounded px-1 font-mono text-[10px] font-semibold text-white ${o === 'CM' ? 'bg-amber-500' : 'bg-roxo-500'}`}>{o}</span>)}</div></td>
+                      <td className="px-3 py-1.5">{rotuloMaterial(l) || '—'}</td>
+                      <td className="px-3 py-1.5 text-xs">{l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) ?? '—' : <span className="text-suave">—</span>}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{l.espessura == null ? '—' : Number(l.espessura).toLocaleString('pt-BR')}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{Number(l.quantidade).toLocaleString('pt-BR')}</td>
+                      <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{l.qtdTotal.toLocaleString('pt-BR')}</td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
+                        {avisa && <span title={`Peso do CAD ${Number(l.peso_unit).toLocaleString('pt-BR')} kg × biblioteca ${l.est.pesoBib?.toLocaleString('pt-BR')} kg por unidade (${Math.round(l.est.diferenca! * 100)}% de diferença): confira material ou medidas`}><AlertTriangle size={13} className="mr-1 inline text-amber-500" /></span>}
+                        {l.pesoTotal == null ? (l.est.pesoBib ? `${(l.est.pesoBib * l.qtdTotal).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} kg*` : '—') : `${l.pesoTotal.toLocaleString('pt-BR')} kg`}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{l.est.custoUnit == null ? '—' : moeda(l.est.custoUnit * l.qtdTotal)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {linhas.some((l) => l.pesoTotal == null && l.est.pesoBib) && <div className="border-t border-borda px-3 py-2 text-xs text-suave">* Peso calculado pela biblioteca (kg/m × comprimento): a peça não tem peso do CAD.</div>}
+          </div>
+        )}
+      </Cartao>
+    </div>
   );
 }
 

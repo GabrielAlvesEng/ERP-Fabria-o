@@ -65,6 +65,9 @@ export interface Peca {
   dados_cad?: Record<string, unknown>;
   removido_cad_em?: string | null;
   observacoes: string;
+  bib_tipo?: 'chapa' | 'perfil' | 'item' | null;   // item da Biblioteca de Materiais (decisão 53)
+  bib_id?: string | null;
+  bib_confirmado?: boolean;
 }
 
 export interface No extends Conjunto { filhos: No[] }
