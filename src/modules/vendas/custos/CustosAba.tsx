@@ -185,14 +185,14 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarre
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
       <div className="min-w-0 space-y-3">
-        <div className="grid gap-3 rounded-xl bg-pagina p-3 sm:grid-cols-6">
+        <div className="grid items-end gap-3 rounded-xl bg-pagina p-3 sm:grid-cols-6">
           <Campo rotulo={`Descrição do item ${it.letra}`} className="sm:col-span-6">
             <Entrada defaultValue={it.descricao} disabled={!editavel} onBlur={(e) => e.target.value !== it.descricao && salvarItem({ descricao: e.target.value })} />
           </Campo>
           <CampoPct rotulo="Quantidade" valor={it.quantidade} casas={3} editavel={editavel} onConfirmar={(n) => n > 0 && salvarItem({ quantidade: n })} />
           <CampoPct rotulo="Margem (%)" valor={it.lucro_pct} editavel={editavel} onConfirmar={(n) => salvarItem({ lucro_pct: n })} />
           <CampoPct rotulo="Negociação (%)" valor={it.negociacao_pct} editavel={editavel} onConfirmar={(n) => salvarItem({ negociacao_pct: n })} />
-          <CampoPct rotulo="Imposto (%) sobre o preço" valor={it.imposto_pct} editavel={editavel} onConfirmar={(n) => n < 100 && salvarItem({ imposto_pct: n })} />
+          <CampoPct rotulo="Imposto (%)" valor={it.imposto_pct} editavel={editavel} onConfirmar={(n) => n < 100 && salvarItem({ imposto_pct: n })} />
         </div>
 
         {secoesVisiveis(linhas).map((s) => {
