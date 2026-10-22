@@ -1,6 +1,6 @@
 # Recursos Humanos (RH)
 
-Versão 2, 22/10/2026. **Estado: aprovado com as respostas do Gabriel (decisão 69), em implementação.**
+Versão 2, 22/10/2026. **Estado: aprovado com as respostas do Gabriel (decisão 69). Entrega 1 feita; entregas 2 a 4 em andamento.**
 
 Respostas do Gabriel (22/10):
 1. "Senhas" é só o **gerenciamento dos logins** dos funcionários no ERP;
@@ -101,7 +101,7 @@ Nada é apagado: funcionário que sai fica **desligado**, com a data, e some das
 - `empresa_exigencias_integracao` (empresa_id, validade_meses) e `empresa_documentos_exigidos` (empresa_id, tipo_documento_id)
 - `funcionario_integracoes` (funcionario_id, empresa_id, data, validade, arquivo)
 - Visão `situacao_requisitos` com a cor de cada requisito por funcionário, usada no painel e no sino; função `funcionario_liberado(funcionario, empresa, data)` para a Agenda.
-- `vendedores` ganha `funcionario_id`. Bucket privado `rh` no Storage.
+- O vendedor chega à ficha pelo mesmo `usuario_id` (sem coluna nova em `vendedores`). Bucket privado `rh` no Storage.
 - Edge Function `rh-acesso` (criar login por convite, redefinir senha, desativar).
 
 ## Entregas

@@ -20,6 +20,10 @@ import { FrotaPage } from '@/modules/admin/FrotaPage';
 import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
 import { PredefinicoesPage } from '@/modules/admin/predefinicoes/PredefinicoesPage';
 import { PerfilPage } from '@/modules/perfil/PerfilPage';
+import { RhLayout } from '@/modules/rh/RhLayout';
+import { FuncionariosPage } from '@/modules/rh/FuncionariosPage';
+import { FuncionarioPage } from '@/modules/rh/FuncionarioPage';
+import { SetoresPage } from '@/modules/rh/SetoresPage';
 
 export function App() {
   const { session, carregando } = useAuth();
@@ -51,6 +55,11 @@ export function App() {
           <Route path="/engenharia" element={<EngenhariaLayout />}>
             <Route index element={<ProjetosPage />} />
             <Route path="projetos/:id" element={<ProjetoPage />} />
+          </Route>
+          <Route path="/rh" element={<RhLayout />}>
+            <Route index element={<FuncionariosPage />} />
+            <Route path="funcionarios/:id" element={<FuncionarioPage />} />
+            <Route path="setores" element={<SetoresPage />} />
           </Route>
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/admin" element={<AdminLayout />}>

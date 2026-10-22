@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, LogOut, Menu, Moon, ShieldCheck, Sun, X } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, LogOut, Menu, Moon, ShieldCheck, Sun, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
@@ -12,6 +12,7 @@ import { useMeuUsuario } from '@/modules/perfil/api';
 const modulos = [
   { to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness, modulo: 'vendas' },
   { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia' },
+  { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh' },
   { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const },
 ];
 

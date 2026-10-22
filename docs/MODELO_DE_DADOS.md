@@ -123,3 +123,13 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `vendedores` (usuario_id PK → usuarios, nome, cargo, telefone, observacoes, ativo). Lê quem tem `vendas.ler` ou `rh.ler`; grava quem tem `rh.editar`.
 - `propostas.responsavel_id` é o vendedor. O gatilho `validar_vendedor_proposta` aceita só vendedor ativo: na criação, se não for vendedor, deixa a proposta sem vendedor; numa troca, recusa.
 - Permissões novas `rh.ler` e `rh.editar`, mais o perfil RH. A Administração tem acesso total.
+
+## RH: cadastro (`20261022000036_rh_cadastro.sql`, decisão 69)
+
+- `setores` (nome único sem diferenciar maiúsculas, ativo) e `funcoes` (setor_id, nome único no setor, descrição, ativo). Todos os logados leem; grava quem tem `rh.editar`. Nada é apagado: fica inativo.
+- `funcionarios`: nome completo, CPF (11 dígitos, único), RG, nascimento, telefone, e-mails pessoal e corporativo, endereço (cep, endereço, cidade, UF), contato de emergência, matrícula (única), `funcao_id` → funcoes (o setor vem da função), admissão, vínculo (CLT, PJ, Sócio, Temporário, Estágio ou vazio), situação (ativo, férias, afastado, desligado; desligado exige a data), `usuario_id` → usuarios (único, opcional: o login do ERP) e observações. Sem salário nem dados bancários (Financeiro).
+- Lê quem tem `rh.ler` ou o próprio funcionário (`usuario_id = auth.uid()`); grava quem tem `rh.editar`. Auditoria em todas as tabelas.
+- Gatilhos: `validar_funcao_funcionario` (função nova ou trocada precisa estar ativa); telefone e nascimento iguais à ficha e a `usuarios` (Meu perfil) nos dois sentidos (`funcionario_puxar_usuario`, `funcionario_para_usuario`, `usuario_para_funcionario`).
+- O vendedor (`vendedores.usuario_id`) chega à ficha pelo mesmo `usuario_id`; não há coluna nova em `vendedores`.
+- Permissão nova `rh.critica` (logins e perfis, entrega 4), dada ao perfil RH.
+- Carga: 7 setores padrão, 4 funções de Engenharia e os 5 funcionários da lista do Gabriel; Gabriel, Guilherme e Pedro ligados aos seus logins.
