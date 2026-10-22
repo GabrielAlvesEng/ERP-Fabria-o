@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Trash2 } f
 import { AreaTexto, Botao, Caixa, Campo, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
 import {
-  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_FIXAS, marcadorCartao, numerar, sincronizarEscopo,
+  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, marcadorCartao, numerar, sincronizarEscopo,
   type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type LinhaMatriz, type Marca3, type Secao,
 } from './modelo';
 import { TextoFormatado } from './TextoFormatado';
@@ -23,9 +23,10 @@ export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<st
 export type ItemValor = { id?: string; letra: string; descricao: string; valor: number; manual?: boolean; calculado?: number };
 export type AcoesValor = { salvar: (id: string, valor: number | null) => void; criarItem: () => void; ocupado: boolean };
 
-export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados }: {
+export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados, modelo }: {
   doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: ItemValor[]; imagens?: Imagens; valores?: AcoesValor;
   capaDados?: { titulo: string; descricao: string }; // decisão 72: título e subtítulo da capa vêm da aba Dados
+  modelo?: boolean; // Administração → Modelos de proposta: lá o Anexo é editado (decisão 75)
 }) {
   const [aberta, setAberta] = useState<string | null>(null);
   doc = sincronizarEscopo(doc, itens); // decisão 74: Escopo com os itens (e nomes) da aba Custos
@@ -76,8 +77,10 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
       {doc.secoes.map((s, i) => {
         // Sobre nós e Dados da Empresa são obrigatórios na técnica (decisão 71): nem aparecem no editor.
         if (s.tipo === 'sobre' || s.tipo === 'dados_empresas') return null;
-        // Seções fixas (decisão 70): Conheça a Fabriaço, Dados da Empresa, Termo de Confidencialidade e Anexos.
-        const fixa = SECOES_FIXAS.includes(s.id) || s.tipo === 'confidencialidade';
+        // Decisão 75: na proposta técnica, Validade, Confidencialidade e Anexo não aparecem (sempre saem, com o texto do modelo).
+        if (!modelo && doc.tipo === 'tecnica' && SECOES_DO_MODELO.includes(s.id)) return null;
+        // Seções fixas (decisão 70): Conheça a Fabriaço, Dados da Empresa, Termo de Confidencialidade e Anexos. No modelo, o Anexo é editável.
+        const fixa = (SECOES_FIXAS.includes(s.id) && !(modelo && s.id === 'anexo')) || s.tipo === 'confidencialidade';
         return (
         <div key={s.id} className={`rounded-xl ring-1 ring-borda ${s.ativo ? 'bg-superficie' : 'bg-pagina opacity-70'}`}>
           <div className="flex items-center gap-2 px-3 py-2">

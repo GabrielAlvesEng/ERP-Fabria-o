@@ -76,7 +76,7 @@ export function ModelosPropostaPage() {
             <div className="flex justify-end">
               <Botao variante="secundario" tamanho="sm" onClick={() => confirm('Voltar aos textos dos modelos originais?') && setP({ ...p, [aba]: documentoPadrao(aba) })}>Voltar aos textos originais</Botao>
             </div>
-            <EditorDocumento doc={p[aba]} onChange={(d) => setP({ ...p, [aba]: d })} editavel itens={EXEMPLO.itens} />
+            <EditorDocumento doc={p[aba]} onChange={(d) => setP({ ...p, [aba]: d })} editavel itens={EXEMPLO.itens} modelo />
           </div>
           <div className="lg:sticky lg:top-2 lg:h-[calc(100dvh-6rem)]">
             <Suspense fallback={<EsqueletoPagina />}><Previa doc={p[aba]} dados={{ ...EXEMPLO, preparadoPor: p.empresa.responsavel }} empresa={p.empresa} tecnica={aba === 'comercial' ? p.tecnica : null} /></Suspense>

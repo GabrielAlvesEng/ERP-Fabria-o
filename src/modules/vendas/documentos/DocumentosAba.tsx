@@ -10,7 +10,7 @@ import { atualizarItem, criarItem } from '@/modules/vendas/custos/api';
 import type { Proposta } from '@/modules/vendas/types';
 import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadroes, salvarDocumento } from './api';
 import { EditorDocumento } from './EditorDocumento';
-import { aplicarTextosIA, completarDocumento, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
+import { aplicarTextosIA, completarDocumento, fixarSecoesDoModelo, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
 
 const Previa = lazy(() => import('./Previa'));
 const SEM_IMAGENS: Record<string, string> = {};
@@ -39,7 +39,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   useEffect(() => {
     if (!salvos || !padroes) return;
     // Documento salvo numa versão antiga do modelo é convertido com os padrões atuais (decisão 67).
-    setDocs({ tecnica: completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), comercial: completarDocumento(salvos.comercial, 'comercial', padroes.comercial) });
+    setDocs({ tecnica: fixarSecoesDoModelo(completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), padroes.tecnica), comercial: completarDocumento(salvos.comercial, 'comercial', padroes.comercial) });
   }, [salvos, padroes]);
   const doc = docs[tipo];
 

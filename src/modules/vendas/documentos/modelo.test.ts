@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, sincronizarEscopo, substituir, trechos } from './modelo';
+import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, fixarSecoesDoModelo, sincronizarEscopo, substituir, trechos } from './modelo';
 
 describe('documentos da proposta', () => {
   it('lê negrito', () => {
@@ -124,6 +124,22 @@ describe('sincronizarEscopo (decisão 74)', () => {
     const r = sincronizarEscopo(doc, [{ descricao: 'Plataforma' }, { descricao: 'Escada' }]).secoes.find((s) => s.id === 'escopo')!;
     expect(r.tipo === 'cartoes' && r.cartoes).toEqual([{ titulo: 'Plataforma', texto: 'Texto A', imagens: [{ caminho: 'x.png', legenda: '' }] }, { titulo: 'Escada', texto: 'Texto sobra' }]);
     expect(sincronizarEscopo(doc, [])).toBe(doc);
+  });
+});
+
+describe('fixarSecoesDoModelo (decisão 75)', () => {
+  it('validade, confidencialidade e anexo vêm do modelo e sempre saem', () => {
+    const modelo = documentoPadrao('tecnica');
+    const anexoModelo = modelo.secoes.find((s) => s.id === 'anexo')!;
+    if (anexoModelo.tipo === 'texto') anexoModelo.texto = 'Texto do modelo';
+    const doc = documentoPadrao('tecnica');
+    doc.secoes = doc.secoes.map((s) => (s.id === 'anexo' && s.tipo === 'texto' ? { ...s, texto: 'Texto antigo', ativo: false } : s.id === 'validade' ? { ...s, ativo: false } : s));
+    const r = fixarSecoesDoModelo(doc, modelo);
+    const anexo = r.secoes.find((s) => s.id === 'anexo')!;
+    expect(anexo.ativo && anexo.tipo === 'texto' && anexo.texto).toBe('Texto do modelo');
+    expect(r.secoes.find((s) => s.id === 'validade')!.ativo).toBe(true);
+    const sem = { ...doc, secoes: doc.secoes.filter((s) => s.id !== 'confidencialidade') };
+    expect(fixarSecoesDoModelo(sem, modelo).secoes.some((s) => s.id === 'confidencialidade' && s.ativo)).toBe(true);
   });
 });
 
