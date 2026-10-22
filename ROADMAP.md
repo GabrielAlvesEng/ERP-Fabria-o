@@ -29,6 +29,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 | 7 | Expedição, campo e Financeiro (faturamento e recebimento) | Não iniciado |
 | 8 | RH, Agenda, Tarefas e Frota | **RH: entregas 1 a 4 feitas e publicadas em 22/10/2026, aguardando validação do Gabriel** (decisão 69: o Gabriel decidiu em 22/10/2026 fazer o RH antes de seguir com a Engenharia; `docs/PLANEJAMENTO_RH.md`). Frota feita (decisão 55). Agenda e Tarefas não iniciadas |
 | 9 | Administração (usuários, permissões, senhas, auditoria) | Parte entra já em Vendas (permissões, senhas) |
+| 10 | Comunicação (avisos dos líderes por setor e comunicados gerais no celular) | **Em planejamento, aguardando aprovação** (`docs/PLANEJAMENTO_COMUNICACAO.md`) |
 
 A ordem dos módulos 2 a 8 será revista quando o fluxograma completo da empresa estiver validado.
 
