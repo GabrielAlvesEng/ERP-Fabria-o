@@ -585,8 +585,9 @@ function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; 
           ))}
         </View>
         {comImagem ? (
-          // Decisão 71: a imagem principal ocupa todo o espaço livre até o rodapé da capa.
-          <View style={{ marginTop: 14, marginBottom: 46, flexGrow: 1, backgroundColor: T.quadro, borderRadius: 10, padding: claro ? 0 : 8 }}>
+          // Decisão 71: a imagem principal ocupa todo o espaço livre até o rodapé da capa. flexBasis 0 faz ela só usar a sobra,
+          // sem encolher a logo, o título e os cartões.
+          <View style={{ marginTop: 14, marginBottom: 46, flexGrow: 1, flexBasis: 0, minHeight: 0, backgroundColor: T.quadro, borderRadius: 10, padding: claro ? 0 : 8 }}>
             <Image src={imagens[doc.capa.imagem!]} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </View>
         ) : null}

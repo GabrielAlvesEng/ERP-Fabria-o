@@ -146,7 +146,7 @@ function Coluna({ status, propostas, hoje, onAbrir, onFollowup }: { status: Stat
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const total = propostas.reduce((s, p) => s + Number(p.valor), 0);
   return (
-    <div ref={setNodeRef} className={`flex w-72 shrink-0 flex-col rounded-xl border-t-[3px] bg-pagina p-2 ring-1 ring-borda transition-shadow duration-150 ${corColuna[status]} ${isOver ? 'ring-2 ring-roxo-400' : ''}`}>
+    <div ref={setNodeRef} className={`flex min-w-[18rem] flex-1 basis-0 flex-col rounded-xl border-t-[3px] bg-pagina p-2 ring-1 ring-borda transition-shadow duration-150 ${corColuna[status]} ${isOver ? 'ring-2 ring-roxo-400' : ''}`}>
       <div className="flex items-center justify-between px-2 py-1.5">
         <span className="text-sm font-semibold">{status}</span>
         <Selo>{propostas.length}</Selo>

@@ -48,7 +48,7 @@ export function EsqueletoKanban() {
   return (
     <div role="status" aria-label="Carregando" className="flex gap-3 overflow-hidden">
       {[3, 2, 3, 1].map((n, c) => (
-        <div key={c} className="w-72 shrink-0 rounded-xl bg-pagina p-3 ring-1 ring-borda">
+        <div key={c} className="min-w-[18rem] flex-1 basis-0 rounded-xl bg-pagina p-3 ring-1 ring-borda">
           <div className="mb-1 flex items-center justify-between"><Esqueleto className="h-4 w-24" /><Esqueleto className="h-4 w-6 rounded-full" /></div>
           <Esqueleto className="mb-3 h-3 w-16" />
           <div className="space-y-2">
