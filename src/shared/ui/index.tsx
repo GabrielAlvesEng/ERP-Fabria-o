@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
 import { CalendarDays, Check, Minus, Paperclip, Plus, X } from 'lucide-react';
+import { Bolhas, useIdCampo } from './presenca';
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
@@ -25,9 +26,10 @@ export function Botao({ variante = 'primario', tamanho = 'md', className, ...p }
 const campoBase = 'w-full rounded-lg border border-slate-300 bg-superficie px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-roxo-500 focus:ring-2 focus:ring-roxo-100 dark:border-marinho-500 dark:focus:border-roxo-300 dark:focus:ring-roxo-700/40';
 
 export function Campo({ rotulo, erro, children, className }: { rotulo: string; erro?: string; children: ReactNode; className?: string }) {
+  const id = useIdCampo(rotulo);
   return (
-    <label className={cx('block', className)}>
-      <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">{rotulo}</span>
+    <label className={cx('block', className)} data-campo={id}>
+      <span className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">{rotulo}<Bolhas campo={id} /></span>
       {children}
       {erro && <span className="mt-1 block text-xs text-red-600">{erro}</span>}
     </label>
@@ -58,6 +60,7 @@ export function CampoInteiro({ valor, onChange, min = 0, max, disabled, placehol
 }
 export const AreaTexto = (p: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea rows={3} {...p} className={cx(campoBase, p.className)} />;
 export { Selecao } from './Selecao';
+export { Bolhas, PrefixoCampo, ProvedorBolhas, useIdCampo, type Bolha } from './presenca';
 
 // Data: mostra sempre DD/MM/AAAA, guarda ISO (AAAA-MM-DD). O botão abre o calendário do navegador.
 function isoParaBR(iso: string) {

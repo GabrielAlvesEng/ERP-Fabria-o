@@ -20,9 +20,17 @@ describe('chavesDaMudanca', () => {
 });
 
 describe('outrasPessoas', () => {
-  const p = (id: string, nome: string, aba = 'Dados'): Presente => ({ id, nome, aba, foto_caminho: null, foto_atualizada_em: null });
+  const p = (id: string, nome: string, aba = 'Dados'): Presente => ({ id, nome, aba, foto_caminho: null, foto_atualizada_em: null, proposta_id: 'x', campo: null });
   it('tira a própria pessoa, junta janelas repetidas e ordena por nome', () => {
     const r = outrasPessoas({ eu: [p('eu', 'Gabriel')], b: [p('b', 'Pedro', 'Dados'), p('b', 'Pedro', 'Custos')], a: [p('a', 'Ana')] }, 'eu');
     expect(r.map((x) => `${x.nome}/${x.aba}`)).toEqual(['Ana/Dados', 'Pedro/Custos']);
+  });
+});
+
+describe('outrasPessoas com duas janelas', () => {
+  it('prefere a janela que tem proposta aberta', () => {
+    const base = { nome: 'Pedro', aba: null, campo: null, foto_caminho: null, foto_atualizada_em: null, id: 'b' };
+    const r = outrasPessoas({ b: [{ ...base, proposta_id: 'p1' }, { ...base, proposta_id: null }] }, 'eu');
+    expect(r[0]?.proposta_id).toBe('p1');
   });
 });

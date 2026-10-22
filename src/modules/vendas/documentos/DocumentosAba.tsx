@@ -4,7 +4,7 @@ import { Download, Eye, FileCheck2, PencilLine, RotateCcw, Sparkles } from 'luci
 import { supabase } from '@/shared/lib/supabase';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, EsqueletoDetalhe, EsqueletoPagina } from '@/shared/ui';
+import { AreaTexto, Aviso, Bolhas, Botao, EsqueletoDetalhe, EsqueletoPagina } from '@/shared/ui';
 import { atualizarRascunho, enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
 import { atualizarItem, criarItem } from '@/modules/vendas/custos/api';
 import type { Proposta } from '@/modules/vendas/types';
@@ -184,8 +184,8 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
         <div className="flex rounded-lg bg-pagina p-0.5 ring-1 ring-borda">
           {(['tecnica', 'comercial'] as const).map((t) => (
             <button key={t} type="button" onClick={() => setTipo(t)}
-              className={`rounded-md px-3 py-1.5 text-sm ${tipo === t ? 'bg-superficie font-semibold text-roxo-600 shadow-sm dark:text-roxo-100' : 'text-suave'}`}>
-              {t === 'tecnica' ? 'Proposta técnica' : 'Proposta comercial'}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${tipo === t ? 'bg-superficie font-semibold text-roxo-600 shadow-sm dark:text-roxo-100' : 'text-suave'}`}>
+              {t === 'tecnica' ? 'Proposta técnica' : 'Proposta comercial'}{t !== tipo && <Bolhas campo={`${t}: `} inicio />}
             </button>
           ))}
         </div>

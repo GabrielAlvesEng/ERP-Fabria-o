@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Lock, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
 import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
-import { AreaTexto, Aviso, Botao, Campo, CampoData, CampoInteiro, Entrada, EntradaMoeda, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Bolhas, Botao, Campo, ProvedorBolhas, CampoData, CampoInteiro, Entrada, EntradaMoeda, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
   abrirArquivo, atualizarRascunho, listarContatos, listarEmpresas, listarEventos, listarReprovacoes,
   moverProposta, obterAprovacao, obterProposta,
@@ -20,7 +20,7 @@ import { KickoffAba } from '../kickoff/KickoffAba';
 import { ExcluirModal } from './ExcluirModal';
 import { ArquivosAba } from './ArquivosAba';
 import { enderecoEntrega } from '../documentos/api';
-import { usePresencaProposta, type Presente } from '../aoVivo';
+import { paraBolhas, usePresencaProposta, type Presente } from '../aoVivo';
 import { Avatar } from '@/modules/perfil/Avatar';
 
 // Decisão 70: "Revisões e arquivos" e "Aprovação" viraram a aba Arquivos (Propostas, Anexos e Aprovação).
@@ -45,7 +45,14 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
   const [excluir, setExcluir] = useState(false);
   const { data: p } = useQuery({ queryKey: ['proposta', id], queryFn: () => obterProposta(id) });
   const linhaAbas = useIndicadorAbas(`${aba}|${p ? 1 : 0}`);
-  const presentes = usePresencaProposta(id, aba);
+  // Decisão 84: o campo com o cursor (data-campo mais próximo) vai para a presença; os outros veem a bolha com a foto ali.
+  const [campo, setCampo] = useState<string | null>(null);
+  const saida = useRef<ReturnType<typeof setTimeout>>();
+  const aoFocar = (e: FocusEvent) => { clearTimeout(saida.current); setCampo((e.target as Element).closest('[data-campo]')?.getAttribute('data-campo') ?? null); };
+  const aoSair = () => { clearTimeout(saida.current); saida.current = setTimeout(() => setCampo(null), 200); };
+  useEffect(() => () => clearTimeout(saida.current), []);
+  const presentes = usePresencaProposta(id, aba, campo);
+  const bolhas = useMemo(() => paraBolhas(presentes.filter((x) => x.aba === aba)), [presentes, aba]);
 
   const mover = useMutation({
     mutationFn: (para: StatusProposta) => moverProposta(id, para),
@@ -107,11 +114,14 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
             </div>
             <div ref={linhaAbas} className="abas abas-indicador gap-x-1 border-b border-borda px-3" role="tablist">
               {abas.filter((a) => a !== 'Custos' || pode('custos', 'ler')).map((a) => (
-                <button key={a} role="tab" aria-selected={aba === a} onClick={() => setAba(a)} className={`-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors duration-150 ${aba === a ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>{a}</button>
+                <button key={a} role="tab" aria-selected={aba === a} onClick={() => setAba(a)} className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm transition-colors duration-150 ${aba === a ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>
+                  {a}{a !== aba && <ProvedorBolhas value={paraBolhas(presentes.filter((x) => x.aba === a).map((x) => ({ ...x, campo: a })), 18)}><Bolhas campo={a} dica="está nesta aba" /></ProvedorBolhas>}
+                </button>
               ))}
               <span className="abas-linha" />
             </div>
-            <div key={aba} className="entrar flex-1 overflow-y-auto p-5">
+            <ProvedorBolhas value={bolhas}>
+            <div key={aba} className="entrar flex-1 overflow-y-auto p-5" onFocus={aoFocar} onBlur={aoSair}>
               {aba === 'Dados' && <AbaDados p={p} />}
               {aba === 'Custos' && <CustosAba proposta={p} />}
               {aba === 'Documentos' && <DocumentosAba proposta={p} />}
@@ -119,6 +129,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
               {aba === 'Kick-off' && <KickoffAba propostaId={p.id} statusProposta={p.status} />}
               {aba === 'Histórico' && <AbaHistorico id={p.id} />}
             </div>
+            </ProvedorBolhas>
           </>
         )}
       </div>
@@ -148,7 +159,7 @@ function QuemEstaAqui({ presentes, aba }: { presentes: Presente[]; aba: string }
         </span>
       </div>
       {mesmaAba.length > 0 && ['Dados', 'Custos', 'Documentos', 'Kick-off'].includes(aba) && (
-        <Aviso tipo="info">{nomes(mesmaAba)} {mesmaAba.length === 1 ? 'está' : 'estão'} nesta aba agora. As alterações de cada um aparecem para o outro sozinhas; se os dois mexerem no mesmo campo, vale o último que salvar.</Aviso>
+        <Aviso tipo="info">{nomes(mesmaAba)} {mesmaAba.length === 1 ? 'está' : 'estão'} nesta aba agora: a foto aparece no campo em que {mesmaAba.length === 1 ? 'a pessoa está mexendo' : 'cada um está mexendo'}. Se os dois mexerem no mesmo campo, vale o último que salvar.</Aviso>
       )}
     </div>
   );

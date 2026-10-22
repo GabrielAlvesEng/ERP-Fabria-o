@@ -10,7 +10,7 @@ import type { MaterialCatalogo } from '@/modules/engenharia/regras';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro, moeda } from '@/shared/lib/formato';
 import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
-import { Aviso, Botao, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Entrada, EsqueletoTabela, Modal, type OpcaoEscolha, Selecao, Selo, Vazio } from '@/shared/ui';
+import { Aviso, Botao, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Entrada, EsqueletoTabela, Modal, type OpcaoEscolha, Selecao, Selo, Vazio, Bolhas, PrefixoCampo, useIdCampo } from '@/shared/ui';
 import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
 import {
@@ -101,7 +101,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
         {itens.map((i) => (
           <button key={i.id} role="tab" aria-selected={item?.id === i.id} onClick={() => setItemId(i.id)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-150 ${item?.id === i.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>
-            Item {i.letra}{i.descricao && <span className="font-normal"> · {i.descricao}</span>}
+            Item {i.letra}{i.descricao && <span className="font-normal"> · {i.descricao}</span>}{item?.id !== i.id && <> <Bolhas campo={`Item ${i.letra} · `} inicio /></>}
           </button>
         ))}
         {editavel && (
@@ -115,7 +115,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
       {itens.length === 0 ? (
         <Vazio>{editavel ? 'Nenhum item de custo ainda. Clique em "Novo item" para começar (vem com o modelo da planilha).' : 'Esta revisão não tem custos lançados.'}</Vazio>
       ) : item && (
-        <div key={item.id} className="entrar"><ItemCustos
+        <div key={item.id} className="entrar"><PrefixoCampo valor={`Item ${item.letra} · `}><ItemCustos
           item={item}
           linhas={linhas.filter((l) => l.item_id === item.id)}
           listas={{ catalogo, refs, veiculos: frota?.veiculos ?? [], precos: frota?.precos ?? {} }}
@@ -124,7 +124,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
           onLinha={trocarLinha}
           onRecarregar={recarregar}
           onExcluido={() => { setItemId(null); recarregar(); }}
-        /></div>
+        /></PrefixoCampo></div>
       )}
     </div>
   );
@@ -372,6 +372,7 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
   const [calc, setCalc] = useState(false);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: l.id, disabled: !editavel });
   const estilo = { transform: CSS.Transform.toString(transform), transition };
+  const idCampo = useIdCampo(`linha ${l.id}`);
 
   // Itens da Biblioteca de Materiais do bloco; com material escolhido, os daquele material vêm primeiro (decisão 48).
   const refs = listas.refs;
@@ -439,13 +440,14 @@ function LinhaCusto({ linha: l, colunas, secao, grupo, listas, peso, editavel, o
   }
 
   return (
-    <tr ref={setNodeRef} style={estilo} className={`border-t border-borda ${isDragging ? 'relative z-10 bg-superficie shadow-md' : ''}`}>
-      <td className="w-6 px-0.5">
+    <tr ref={setNodeRef} style={estilo} data-campo={idCampo} className={`border-t border-borda ${isDragging ? 'relative z-10 bg-superficie shadow-md' : ''}`}>
+      <td className="relative w-6 px-0.5">
         {editavel && (
           <button ref={setActivatorNodeRef} {...attributes} {...listeners} type="button" title="Arrastar para mudar a posição" className="cursor-grab touch-none rounded p-0.5 text-slate-300 hover:text-slate-600 active:cursor-grabbing dark:text-slate-500">
             <GripVertical size={14} />
           </button>
         )}
+        <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2"><Bolhas campo={idCampo} /></span>
       </td>
       {colunas.map((c) => (
         <td key={c.campo} className={celula}>

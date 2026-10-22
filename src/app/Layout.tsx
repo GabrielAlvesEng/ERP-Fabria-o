@@ -8,7 +8,7 @@ import { RetornosSino } from '@/modules/vendas/RetornosSino';
 import { VencimentosSino } from '@/modules/rh/VencimentosSino';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { useMeuUsuario } from '@/modules/perfil/api';
-import { useVendasAoVivo } from '@/modules/vendas/aoVivo';
+import { PresencaVendas, useVendasAoVivo } from '@/modules/vendas/aoVivo';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 // Decisão 78: o menu é dividido em Operacionais (a operação dos projetos: Vendas, Engenharia, Fabricação...)
@@ -41,6 +41,7 @@ export function Layout() {
   }, [gaveta]);
 
   return (
+    <PresencaVendas>
     <div className="flex h-[100dvh] overflow-hidden bg-pagina">
       {/* Sidebar clara com borda fina (redesign, decisão 51); no escuro, grafite. */}
       <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-borda bg-superficie md:flex">
@@ -91,6 +92,7 @@ export function Layout() {
         </div>
       </div>
     </div>
+    </PresencaVendas>
   );
 }
 

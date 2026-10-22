@@ -7,7 +7,8 @@ import { AlertTriangle, MessageSquarePlus, Plus, Search } from 'lucide-react';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Cabecalho, Caixa, Entrada, EsqueletoKanban, Selecao, Selo } from '@/shared/ui';
+import { Aviso, Bolhas, Botao, Cabecalho, Caixa, Entrada, EsqueletoKanban, ProvedorBolhas, Selecao, Selo } from '@/shared/ui';
+import { paraBolhas, usePresentes } from '../aoVivo';
 import { listarPropostas, moverProposta } from '../api';
 import { AGUARDANDO_RETORNO, ETAPAS_FINANCEIRO, STATUS_KANBAN, colunaKanban, type Proposta, type StatusProposta } from '../types';
 import { followupVencido, rotuloRevisao, tipoTransicao } from './regras';
@@ -163,6 +164,9 @@ function Card({ p, hoje, onAbrir, onFollowup }: { p: Proposta; hoje: string; onA
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: p.id });
   const aguardando = AGUARDANDO_RETORNO.includes(p.status);
   const vencido = aguardando && followupVencido(p.proximo_followup, hoje);
+  // Decisão 84: foto de quem está com esta proposta aberta agora.
+  const presentes = usePresentes();
+  const aqui = useMemo(() => paraBolhas(presentes.filter((x) => x.proposta_id === p.id).map((x) => ({ ...x, campo: p.id, nome: `${x.nome} (${x.aba ?? 'aberta'})` }))), [presentes, p.id]);
   return (
     <div
       ref={setNodeRef}
@@ -175,6 +179,7 @@ function Card({ p, hoje, onAbrir, onFollowup }: { p: Proposta; hoje: string; onA
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span>
         <span className="flex items-center gap-1">
+          <ProvedorBolhas value={aqui}><Bolhas campo={p.id} dica="está com esta proposta aberta" /></ProvedorBolhas>
           {vencido && <span title={`Retorno vencido em ${dataBR(p.proximo_followup)}: cobrar o contato`}><AlertTriangle size={16} className="text-amber-500" /></span>}
           {ETAPAS_FINANCEIRO.includes(p.status) && <Selo cor="verde">{p.status === 'Emitido NF' ? 'NF emitida' : p.status}</Selo>}
           <Selo cor="azul">{rotuloRevisao(p.revisao_atual)}</Selo>

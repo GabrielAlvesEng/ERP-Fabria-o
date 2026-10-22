@@ -3,7 +3,7 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, Lock, Plus, Sparkles, Trash2 } from 'lucide-react';
-import { AreaTexto, Botao, Caixa, Campo, CampoInteiro, CampoNumero, Entrada, Selecao } from '@/shared/ui';
+import { AreaTexto, Bolhas, Botao, Caixa, Campo, PrefixoCampo, CampoInteiro, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
 import {
   INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, SECOES_IA, marcadorCartao, numerar, pendencias, sincronizarEscopo,
@@ -42,6 +42,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
   };
 
   return (
+    <PrefixoCampo valor={`${doc.tipo}: `}>
     <fieldset disabled={!editavel} className="space-y-3">
       <div className="rounded-xl bg-pagina p-3 ring-1 ring-borda">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -89,7 +90,8 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
         // Seções fixas (decisão 70): Conheça a Fabriaço, Dados da Empresa, Termo de Confidencialidade e Anexos. No modelo, o Anexo é editável.
         const fixa = (SECOES_FIXAS.includes(s.id) && !(modelo && s.id === 'anexo')) || s.tipo === 'confidencialidade';
         return (
-        <div key={s.id} className={`rounded-xl ring-1 ring-borda ${s.ativo ? 'bg-superficie' : 'bg-pagina opacity-70'}`}>
+        <PrefixoCampo key={s.id} valor={`${s.id} · `}>
+        <div data-campo={`${doc.tipo}: ${s.id} · `} className={`rounded-xl ring-1 ring-borda ${s.ativo ? 'bg-superficie' : 'bg-pagina opacity-70'}`}>
           <div className="flex items-center gap-2 px-3 py-2">
             <Caixa marcado={s.ativo} onChange={(ativo) => setSecao(i, { ...s, ativo })} />
             <span className="w-6 text-xs font-semibold text-roxo-600 dark:text-roxo-100">{doc.tipo === 'tecnica' ? numeros[s.id] ?? '—' : ''}</span>
@@ -104,15 +106,18 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
               <button type="button" onClick={() => mover(i, -1)} className="rounded p-1 text-suave hover:text-texto" title="Subir"><ChevronUp size={15} /></button>
               <button type="button" onClick={() => mover(i, 1)} className="rounded p-1 text-suave hover:text-texto" title="Descer"><ChevronDown size={15} /></button>
             </>}
+            <Bolhas campo={`${doc.tipo}: ${s.id} · `} inicio />
             <button type="button" onClick={() => setAberta(aberta === s.id ? null : s.id)} className="rounded px-2 py-0.5 text-xs text-roxo-600 hover:bg-roxo-50 dark:text-roxo-100 dark:hover:bg-marinho-700">
               {aberta === s.id ? 'Fechar' : fixa ? 'Ver' : 'Editar'}
             </button>
           </div>
           {aberta === s.id && <div className="border-t border-borda p-3">{!fixa && ia && SECOES_IA.includes(s.id) && <PedirIA titulo={s.titulo} pensando={ia.pensando} estaSecao={ia.secao === s.id} aviso={ia.aviso?.secao === s.id ? ia.aviso : null} onPedir={(pedido) => ia.refazer(s.id, pedido)} />}{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} valores={valores} escopoDosCustos={escopoDosCustos} />}</div>}
         </div>
+        </PrefixoCampo>
         );
       })}
     </fieldset>
+    </PrefixoCampo>
   );
 }
 

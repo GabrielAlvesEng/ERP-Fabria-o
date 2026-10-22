@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { supabase } from '@/shared/lib/supabase';
 import { useMeuUsuario } from '@/modules/perfil/api';
+import { Avatar } from '@/modules/perfil/Avatar';
+import type { Bolha } from '@/shared/ui';
 
 // Decisão 83: Vendas ao vivo. O banco avisa (Supabase Realtime) quando uma linha muda e a tela recarrega só o que
 // depende dela. O aviso respeita o RLS: cada pessoa só recebe mudanças do que já pode ler.
@@ -84,33 +86,59 @@ export function useVendasAoVivo() {
   }, [ligado, qc]);
 }
 
-// Quem está com a proposta aberta agora (presença), e em qual aba.
-export interface Presente { id: string; nome: string; foto_caminho: string | null; foto_atualizada_em: string | null; aba: string }
+// Presença (decisões 83 e 84): um canal privado para Vendas inteira. Cada pessoa conta qual proposta está aberta,
+// em qual aba e em qual campo está o cursor. O Kanban mostra a foto no card; a proposta, no campo.
+export interface Presente {
+  id: string; nome: string; foto_caminho: string | null; foto_atualizada_em: string | null;
+  proposta_id: string | null; aba: string | null; campo: string | null;
+}
+type Onde = Pick<Presente, 'proposta_id' | 'aba' | 'campo'>;
 
 export function outrasPessoas(estado: Record<string, Presente[]>, eu: string | undefined): Presente[] {
   return Object.entries(estado)
     .filter(([id]) => id !== eu)
-    .map(([, lista]) => lista[lista.length - 1]) // mesma pessoa em duas janelas: vale a última
+    .map(([, lista]) => [...lista].reverse().find((x) => x.proposta_id) ?? lista[lista.length - 1]) // duas janelas: a que tem proposta aberta
     .filter((p): p is Presente => Boolean(p))
     .sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
-export function usePresencaProposta(propostaId: string, aba: string): Presente[] {
-  const { session } = useAuth();
+const Ctx = createContext<{ outros: Presente[]; definir: (o: Onde) => void }>({ outros: [], definir: () => {} });
+const NENHUM: Onde = { proposta_id: null, aba: null, campo: null };
+
+export function PresencaVendas({ children }: { children: ReactNode }) {
+  const { session, pode } = useAuth();
   const { data: eu } = useMeuUsuario();
   const meuId = session?.user.id;
+  const ligado = Boolean(meuId) && pode('vendas', 'ler');
   const [canal, setCanal] = useState<RealtimeChannel | null>(null);
   const [outros, setOutros] = useState<Presente[]>([]);
+  const [onde, setOnde] = useState<Onde>(NENHUM);
   useEffect(() => {
-    if (!meuId) return;
-    const c = supabase.channel(`proposta:${propostaId}`, { config: { private: true, presence: { key: meuId } } });
+    if (!ligado || !meuId) return;
+    const c = supabase.channel('proposta:vendas', { config: { private: true, presence: { key: meuId } } });
     c.on('presence', { event: 'sync' }, () => setOutros(outrasPessoas(c.presenceState<Presente>(), meuId)));
     c.subscribe((estado) => { if (estado === 'SUBSCRIBED') setCanal(c); });
     return () => { setCanal(null); setOutros([]); supabase.removeChannel(c); };
-  }, [propostaId, meuId]);
+  }, [ligado, meuId]);
   useEffect(() => {
     if (!canal || !meuId) return;
-    canal.track({ id: meuId, nome: eu?.nome || session?.user.email || 'Alguém', foto_caminho: eu?.foto_caminho ?? null, foto_atualizada_em: eu?.foto_atualizada_em ?? null, aba });
-  }, [canal, meuId, eu, aba, session?.user.email]);
-  return outros;
+    canal.track({ id: meuId, nome: eu?.nome || session?.user.email || 'Alguém', foto_caminho: eu?.foto_caminho ?? null, foto_atualizada_em: eu?.foto_atualizada_em ?? null, ...onde });
+  }, [canal, meuId, eu, onde, session?.user.email]);
+  const definir = useCallback((o: Onde) => setOnde((a) => (a.proposta_id === o.proposta_id && a.aba === o.aba && a.campo === o.campo ? a : o)), []);
+  const valor = useMemo(() => ({ outros, definir }), [outros, definir]);
+  return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
+}
+
+export const usePresentes = () => useContext(Ctx).outros;
+
+// Usado pela proposta aberta: conta onde estou e devolve quem mais está nela.
+export function usePresencaProposta(propostaId: string, aba: string, campo: string | null): Presente[] {
+  const { outros, definir } = useContext(Ctx);
+  useEffect(() => { definir({ proposta_id: propostaId, aba, campo }); }, [definir, propostaId, aba, campo]);
+  useEffect(() => () => definir(NENHUM), [definir]);
+  return useMemo(() => outros.filter((x) => x.proposta_id === propostaId), [outros, propostaId]);
+}
+
+export function paraBolhas(lista: Presente[], tamanho = 22): Bolha[] {
+  return lista.map((x) => ({ id: x.id, nome: x.nome, campo: x.campo, avatar: <Avatar caminho={x.foto_caminho} versao={x.foto_atualizada_em} nome={x.nome} tamanho={tamanho} /> }));
 }
