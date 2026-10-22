@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, KeyRound } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { apenasDigitos, hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, EsqueletoDetalhe, Selecao, Selo } from '@/shared/ui';
 import { Avatar } from '@/modules/perfil/Avatar';
-import { listarFuncoes, listarSetores, listarUsuariosSemFicha, obterFuncionario, salvarFuncionario, type DadosFuncionario, type Funcionario } from './api';
+import { listarFuncoes, listarSetores, listarUsuariosSemFicha, obterFuncionario, rhAcesso, salvarFuncionario, type DadosFuncionario, type Funcionario } from './api';
+import { AcessoFicha } from './AcessoFicha';
 import { DocumentosFicha } from './DocumentosFicha';
 import { IntegracoesFicha } from './IntegracoesFicha';
 import { formatarCPF, situacao, SITUACOES, UFS, validarFicha, VINCULOS, type Situacao } from './regras';
@@ -83,6 +84,10 @@ export function FuncionarioPage() {
     setSalvando(true);
     try {
       const novoId = await salvarFuncionario(novo ? null : id, paraBanco(f));
+      // Desligado perde o acesso: o banco já desativa o usuário; aqui também bloqueia o login no Auth.
+      if (f.situacao === 'desligado' && funcionario && funcionario.situacao !== 'desligado' && f.usuario_id && pode('rh', 'critica')) {
+        await rhAcesso({ acao: 'desativar', usuario_id: f.usuario_id }).catch(() => undefined);
+      }
       await qc.invalidateQueries({ queryKey: ['rh'] });
       await qc.invalidateQueries({ queryKey: ['meu_usuario'] });
       if (novo) navegar(`/rh/funcionarios/${novoId}`, { replace: true });
@@ -182,22 +187,22 @@ export function FuncionarioPage() {
         </Secao>
       )}
 
-      <Secao titulo="Acesso ao ERP" detalhe="Criar login, mandar link de senha e escolher perfis entram na próxima etapa do RH. O ERP nunca guarda nem mostra senhas.">
-        {funcionario?.usuarios && f.usuario_id === funcionario.usuario_id ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <KeyRound size={16} className="text-petroleo-600 dark:text-petroleo-100" />
-            <span>Login: <b>{funcionario.usuarios.email}</b></span>
-            {!funcionario.usuarios.ativo && <Selo cor="cinza">Login desativado</Selo>}
-            {editavel && <Botao variante="fantasma" tamanho="sm" onClick={() => setF({ ...f, usuario_id: '' })}>Desligar desta ficha</Botao>}
+      <Secao titulo="Acesso ao ERP" detalhe="O RH cria o login, gera o link para a pessoa definir a senha e escolhe os perfis. O ERP nunca guarda nem mostra senhas.">
+        {funcionario && f.usuario_id === (funcionario.usuario_id ?? '') && (funcionario.usuarios || pode('rh', 'critica')) ? (
+          <div className="space-y-3">
+            <AcessoFicha funcionario={funcionario} />
+            {editavel && funcionario.usuarios && <Botao variante="fantasma" tamanho="sm" onClick={() => setF({ ...f, usuario_id: '' })}>Desligar o login desta ficha</Botao>}
           </div>
-        ) : editavel ? (
-          <Campo rotulo="Ligar a um login que já existe" className="max-w-md">
+        ) : null}
+        {editavel && !(funcionario?.usuarios && f.usuario_id === funcionario.usuario_id) ? (
+          <Campo rotulo="Ou ligar a um login que já existe" className="mt-3 max-w-md">
             <Selecao value={f.usuario_id} onChange={(e) => setF({ ...f, usuario_id: e.target.value })}>
               <option value="">Sem login</option>
               {usuarios.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
             </Selecao>
           </Campo>
-        ) : <span className="text-sm text-suave">Sem login no ERP.</span>}
+        ) : !funcionario?.usuarios && !pode('rh', 'critica') ? <span className="text-sm text-suave">Sem login no ERP.</span> : null}
+        {novo && <p className="text-xs text-suave">Salve a ficha para poder criar o login.</p>}
       </Secao>
 
       <Secao titulo="Observações">

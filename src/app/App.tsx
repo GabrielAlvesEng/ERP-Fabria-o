@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { supabaseConfigurado } from '@/shared/lib/supabase';
+import { linkAuth, supabase, supabaseConfigurado } from '@/shared/lib/supabase';
 import { BarraCarregamento, esconderPreloader } from '@/shared/ui/Carregando';
 import { AnoProvider } from './AnoContext';
 import { Layout } from './Layout';
 import { LoginPage } from './LoginPage';
+import { DefinirSenhaPage } from './DefinirSenhaPage';
 import { VendasLayout } from '@/modules/vendas/VendasLayout';
 import { DashboardPage } from '@/modules/vendas/dashboard/DashboardPage';
 import { EmpresasPage } from '@/modules/vendas/empresas/EmpresasPage';
@@ -30,6 +31,12 @@ import { IntegracoesPage } from '@/modules/rh/IntegracoesPage';
 
 export function App() {
   const { session, carregando } = useAuth();
+  // Veio de um link de convite ou de nova senha: pede a senha antes de abrir o ERP.
+  const [definirSenha, setDefinirSenha] = useState<'invite' | 'recovery' | null>(linkAuth.tipo);
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((e) => { if (e === 'PASSWORD_RECOVERY') setDefinirSenha('recovery'); });
+    return () => data.subscription.unsubscribe();
+  }, []);
   // O preloader do index.html cobre a tela até a sessão ser conferida.
   useEffect(() => { if (carregando === false || !supabaseConfigurado) esconderPreloader(); }, [carregando]);
 
@@ -41,7 +48,8 @@ export function App() {
     );
   }
   if (carregando) return null;
-  if (!session) return <LoginPage />;
+  if (!session) return <LoginPage erroLink={linkAuth.erro} />;
+  if (definirSenha) return <DefinirSenhaPage convite={definirSenha === 'invite'} email={session.user.email ?? ''} onPronto={() => setDefinirSenha(null)} />;
 
   return (
     <AnoProvider>

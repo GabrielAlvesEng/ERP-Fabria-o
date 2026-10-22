@@ -149,3 +149,12 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - Visão `situacao_integracoes` (security_invoker): integrações atuais com a situação de hoje (aviso 30 dias antes); o nome do cliente vem de `nome_empresa(id)`, para o funcionário ver as próprias sem ler o cadastro de empresas.
 - `liberacao_no_cliente(empresa, data)` e `funcionario_liberado(funcionário, empresa, data)` (security definer, só logados): liberado ou não na data e os motivos (férias/afastado, sem integração ou integração vencida, documento exigido pela função, individual ou pelo cliente faltando ou vencido na data). A Agenda vai usar para impedir o agendamento (resposta 8).
 - Política nova `empresas_ler_rh`: quem tem `rh.ler` lê o cadastro de empresas (para escolher o cliente).
+
+## RH: logins pelo RH (`20261022000039_rh_acessos.sql`, `20261022000040_rh_desligado_perde_acesso.sql`, `20261022000041_rh_acessos_funcoes.sql`, decisão 69)
+
+- Políticas `usuario_perfis_ler_rh` e `usuario_permissoes_ler_rh`: quem tem `rh.critica` lê perfis e ajustes de todos.
+- `conferir_gestao_acesso(usuário)`: exige `rh.critica`; quem não tem acesso total não muda a si mesmo nem quem tem acesso total.
+- `definir_perfis_usuario(usuário, perfis[])` e `definir_permissao_usuario(usuário, módulo, ação, concedida|null)` (security definer, com auditoria): trocam perfis e ajustes individuais; não dão acesso total nem permissão que quem chama não tem; não tiram o acesso total do último usuário ativo que o tem. **A migration 41 ainda não foi aplicada** (o Supabase pediu confirmação manual por ter `delete`; aguarda o Gabriel).
+- Gatilho `funcionarios_desligado_acesso`: ao mudar a situação para desligado, o usuário ligado fica inativo (protege o último com acesso total).
+- Edge Function `rh-acesso` (criar_login, link_senha, desativar, reativar): usa a service_role só no Supabase; o login é bloqueado no Auth (`ban_duration`) além de `usuarios.ativo`. O ERP gera links (`generateLink`), nunca vê senhas.
+

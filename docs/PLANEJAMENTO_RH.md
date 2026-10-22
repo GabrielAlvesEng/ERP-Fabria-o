@@ -1,6 +1,6 @@
 # Recursos Humanos (RH)
 
-Versão 2, 22/10/2026. **Estado: aprovado com as respostas do Gabriel (decisão 69). Entregas 1, 2 e 3 feitas; entrega 4 em andamento.**
+Versão 2, 22/10/2026. **Estado: aprovado com as respostas do Gabriel (decisão 69). Entregas 1 a 4 feitas; falta aplicar a migration 41 (perfis e ajustes), aguardando a confirmação do Gabriel.**
 
 Respostas do Gabriel (22/10):
 1. "Senhas" é só o **gerenciamento dos logins** dos funcionários no ERP;

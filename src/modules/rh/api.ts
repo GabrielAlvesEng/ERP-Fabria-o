@@ -187,3 +187,41 @@ export const liberacaoNoCliente = async (empresaId: string, data: string): Promi
 // A ficha do próprio usuário logado (Meu perfil → Minha ficha). O RLS só devolve a dele.
 export const obterMinhaFicha = async (usuarioId: string): Promise<Funcionario | null> =>
   ok(await supabase.from('funcionarios').select(COM_USUARIO).eq('usuario_id', usuarioId).maybeSingle());
+
+// Acesso ao ERP (entrega 4). Criar login, link de senha e desativar passam pela Edge Function rh-acesso;
+// perfis e ajustes individuais, pelas funções do banco. Tudo exige rh.critica e respeita conferir_gestao_acesso.
+export interface Perfil { id: string; nome: string; descricao: string; acesso_total: boolean }
+export interface Permissao { id: string; modulo: string; acao: string }
+export interface AcessoUsuario { perfis: string[]; ajustes: Record<string, boolean> }
+
+export const listarPerfis = async (): Promise<Perfil[]> => ok(await supabase.from('perfis').select('id, nome, descricao, acesso_total').order('nome'));
+export const listarPermissoes = async (): Promise<Permissao[]> => ok(await supabase.from('permissoes').select('id, modulo, acao').order('modulo'));
+export const listarPermissoesDosPerfis = async (): Promise<{ perfil_id: string; permissao_id: string }[]> =>
+  ok(await supabase.from('perfil_permissoes').select('perfil_id, permissao_id'));
+
+export async function obterAcessoUsuario(usuarioId: string): Promise<AcessoUsuario> {
+  const perfis = ok(await supabase.from('usuario_perfis').select('perfil_id').eq('usuario_id', usuarioId)) as { perfil_id: string }[];
+  const ajustes = ok(await supabase.from('usuario_permissoes').select('permissao_id, concedida').eq('usuario_id', usuarioId)) as { permissao_id: string; concedida: boolean }[];
+  return { perfis: perfis.map((p) => p.perfil_id), ajustes: Object.fromEntries(ajustes.map((a) => [a.permissao_id, a.concedida])) };
+}
+
+export const definirPerfis = async (usuarioId: string, perfis: string[]) =>
+  ok(await supabase.rpc('definir_perfis_usuario', { p_usuario: usuarioId, p_perfis: perfis }));
+export const definirPermissao = async (usuarioId: string, modulo: string, acao: string, concedida: boolean | null) =>
+  ok(await supabase.rpc('definir_permissao_usuario', { p_usuario: usuarioId, p_modulo: modulo, p_acao: acao, p_concedida: concedida }));
+
+type AcaoLogin =
+  | { acao: 'criar_login'; funcionario_id: string; email: string }
+  | { acao: 'link_senha' | 'desativar' | 'reativar'; usuario_id: string };
+
+export async function rhAcesso(pedido: AcaoLogin): Promise<{ link?: string; email?: string; tipo?: string; ativo?: boolean }> {
+  // O link do convite volta para o próprio ERP, na tela de definir senha.
+  const voltar = new URL(import.meta.env.BASE_URL, window.location.origin).href;
+  const { data, error } = await supabase.functions.invoke('rh-acesso', { body: { ...pedido, voltar } });
+  if (error) {
+    const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(corpo?.erro ?? error.message);
+  }
+  if (data?.erro) throw new Error(data.erro);
+  return data;
+}
