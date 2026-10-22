@@ -39,13 +39,31 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
   const faltaComercial = !arquivos.some((a) => a.tipo === 'comercial');
   const faltaTecnica = !arquivos.some((a) => a.tipo === 'tecnica');
 
-  // CC: só os contatos (com e-mail) da mesma empresa do contato da proposta.
+  // CC (decisão 87): os contatos (com e-mail) da mesma empresa do contato da proposta e a equipe da Fabriaço.
   const empresaCc = contato?.empresa_id ?? proposta.empresa_id;
-  const opcoesCc = useMemo(() => contatos
-    .filter((c) => c.email && c.id !== proposta.contato_id && c.empresa_id === empresaCc)
-    .sort((a, b) => a.nome.localeCompare(b.nome)), [contatos, proposta.contato_id, empresaCc]);
+  const nomeEmpresa = contato?.empresas?.nome_fantasia ?? 'Empresa do cliente';
+  const { data: equipe = [] } = useQuery({
+    queryKey: ['emails-equipe'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('emails_equipe');
+      if (error) throw error;
+      return (data ?? []) as { nome: string; email: string }[];
+    },
+  });
+  const opcoesCc = useMemo(() => {
+    const doCliente = contatos
+      .filter((c) => c.email && c.id !== proposta.contato_id && c.empresa_id === empresaCc)
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .map((c) => ({ chave: c.id, nome: c.nome, email: c.email, grupo: nomeEmpresa }));
+    const vistos = new Set(doCliente.map((o) => o.email.toLowerCase()));
+    const daEquipe = equipe
+      .filter((f) => !vistos.has(f.email.toLowerCase()))
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .map((f) => ({ chave: `equipe:${f.email}`, nome: f.nome, email: f.email, grupo: 'Fabriaço' }));
+    return [...doCliente, ...daEquipe];
+  }, [contatos, equipe, proposta.contato_id, empresaCc, nomeEmpresa]);
   const [buscaCc, setBuscaCc] = useState('');
-  const filtradosCc = opcoesCc.filter((c) => !cc.includes(c.email) && (!buscaCc || `${c.nome} ${c.email} ${c.empresas?.nome_fantasia ?? ''}`.toLowerCase().includes(buscaCc.toLowerCase()))).slice(0, 8);
+  const filtradosCc = opcoesCc.filter((o) => !cc.includes(o.email) && (!buscaCc || `${o.nome} ${o.email} ${o.grupo}`.toLowerCase().includes(buscaCc.toLowerCase())));
 
   const m = useMutation({
     mutationFn: async () => {
@@ -106,16 +124,22 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
                     </span>
                   ))}
                 </div>
-                {opcoesCc.length === 0 && <div className="px-1 py-1 text-xs text-suave">Nenhum outro contato com e-mail em {contato?.empresas?.nome_fantasia ?? 'nesta empresa'}.</div>}
-                {opcoesCc.length > 0 && <input value={buscaCc} onChange={(e) => setBuscaCc(e.target.value)} placeholder={`Buscar contato de ${contato?.empresas?.nome_fantasia ?? 'da empresa'}…`} className="w-full bg-transparent px-1 py-1 text-sm outline-none" />}
+                {opcoesCc.length === 0 && <div className="px-1 py-1 text-xs text-suave">Nenhum outro contato com e-mail em {nomeEmpresa} nem na equipe da Fabriaço.</div>}
+                {opcoesCc.length > 0 && <input value={buscaCc} onChange={(e) => setBuscaCc(e.target.value)} placeholder={`Buscar contato de ${nomeEmpresa} ou da Fabriaço…`} className="w-full bg-transparent px-1 py-1 text-sm outline-none" />}
                 {buscaCc !== '' || cc.length === 0 ? (
-                  <div className="mt-1 max-h-36 overflow-y-auto">
-                    {filtradosCc.map((c) => (
-                      <button type="button" key={c.id} onClick={() => { setCc([...cc, c.email]); setBuscaCc(''); }}
-                        className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-marinho-700">
-                        <span>{c.nome} <span className="text-xs text-suave">· {c.empresas?.nome_fantasia}</span></span>
-                        <span className="text-xs text-suave">{c.email}</span>
-                      </button>
+                  <div className="mt-1 max-h-48 overflow-y-auto">
+                    {filtradosCc.length === 0 && buscaCc !== '' && <div className="px-2 py-1 text-xs text-suave">Ninguém encontrado. Digite o e-mail em "Outros e-mails".</div>}
+                    {filtradosCc.map((o, i) => (
+                      <div key={o.chave}>
+                        {(i === 0 || filtradosCc[i - 1].grupo !== o.grupo) && (
+                          <div className="px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-suave">{o.grupo}</div>
+                        )}
+                        <button type="button" onClick={() => { setCc([...cc, o.email]); setBuscaCc(''); }}
+                          className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-marinho-700">
+                          <span className="truncate">{o.nome}</span>
+                          <span className="truncate text-xs text-suave">{o.email}</span>
+                        </button>
+                      </div>
                     ))}
                   </div>
                 ) : null}
