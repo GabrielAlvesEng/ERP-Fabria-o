@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, LogOut, Menu, Moon, ShieldCheck, Sun, X } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, LogOut, Menu, Moon, ShieldCheck, ShoppingCart, Sun, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
@@ -16,6 +16,7 @@ import { PresencaVendas, useVendasAoVivo } from '@/modules/vendas/aoVivo';
 const modulos = [
   { to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness, modulo: 'vendas', grupo: 'operacional' },
   { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia', grupo: 'operacional' },
+  { to: '/compras', rotulo: 'Compras', icone: ShoppingCart, modulo: 'compras', grupo: 'operacional' },
   { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh', grupo: 'administrativo' },
   { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const, grupo: 'administrativo' },
 ];

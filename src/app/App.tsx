@@ -21,6 +21,8 @@ import { FrotaPage } from '@/modules/admin/FrotaPage';
 import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
 import { PredefinicoesPage } from '@/modules/admin/predefinicoes/PredefinicoesPage';
 import { PerfilPage } from '@/modules/perfil/PerfilPage';
+import { ComprasLayout } from '@/modules/compras/ComprasLayout';
+import { ComprasInicioPage } from '@/modules/compras/ComprasInicioPage';
 import { RhLayout } from '@/modules/rh/RhLayout';
 import { FuncionariosPage } from '@/modules/rh/FuncionariosPage';
 import { FuncionarioPage } from '@/modules/rh/FuncionarioPage';
@@ -68,6 +70,9 @@ export function App() {
           <Route path="/engenharia" element={<EngenhariaLayout />}>
             <Route index element={<ProjetosPage />} />
             <Route path="projetos/:id" element={<ProjetoPage />} />
+          </Route>
+          <Route path="/compras" element={<ComprasLayout />}>
+            <Route index element={<ComprasInicioPage />} />
           </Route>
           <Route path="/rh" element={<RhLayout />}>
             <Route index element={<FuncionariosPage />} />
