@@ -101,7 +101,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
 
   const itensResumo = useMemo(() => dados?.itens ?? [], [dados]);
 
-  // Decisão 71: valor de cada item digitado na área Valores da comercial (vai para custo_itens.valor_manual, o mesmo da aba Custos).
+  // Decisões 71 e 99: valor unitário de cada item digitado na área Valores da comercial (vai para custo_itens.valor_manual, o mesmo da aba Custos).
   // O valor da proposta acompanha a soma enquanto ela está "À enviar", como na aba Custos.
   const [salvandoValor, setSalvandoValor] = useState(false);
   async function aposValor(total: number | null) {
@@ -119,7 +119,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
       setSalvandoValor(true); setMsg(null);
       try {
         await atualizarItem(id, { valor_manual: valor });
-        const total = (dados?.itens ?? []).reduce((a, i) => a + (i.id === id ? (valor ?? i.calculado ?? i.valor) : i.valor), 0);
+        const total = (dados?.itens ?? []).reduce((a, i) => a + (i.id === id ? (valor != null ? valor * (i.quantidade || 1) : i.calculado ?? i.valor) : i.valor), 0);
         await aposValor(total);
       } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); } finally { setSalvandoValor(false); }
     },

@@ -30,9 +30,9 @@ describe('resumo de custos (decisão 30)', () => {
     expect(r.precoUnitario).toBe(337793.75);
     expect(r.imposto / r.precoUnitario).toBeCloseTo(0.2, 6); // o imposto é 20% do preço
   });
-  it('valor manual do item vale no lugar do calculado (decisão 70)', () => {
-    const r = resumoItem({ quantidade: 2, lucro_pct: 20, negociacao_pct: 5, imposto_pct: 20, valor_manual: 600000 }, linhas);
-    expect(r).toMatchObject({ manual: true, precoTotal: 600000, precoUnitario: 300000, precoCalculado: 675587.5 });
+  it('valor manual é o unitário e vale no lugar do calculado (decisões 70 e 99)', () => {
+    const r = resumoItem({ quantidade: 2, lucro_pct: 20, negociacao_pct: 5, imposto_pct: 20, valor_manual: 300000 }, linhas);
+    expect(r).toMatchObject({ manual: true, precoTotal: 600000, precoUnitario: 300000, precoCalculado: 675587.5, precoCalculadoUnitario: 337793.75 });
     expect(resumoItem({ quantidade: 2, lucro_pct: 20, negociacao_pct: 5, imposto_pct: 20, valor_manual: null }, linhas)).toMatchObject({ manual: false, precoTotal: 675587.5 });
   });
   it('quantidade multiplica o preço (imposto sempre por dentro, decisão 43)', () => {

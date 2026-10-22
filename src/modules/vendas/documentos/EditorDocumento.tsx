@@ -20,7 +20,8 @@ export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<st
 
 // Editor das seções do documento (decisão 61): usado na aba Documentos da proposta e em Administração → Modelos de proposta.
 // Itens da aba Custos, com o valor de venda (decisão 71: o valor pode ser digitado na área Valores da comercial).
-export type ItemValor = { id?: string; letra: string; descricao: string; valor: number; manual?: boolean; calculado?: number };
+// Decisão 99: o valor digitado é o de uma unidade; o total do item é ele × quantidade (a quantidade vem da aba Custos).
+export type ItemValor = { id?: string; letra: string; descricao: string; valor: number; manual?: boolean; calculado?: number; quantidade?: number; unitario?: number; calculadoUnitario?: number };
 export type AcoesValor = { salvar: (id: string, valor: number | null) => void; criarItem: () => void; ocupado: boolean };
 
 export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados, modelo, ia }: {
@@ -320,25 +321,33 @@ function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: {
       return (
         <div className="space-y-2">
           <Rotulo texto="Introdução"><TextoFormatado rows={5} value={s.intro} onChange={(v) => onChange({ ...s, intro: v })} /></Rotulo>
-          <p className="text-xs text-suave">Os itens são os da aba Custos. O valor de cada item já vem com a sugestão calculada pelos custos e pode ser alterado aqui. A soma é o valor total da proposta.</p>
+          <p className="text-xs text-suave">Os itens são os da aba Custos. O valor unitário de cada item já vem com a sugestão calculada pelos custos e pode ser alterado aqui; o total do item é o unitário × a quantidade (da aba Custos). A soma é o valor total da proposta.</p>
           {itens.length === 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg bg-pagina p-3 text-sm text-suave ring-1 ring-borda">
               Nenhum item nesta revisão.
               {valores && <Botao type="button" variante="secundario" tamanho="sm" disabled={valores.ocupado} onClick={valores.criarItem}><Plus size={14} /> Criar item A</Botao>}
             </div>
           )}
-          {itens.map((it) => (
+          {itens.map((it) => {
+            const q = it.quantidade && it.quantidade > 0 ? it.quantidade : 1;
+            const unitario = it.unitario ?? it.valor / q;
+            return (
             <div key={it.letra} className="space-y-2 rounded-lg p-3 ring-1 ring-borda">
               <div className="flex flex-wrap items-end gap-3">
                 <div className="min-w-0 flex-1 text-sm font-semibold">{it.letra} — {it.descricao || 'Item sem descrição'}</div>
-                <div className="w-48">
-                  <div className="mb-1 text-xs font-medium text-suave">Valor do item</div>
-                  <CampoNumero moeda casas={2} valor={it.valor} disabled={!valores || !it.id || valores.ocupado}
-                    onConfirmar={(n) => valores && it.id && n >= 0 && Math.abs(n - it.valor) > 0.005 && valores.salvar(it.id, n)} className="py-1.5" />
+                <div className="w-44">
+                  <div className="mb-1 text-xs font-medium text-suave">Valor unitário</div>
+                  <CampoNumero moeda casas={2} valor={unitario} disabled={!valores || !it.id || valores.ocupado}
+                    onConfirmar={(n) => valores && it.id && n >= 0 && Math.abs(n - unitario) > 0.005 && valores.salvar(it.id, n)} className="py-1.5" />
+                </div>
+                <div className="pb-2 text-sm text-suave">× {q.toLocaleString('pt-BR')}</div>
+                <div className="pb-1.5 text-right">
+                  <div className="text-xs font-medium text-suave">Total do item</div>
+                  <div className="text-sm font-semibold tabular-nums">{moeda(it.valor)}</div>
                 </div>
               </div>
               <div className="text-xs text-suave">
-                Sugestão pelos custos: <span className="font-medium tabular-nums">{moeda(it.calculado ?? it.valor)}</span>
+                Sugestão pelos custos: <span className="font-medium tabular-nums">{moeda(it.calculadoUnitario ?? (it.calculado ?? it.valor) / q)}</span> por unidade
                 {it.manual ? <>{' · '}valor alterado à mão. {valores && it.id && <button type="button" className="font-medium text-roxo-600 hover:underline dark:text-roxo-100" onClick={() => valores.salvar(it.id!, null)}>Usar a sugestão</button>}</>
                   : ' · em uso. Pode alterar no campo ao lado.'}
               </div>
@@ -346,7 +355,8 @@ function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: {
                 <AreaTexto rows={2} value={s.descricoes[it.letra] ?? ''} onChange={(e) => onChange({ ...s, descricoes: { ...s.descricoes, [it.letra]: e.target.value } })} />
               </Rotulo>
             </div>
-          ))}
+            );
+          })}
           {itens.length > 0 && (
             <div className="flex items-center justify-between rounded-lg bg-pagina px-3 py-2 ring-1 ring-borda">
               <span className="text-sm font-semibold">Valor total da proposta</span>

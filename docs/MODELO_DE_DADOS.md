@@ -162,7 +162,7 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 ## Frete e valor manual (`20261022000043_frete_valor_manual.sql`, decisão 70)
 
 - `propostas.frete`: `CIF` ou `FOB`, padrão `CIF`. O local de entrega não é guardado: é sempre o endereço da empresa cliente.
-- `custo_itens.valor_manual`: valor de venda digitado à mão (nulo = usa o calculado pelos custos). `copiar_custos` leva o valor para a nova revisão.
+- `custo_itens.valor_manual`: valor de venda **unitário** digitado à mão (decisão 99: o total do item é ele × `quantidade`; nulo = usa o calculado pelos custos). `copiar_custos` leva o valor para a nova revisão.
 - O início do prazo de entrega fica no documento da proposta (`proposta_documentos.conteudo`, seção cronograma, campo `inicio`), sem coluna nova.
 
 ## Engenharia: Kanban e lista manual (`20261022000054_engenharia_kanban.sql`, decisão 96)

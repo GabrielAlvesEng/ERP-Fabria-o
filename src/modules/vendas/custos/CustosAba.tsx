@@ -290,15 +290,15 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onItem, o
           <div className="mt-3 rounded-lg bg-marinho-700/60 p-2.5">
             <label className="flex items-center gap-2 text-xs text-slate-200">
               <input type="checkbox" className="accent-roxo-500" checked={r.manual} disabled={!editavel}
-                onChange={(e) => salvarItem({ valor_manual: e.target.checked ? r.precoCalculado : null })} />
-              Digitar o valor de venda do item à mão
+                onChange={(e) => salvarItem({ valor_manual: e.target.checked ? r.precoCalculadoUnitario : null })} />
+              Digitar o valor unitário de venda à mão
             </label>
             {r.manual && (
               <div className="mt-2 space-y-1">
                 <div className="rounded-lg bg-white text-texto dark:bg-marinho-800 dark:text-slate-100">
                   <CampoNumero moeda valor={Number(it.valor_manual ?? 0)} casas={2} disabled={!editavel} onConfirmar={(n) => n >= 0 && salvarItem({ valor_manual: n })} className="py-1.5" />
                 </div>
-                <div className="text-[11px] text-slate-300">Calculado pelos custos: {moeda(r.precoCalculado)}</div>
+                <div className="text-[11px] text-slate-300">Por unidade. × {Number(it.quantidade).toLocaleString('pt-BR')} = {moeda(r.precoTotal)}. Calculado pelos custos: {moeda(r.precoCalculadoUnitario)} por unidade.</div>
               </div>
             )}
           </div>

@@ -31,7 +31,7 @@ export interface DadosProposta {
   vendedor?: (PessoaContato & { cargo: string }) | null;
   revisoes?: { numero: number; descricao: string; emissao: string }[];
   // id, manual e calculado servem ao editor (valor digitado na área Valores da comercial, decisão 71); o PDF usa só o valor.
-  itens: { id?: string; letra: string; descricao: string; quantidade?: number; valor: number; manual?: boolean; calculado?: number }[];
+  itens: { id?: string; letra: string; descricao: string; quantidade?: number; valor: number; manual?: boolean; calculado?: number; unitario?: number; calculadoUnitario?: number }[];
   // Decisão 70: frete da aba Dados (o local de entrega é sempre o endereço do cliente) e os anexos da revisão (aba Arquivos).
   frete?: 'CIF' | 'FOB';
   entrega?: string;

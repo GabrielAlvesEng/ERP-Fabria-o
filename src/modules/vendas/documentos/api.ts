@@ -89,7 +89,7 @@ export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoP
     })),
     itens: itens.map((it) => {
       const r = resumoItem(it, linhas.filter((l) => l.item_id === it.id));
-      return { id: it.id, letra: it.letra, descricao: it.descricao, quantidade: Number(it.quantidade) || 1, valor: r.precoTotal, manual: r.manual, calculado: r.precoCalculado };
+      return { id: it.id, letra: it.letra, descricao: it.descricao, quantidade: Number(it.quantidade) || 1, valor: r.precoTotal, manual: r.manual, calculado: r.precoCalculado, unitario: r.precoUnitario, calculadoUnitario: r.precoCalculadoUnitario };
     }),
   };
 }
