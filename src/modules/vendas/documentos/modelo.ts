@@ -3,7 +3,7 @@
 // {cliente}, {local}, {validade_dias} e {codigo} são trocados pelos dados da proposta.
 
 export type TipoDocumento = 'tecnica' | 'comercial';
-export type Marca3 = 'Sim' | 'Não' | 'N/A';
+export type Marca3 = 'Sim' | 'Não' | 'N/A' | ''; // '' = ainda não marcado (decisão 98)
 
 export interface Cartao { titulo: string; texto: string; imagens?: Figura[] } // imagens: cards ao lado do item (Escopo)
 export interface Figura { caminho: string; legenda: string }
@@ -12,7 +12,7 @@ export interface LinhaMatriz { texto: string; cliente: boolean; fabriaco: boolea
 export interface GrupoResponsabilidade { area: string; itens: LinhaMatriz[] }
 export interface Etapa { nome: string; dias: number }
 
-export type Secao = { id: string; titulo: string; ativo: boolean } & (
+export type Secao = { id: string; titulo: string; ativo: boolean; escolher?: boolean } & ( // escolher: o vendedor ainda não disse se entra (decisão 98)
   | { tipo: 'texto'; texto: string; dica?: string }
   | { tipo: 'cartoes'; intro: string; cartoes: Cartao[]; fecho: string; marcador: 'numero' | 'letra'; destaque?: string; dica?: string; figuras?: Figura[] }
   | { tipo: 'dados_empresas' }
@@ -367,10 +367,35 @@ export function fixarSecoesDoModelo(doc: Documento, modelo: Documento): Document
   return { ...doc, secoes };
 }
 
+// Decisão 98: numa proposta nova, cada seção editável vem com os textos do modelo, mas sem marcar: fica amarela até o
+// vendedor dizer se entra ou não. Dentro dela, as competências vêm sem Sim/Não/N/A e as responsabilidades sem
+// Cliente/Fabriaço marcados (os textos ficam). Sobre nós, Dados da Empresa e as seções do modelo não mudam.
+export function secaoEditavelNaProposta(tipo: TipoDocumento, s: Secao): boolean {
+  return s.tipo !== 'sobre' && s.tipo !== 'dados_empresas' && s.tipo !== 'confidencialidade' && !SECOES_DO_MODELO[tipo].includes(s.id) && !SECOES_FIXAS.includes(s.id);
+}
+export function paraEscolher(doc: Documento): Documento {
+  return {
+    ...doc,
+    secoes: doc.secoes.map((s): Secao => {
+      if (!secaoEditavelNaProposta(doc.tipo, s)) return s;
+      const base = { ...s, ativo: false, escolher: true };
+      if (base.tipo === 'competencias') return { ...base, itens: base.itens.map((x) => ({ ...x, valor: '' as Marca3 })) };
+      if (base.tipo === 'responsabilidades') return { ...base, grupos: base.grupos.map((g) => ({ ...g, itens: g.itens.map((x) => ({ ...x, cliente: false, fabriaco: false })) })) };
+      return base;
+    }),
+  };
+}
+// "Entra" ou "Não entra": a escolha do vendedor resolve a seção.
+export const escolherSecao = (s: Secao, entra: boolean): Secao => {
+  const { escolher: _e, ...resto } = s;
+  return { ...resto, ativo: entra } as Secao;
+};
+
 // Decisão 77: o que falta preencher em cada seção editável (vazio = completa). Aparece no editor como um X amarelo
 // (com a lista no balão) ou um certinho verde. Itens são os da aba Custos, com o valor de venda.
 export function pendencias(s: Secao, itens: { letra: string; valor: number }[] = []): string[] {
   const vazio = (t?: string) => !t || !t.trim();
+  if (s.escolher) return ['Marcar se esta seção entra na proposta'];
   const f: string[] = [];
   switch (s.tipo) {
     case 'texto':
@@ -388,6 +413,7 @@ export function pendencias(s: Secao, itens: { letra: string; valor: number }[] =
     case 'competencias':
       if (!s.itens.some((x) => !vazio(x.nome))) f.push('Pelo menos uma competência');
       if (s.itens.some((x) => vazio(x.nome))) f.push('Competência sem nome');
+      s.itens.forEach((x) => { if (!x.valor) f.push(`Sim, Não ou N/A em ${x.nome || 'uma competência'}`); });
       break;
     case 'responsabilidades':
       if (!s.grupos.some((g) => g.itens.length)) f.push('Pelo menos uma responsabilidade');

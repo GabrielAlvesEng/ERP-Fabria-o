@@ -12,7 +12,7 @@ import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadro
 import { EditorDocumento } from './EditorDocumento';
 import { aplicarDiferenca, diferencaDocumento, juntarDiferencas, type DiferencaDoc } from './aoVivoDoc';
 import { useDigitandoAoVivo } from '../aoVivo';
-import { aplicarTextosIA, aplicarTextosIASecao, completarDocumento, explicacaoParaSecao, fixarSecoesDoModelo, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
+import { aplicarTextosIA, aplicarTextosIASecao, completarDocumento, explicacaoParaSecao, fixarSecoesDoModelo, imagensDoDocumento, nomeArquivo, paraEscolher, type Documento, type TextosIA, type TipoDocumento } from './modelo';
 
 const Previa = lazy(() => import('./Previa'));
 const SEM_IMAGENS: Record<string, string> = {};
@@ -48,14 +48,19 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   useEffect(() => {
     if (!salvos || !padroes) return;
     // Documento salvo numa versão antiga do modelo é convertido com os padrões atuais (decisão 67).
-    const doBanco = { tecnica: fixarSecoesDoModelo(completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), padroes.tecnica), comercial: fixarSecoesDoModelo(completarDocumento(salvos.comercial, 'comercial', padroes.comercial), padroes.comercial) };
+    // Decisão 98: documento ainda não salvo (proposta nova) vem do modelo com as seções editáveis por escolher.
+    const montar = (t: TipoDocumento) => {
+      const d = fixarSecoesDoModelo(completarDocumento(salvos[t], t, padroes[t]), padroes[t]);
+      return !salvos[t] && editavel ? paraEscolher(d) : d;
+    };
+    const doBanco = { tecnica: montar('tecnica'), comercial: montar('comercial') };
     // Ao vivo (decisão 83): o que outra pessoa salvou entra na tela, menos no documento com alteração daqui ainda não gravada.
     setDocs((atual) => {
       // Também fica o que chegou ao vivo há pouco: o banco pode estar um pouco atrás do que a outra pessoa já digitou.
       const manter = (t: TipoDocumento) => Boolean(atual[t] && (pendente.current[t] || gravando.current[t] || Date.now() - (recebido.current[t] ?? 0) < 3000));
       return { tecnica: manter('tecnica') ? atual.tecnica : doBanco.tecnica, comercial: manter('comercial') ? atual.comercial : doBanco.comercial };
     });
-  }, [salvos, padroes]);
+  }, [salvos, padroes, editavel]);
   const doc = docs[tipo];
 
   const [salvando, setSalvando] = useState<'' | 'salvando' | 'salvo'>('');

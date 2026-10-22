@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, fixarSecoesDoModelo, pendencias, aplicarTextosIASecao, explicacaoParaSecao, sincronizarEscopo, substituir, trechos } from './modelo';
+import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, fixarSecoesDoModelo, pendencias, aplicarTextosIASecao, explicacaoParaSecao, sincronizarEscopo, substituir, trechos, paraEscolher, escolherSecao } from './modelo';
 
 describe('documentos da proposta', () => {
   it('lê negrito', () => {
@@ -192,3 +192,36 @@ describe('IA em uma seção só (decisão 81)', () => {
   });
 });
 
+
+describe('seções por escolher numa proposta nova (decisão 98)', () => {
+  it('técnica: editáveis desmarcadas e pendentes, com os textos mantidos; fixas e do modelo intactas', () => {
+    const base = documentoPadrao('tecnica');
+    const d = paraEscolher(base);
+    const por = (id: string) => d.secoes.find((s) => s.id === id)!;
+    for (const id of ['objetivo', 'aplicacao', 'normas', 'competencias', 'responsabilidades', 'escopo', 'fora', 'garantia', 'prazo']) {
+      expect(por(id)).toMatchObject({ ativo: false, escolher: true });
+      expect(pendencias(por(id))).toEqual(['Marcar se esta seção entra na proposta']);
+    }
+    for (const id of ['sobre', 'dados', 'validade', 'confidencialidade', 'anexo']) expect(por(id)).toEqual(base.secoes.find((s) => s.id === id));
+    const normas = por('normas');
+    expect(normas.tipo === 'texto' && normas.texto).toBe((base.secoes.find((s) => s.id === 'normas') as { texto: string }).texto);
+    const comp = por('competencias');
+    expect(comp.tipo === 'competencias' && comp.itens.every((x) => x.valor === '' && x.nome)).toBe(true);
+    const resp = por('responsabilidades');
+    expect(resp.tipo === 'responsabilidades' && resp.grupos.every((g) => g.itens.every((x) => !x.cliente && !x.fabriaco && x.texto))).toBe(true);
+  });
+  it('comercial: só pagamento e valores ficam por escolher', () => {
+    const d = paraEscolher(documentoPadrao('comercial'));
+    expect(d.secoes.filter((s) => s.escolher).map((s) => s.id)).toEqual(['pagamento', 'valores']);
+  });
+  it('escolher resolve: "entra" passa às pendências normais, "não entra" sai do PDF', () => {
+    const comp = paraEscolher(documentoPadrao('tecnica')).secoes.find((s) => s.id === 'competencias')!;
+    const entra = escolherSecao(comp, true);
+    expect(entra.ativo).toBe(true);
+    expect('escolher' in entra).toBe(false);
+    expect(pendencias(entra)).toContain('Sim, Não ou N/A em Mecânica');
+    const nao = escolherSecao(comp, false);
+    expect(nao).toMatchObject({ ativo: false });
+    expect('escolher' in nao).toBe(false);
+  });
+});

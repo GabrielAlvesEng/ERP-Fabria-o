@@ -6,7 +6,7 @@ import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, 
 import { AreaTexto, Bolhas, Botao, Caixa, Campo, PrefixoCampo, CampoInteiro, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
 import {
-  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, SECOES_IA, marcadorCartao, numerar, pendencias, sincronizarEscopo,
+  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, SECOES_IA, escolherSecao, marcadorCartao, numerar, pendencias, sincronizarEscopo,
   type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type LinhaMatriz, type Marca3, type Secao,
 } from './modelo';
 import { TextoFormatado } from './TextoFormatado';
@@ -77,7 +77,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
       </div>
       <p className="text-xs text-suave">Use a barra de cada texto para negrito, sublinhado e listas. Linha em branco separa parágrafos. Cliente, Local, Código e Validade viram os dados da proposta.</p>
       {!modelo && (() => {
-        const abertas = doc.secoes.filter((s) => s.ativo && !SECOES_DO_MODELO[doc.tipo].includes(s.id) && s.tipo !== 'sobre' && s.tipo !== 'dados_empresas' && pendencias(s, itens).length);
+        const abertas = doc.secoes.filter((s) => (s.ativo || s.escolher) && !SECOES_DO_MODELO[doc.tipo].includes(s.id) && s.tipo !== 'sobre' && s.tipo !== 'dados_empresas' && pendencias(s, itens).length);
         return abertas.length
           ? <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400"><CircleX size={14} /> Falta preencher: {abertas.map((s) => s.titulo).join(', ')}.</p>
           : <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"><CircleCheck size={14} /> Todas as seções estão preenchidas.</p>;
@@ -91,11 +91,11 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
         const fixa = (SECOES_FIXAS.includes(s.id) && !(modelo && s.id === 'anexo')) || s.tipo === 'confidencialidade';
         return (
         <PrefixoCampo key={s.id} valor={`${s.id} · `}>
-        <div data-campo={`${doc.tipo}: ${s.id} · `} className={`rounded-xl ring-1 ring-borda ${s.ativo ? 'bg-superficie' : 'bg-pagina opacity-70'}`}>
-          <div className="flex items-center gap-2 px-3 py-2">
-            <Caixa marcado={s.ativo} onChange={(ativo) => setSecao(i, { ...s, ativo })} />
+        <div data-campo={`${doc.tipo}: ${s.id} · `} className={`rounded-xl ring-1 ${s.escolher && !modelo ? 'bg-amber-50/60 ring-amber-300 dark:bg-amber-500/5 dark:ring-amber-500/40' : `ring-borda ${s.ativo ? 'bg-superficie' : 'bg-pagina opacity-70'}`}`}>
+          <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+            <Caixa marcado={s.ativo} onChange={(ativo) => setSecao(i, escolherSecao(s, ativo))} />
             <span className="w-6 text-xs font-semibold text-roxo-600 dark:text-roxo-100">{doc.tipo === 'tecnica' ? numeros[s.id] ?? '—' : ''}</span>
-            {!modelo && !fixa && s.ativo && <Situacao faltando={pendencias(s, itens)} />}
+            {!modelo && !fixa && (s.ativo || s.escolher) && <Situacao faltando={pendencias(s, itens)} />}
             {fixa ? (
               <span className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-0.5 text-sm font-semibold">{s.titulo} <span className="inline-flex items-center gap-0.5 text-[11px] font-normal text-suave"><Lock size={11} /> fixa</span></span>
             ) : (
@@ -106,6 +106,13 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
               <button type="button" onClick={() => mover(i, -1)} className="rounded p-1 text-suave hover:text-texto" title="Subir"><ChevronUp size={15} /></button>
               <button type="button" onClick={() => mover(i, 1)} className="rounded p-1 text-suave hover:text-texto" title="Descer"><ChevronDown size={15} /></button>
             </>}
+            {/* Decisão 98: seção ainda não escolhida — o vendedor diz se entra (marca) ou não entra. */}
+            {!modelo && s.escolher && (
+              <span className="flex items-center gap-1">
+                <Botao type="button" tamanho="sm" variante="secundario" onClick={() => setSecao(i, escolherSecao(s, true))}>Entra</Botao>
+                <Botao type="button" tamanho="sm" variante="fantasma" onClick={() => setSecao(i, escolherSecao(s, false))}>Não entra</Botao>
+              </span>
+            )}
             <Bolhas campo={`${doc.tipo}: ${s.id} · `} inicio />
             <button type="button" onClick={() => setAberta(aberta === s.id ? null : s.id)} className="rounded px-2 py-0.5 text-xs text-roxo-600 hover:bg-roxo-50 dark:text-roxo-100 dark:hover:bg-marinho-700">
               {aberta === s.id ? 'Fechar' : fixa ? 'Ver' : 'Editar'}
@@ -210,6 +217,7 @@ function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: {
               <div key={i} className="flex items-center gap-2">
                 <Entrada value={it.nome} placeholder="Competência" onChange={(e) => onChange({ ...s, itens: s.itens.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)) })} />
                 <Selecao value={it.valor} className="w-24" onChange={(e) => onChange({ ...s, itens: s.itens.map((x, j) => (j === i ? { ...x, valor: e.target.value as Marca3 } : x)) })}>
+                  {!it.valor && <option value="">—</option>}
                   {['Sim', 'Não', 'N/A'].map((v) => <option key={v}>{v}</option>)}
                 </Selecao>
                 <button type="button" onClick={() => onChange({ ...s, itens: s.itens.filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Remover competência"><Trash2 size={14} /></button>
