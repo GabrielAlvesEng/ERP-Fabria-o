@@ -29,7 +29,8 @@ export interface DadosProposta {
   preparadoPor: string;
   vendedor?: (PessoaContato & { cargo: string }) | null;
   revisoes?: { numero: number; descricao: string; emissao: string }[];
-  itens: { letra: string; descricao: string; quantidade?: number; valor: number }[];
+  // id, manual e calculado servem ao editor (valor digitado na área Valores da comercial, decisão 71); o PDF usa só o valor.
+  itens: { id?: string; letra: string; descricao: string; quantidade?: number; valor: number; manual?: boolean; calculado?: number }[];
   // Decisão 70: frete da aba Dados (o local de entrega é sempre o endereço do cliente) e os anexos da revisão (aba Arquivos).
   frete?: 'CIF' | 'FOB';
   entrega?: string;
@@ -546,7 +547,7 @@ function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; 
   // Fundo claro: economiza tinta na impressão (pedido do Gabriel); escuro é o visual dos modelos.
   const claro = doc.capa.fundo === 'claro';
   const T = claro
-    ? { fundo: '#ffffff', forma: '#f1eefc', circulo: '#e6f3f1', texto: C.texto, suave: C.suave, linha: C.borda, cartao: C.fundo, cartaoBorda: C.borda, destaque: C.roxo, sub: '#4b5263', logo: 'logo.png', quadro: '#ffffff', traco: C.roxo }
+    ? { fundo: '#ffffff', forma: '#f1eefc', circulo: '#e6f3f1', texto: C.texto, suave: C.suave, linha: C.borda, cartao: C.fundo, cartaoBorda: C.borda, destaque: C.roxo, sub: '#4b5263', logo: 'logo.png', quadro: 'transparent', traco: C.roxo }
     : { fundo: C.navy, forma: C.navy2, circulo: C.teal, texto: '#ffffff', suave: '#aeb3c9', linha: '#2f3757', cartao: C.navy3, cartaoBorda: '#38406a', destaque: C.roxoClaro, sub: '#c7cbe0', logo: 'logo-escuro.png', quadro: '#ffffff', traco: C.roxoClaro };
   const ac = !comercial && d.contatoTecnico?.nome ? d.contatoTecnico.nome : d.contato.nome;
   const comImagem = Boolean(doc.capa.imagem && imagens[doc.capa.imagem]);
@@ -582,8 +583,9 @@ function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; 
           ))}
         </View>
         {comImagem ? (
-          <View style={{ marginTop: 16, height: 230, backgroundColor: T.quadro, borderRadius: 10, borderWidth: claro ? 0.5 : 0, borderColor: C.borda, padding: 10, alignItems: 'center', justifyContent: 'center' }}>
-            <Image src={imagens[doc.capa.imagem!]} style={{ maxHeight: 210, maxWidth: '100%', objectFit: 'contain' }} />
+          // Decisão 71: a imagem principal ocupa todo o espaço livre até o rodapé da capa.
+          <View style={{ marginTop: 14, marginBottom: 46, flexGrow: 1, backgroundColor: T.quadro, borderRadius: 10, padding: claro ? 0 : 8 }}>
+            <Image src={imagens[doc.capa.imagem!]} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </View>
         ) : null}
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 0.5, borderTopColor: T.linha, paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -725,6 +727,9 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
   );
 }
 
+// Sobre nós e Dados da Empresa são obrigatórios na técnica (decisão 71): saem sempre, sem card no editor.
+const DADOS_EMPRESA: Secao = { id: 'dados', titulo: 'Dados da Empresa', ativo: true, tipo: 'dados_empresas' };
+
 export function DocumentoPdf({ doc, dados: d, empresa, imagens = {}, tecnica }: {
   doc: Documento; dados: DadosProposta; empresa: DadosEmpresaFabriaco; imagens?: Record<string, string>; tecnica?: Documento | null;
 }) {
@@ -735,13 +740,11 @@ export function DocumentoPdf({ doc, dados: d, empresa, imagens = {}, tecnica }: 
       <Capa doc={doc} d={d} empresa={empresa} imagens={imagens} />
       {/* Técnica (decisão 70): página de abertura com "Conheça a Fabriaço" e os Dados da Empresa, sem número;
           as seções numeradas começam em página nova, pelo Objetivo (01). */}
-      {!comercial && doc.secoes.some((x) => x.ativo && (x.tipo === 'sobre' || x.tipo === 'dados_empresas')) && (
+      {!comercial && (
         <Page size="A4" style={s.pagina}>
           <Moldura d={d} comercial={false} empresa={empresa} />
-          {doc.secoes.some((x) => x.ativo && x.tipo === 'sobre') && <SobreNos empresa={empresa} v={v} />}
-          {doc.secoes.filter((x) => x.ativo && x.tipo === 'dados_empresas').map((secao) => (
-            <ConteudoSecao key={secao.id} secao={secao} v={v} d={d} empresa={empresa} imagens={imagens} topo={<TituloSecao titulo={secao.titulo} />} />
-          ))}
+          <SobreNos empresa={empresa} v={v} />
+          <ConteudoSecao secao={DADOS_EMPRESA} v={v} d={d} empresa={empresa} imagens={imagens} topo={<TituloSecao titulo={DADOS_EMPRESA.titulo} />} />
         </Page>
       )}
       {comercial ? <PaginasComerciais doc={doc} d={d} empresa={empresa} v={v} tecnica={tecnica} /> : (

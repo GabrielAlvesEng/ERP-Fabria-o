@@ -5,7 +5,8 @@ import { supabase } from '@/shared/lib/supabase';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, EsqueletoDetalhe, EsqueletoPagina } from '@/shared/ui';
-import { enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
+import { atualizarRascunho, enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
+import { atualizarItem, criarItem } from '@/modules/vendas/custos/api';
 import type { Proposta } from '@/modules/vendas/types';
 import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadroes, salvarDocumento } from './api';
 import { EditorDocumento } from './EditorDocumento';
@@ -65,7 +66,35 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   const urls = urlsBaixadas ?? SEM_IMAGENS;
   const imagens = useMemo(() => (rev && editavel ? { enviar: (f: File) => enviarImagem(p.id, rev.id, f), urls } : undefined), [rev, editavel, p.id, urls]);
 
-  const itensResumo = useMemo(() => dados?.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) ?? [], [dados]);
+  const itensResumo = useMemo(() => dados?.itens ?? [], [dados]);
+
+  // Decisão 71: valor de cada item digitado na área Valores da comercial (vai para custo_itens.valor_manual, o mesmo da aba Custos).
+  // O valor da proposta acompanha a soma enquanto ela está "À enviar", como na aba Custos.
+  const [salvandoValor, setSalvandoValor] = useState(false);
+  async function aposValor(total: number | null) {
+    if (total != null && p.status === 'À enviar') await atualizarRascunho(p.id, { valor: Math.round(total * 100) / 100 });
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['proposta_documentos_dados', p.id] }),
+      qc.invalidateQueries({ queryKey: ['custos'] }),
+      qc.invalidateQueries({ queryKey: ['propostas'] }),
+      qc.invalidateQueries({ queryKey: ['proposta', p.id] }),
+    ]);
+  }
+  const acoesValor = useMemo(() => (editavel && rev ? {
+    ocupado: salvandoValor,
+    salvar: async (id: string, valor: number | null) => {
+      setSalvandoValor(true); setMsg(null);
+      try {
+        await atualizarItem(id, { valor_manual: valor });
+        const total = (dados?.itens ?? []).reduce((a, i) => a + (i.id === id ? (valor ?? i.calculado ?? i.valor) : i.valor), 0);
+        await aposValor(total);
+      } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); } finally { setSalvandoValor(false); }
+    },
+    criarItem: async () => {
+      setSalvandoValor(true); setMsg(null);
+      try { await criarItem(rev.id, [], p.titulo); await aposValor(null); } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); } finally { setSalvandoValor(false); }
+    },
+  } : undefined), [editavel, rev, salvandoValor, dados, p.id, p.status, p.titulo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function gerarPdf(anexar: boolean) {
     if (!doc || !dados || !padroes || !rev) return;
@@ -151,7 +180,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
       {msg && <Aviso tipo={msg.tipo === 'info' ? 'info' : undefined}>{msg.texto}</Aviso>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className={verPrevia ? 'hidden lg:block' : ''}>
-          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} />
+          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} />
         </div>
         <div className={`lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:block'}`}>
           {dados ? <Suspense fallback={<EsqueletoPagina />}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} tecnica={tipo === 'comercial' ? docs.tecnica : null} /></Suspense> : <EsqueletoPagina />}

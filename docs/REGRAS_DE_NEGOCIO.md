@@ -196,6 +196,10 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - Proposta comercial: o marco de cada parcela do pagamento é escolhido numa lista (com "Outro" para texto livre). O frete fica em Dados da proposta, **CIF ou FOB** (padrão CIF), e o local de entrega é sempre o endereço da empresa cliente (só leitura).
     - Custos: cada item pode ter o **valor de venda digitado à mão**, que substitui o calculado. O valor da proposta (que vai para a comercial) passa a acompanhar sozinho a soma dos itens enquanto a revisão está em rascunho.
     - **Netlify liberado pelo Gabriel (22/10/2026)** para publicar este pacote (*altera* a decisão 37 para esta publicação; as próximas publicações no Netlify continuam pedindo a liberação dele).
+71. **Valor na comercial, seções obrigatórias e imagem da capa (22/10/2026)** (pedido do Gabriel; *complementa* a decisão 70):
+    - A seção **Valores** da proposta comercial tem um campo de valor para cada item. O valor digitado é o mesmo "valor de venda manual" da aba Custos (`custo_itens.valor_manual`), com "Voltar ao calculado". A soma aparece como valor total e atualiza o valor da proposta enquanto ela está "À enviar". Sem item nos Custos, dá para criar o item A ali mesmo.
+    - **Sobre nós e Dados da Empresa são obrigatórios na técnica:** saem sempre no PDF (mesmo em documentos antigos com a seção desligada) e não aparecem mais no editor.
+    - A imagem principal da capa ocupa todo o espaço livre até o rodapé (antes tinha no máximo 210 pt de altura). Na capa clara, sem moldura.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

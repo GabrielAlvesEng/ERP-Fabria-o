@@ -3,7 +3,8 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Trash2 } from 'lucide-react';
-import { AreaTexto, Botao, Caixa, Campo, Entrada, Selecao } from '@/shared/ui';
+import { AreaTexto, Botao, Caixa, Campo, CampoNumero, Entrada, Selecao } from '@/shared/ui';
+import { moeda } from '@/shared/lib/formato';
 import {
   INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_FIXAS, marcadorCartao, numerar,
   type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type LinhaMatriz, type Marca3, type Secao,
@@ -18,8 +19,12 @@ function Rotulo({ texto, children }: { texto: string; children: ReactNode }) {
 export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<string, string> }
 
 // Editor das seções do documento (decisão 61): usado na aba Documentos da proposta e em Administração → Modelos de proposta.
-export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens }: {
-  doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: { letra: string; descricao: string }[]; imagens?: Imagens;
+// Itens da aba Custos, com o valor de venda (decisão 71: o valor pode ser digitado na área Valores da comercial).
+export type ItemValor = { id?: string; letra: string; descricao: string; valor: number; manual?: boolean; calculado?: number };
+export type AcoesValor = { salvar: (id: string, valor: number | null) => void; criarItem: () => void; ocupado: boolean };
+
+export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores }: {
+  doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: ItemValor[]; imagens?: Imagens; valores?: AcoesValor;
 }) {
   const [aberta, setAberta] = useState<string | null>(null);
   const numeros = Object.fromEntries(numerar(doc.secoes).map((n) => [n.secao.id, n.numero]));
@@ -56,14 +61,16 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens }
           )}
           <Campo rotulo="Subtítulo" className="sm:col-span-2"><AreaTexto rows={2} value={doc.capa.subtitulo} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, subtitulo: e.target.value } })} placeholder="Ex.: Fornecimento, fabricação e instalação de novo cabeçote removível…" /></Campo>
           {doc.tipo === 'comercial' && (
-            <p className="text-xs text-suave sm:col-span-2">A comercial tem 4 páginas fixas: capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (da aba Custos) e encerramento (anexos, sigilo e o vendedor). Garantia e prazo vêm da proposta técnica; frete, da aba Dados.</p>
+            <p className="text-xs text-suave sm:col-span-2">A comercial tem 4 páginas fixas: capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (itens da aba Custos, com o valor digitado na seção Valores ou o calculado) e encerramento (anexos, sigilo e o vendedor). Garantia e prazo vêm da proposta técnica; frete, da aba Dados.</p>
           )}
         </div>
       </div>
       <p className="text-xs text-suave">Use a barra de cada texto para negrito, sublinhado e listas. Linha em branco separa parágrafos. Cliente, Local, Código e Validade viram os dados da proposta.</p>
       {doc.secoes.map((s, i) => {
+        // Sobre nós e Dados da Empresa são obrigatórios na técnica (decisão 71): nem aparecem no editor.
+        if (s.tipo === 'sobre' || s.tipo === 'dados_empresas') return null;
         // Seções fixas (decisão 70): Conheça a Fabriaço, Dados da Empresa, Termo de Confidencialidade e Anexos.
-        const fixa = SECOES_FIXAS.includes(s.id) || s.tipo === 'sobre' || s.tipo === 'dados_empresas' || s.tipo === 'confidencialidade';
+        const fixa = SECOES_FIXAS.includes(s.id) || s.tipo === 'confidencialidade';
         return (
         <div key={s.id} className={`rounded-xl ring-1 ring-borda ${s.ativo ? 'bg-superficie' : 'bg-pagina opacity-70'}`}>
           <div className="flex items-center gap-2 px-3 py-2">
@@ -83,7 +90,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens }
               {aberta === s.id ? 'Fechar' : fixa ? 'Ver' : 'Editar'}
             </button>
           </div>
-          {aberta === s.id && <div className="border-t border-borda p-3">{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} />}</div>}
+          {aberta === s.id && <div className="border-t border-borda p-3">{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} valores={valores} />}</div>}
         </div>
         );
       })}
@@ -101,7 +108,7 @@ function SecaoFixa({ s }: { s: Secao }) {
   return <p className="text-sm text-suave">{textos[s.id] ?? textos[s.tipo === 'sobre' ? 'sobre' : s.tipo === 'dados_empresas' ? 'dados' : 'confidencialidade']}</p>;
 }
 
-function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: Secao) => void; itens: { letra: string; descricao: string }[]; imagens?: Imagens }) {
+function CorpoSecao({ s, onChange, itens, imagens, valores }: { s: Secao; onChange: (s: Secao) => void; itens: ItemValor[]; imagens?: Imagens; valores?: AcoesValor }) {
   switch (s.tipo) {
     case 'texto':
       return <TextoFormatado rows={Math.min(18, Math.max(5, s.texto.split('\n').length + 2))} value={s.texto} placeholder={s.dica} limite={LIMITES_TEXTO[s.id]} onChange={(v) => onChange({ ...s, texto: v })} />;
@@ -278,13 +285,38 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
       return (
         <div className="space-y-2">
           <Rotulo texto="Introdução"><TextoFormatado rows={5} value={s.intro} onChange={(v) => onChange({ ...s, intro: v })} /></Rotulo>
-          <p className="text-xs text-suave">Itens e valores vêm da aba Custos (preço de venda de cada item). Aqui só a descrição do fornecimento de cada um.</p>
-          {itens.length === 0 && <p className="text-sm text-suave">Nenhum item nos Custos desta revisão.</p>}
+          <p className="text-xs text-suave">Os itens são os da aba Custos. Digite aqui o valor de venda de cada item (ou deixe o calculado pelos custos). A soma é o valor total da proposta.</p>
+          {itens.length === 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-pagina p-3 text-sm text-suave ring-1 ring-borda">
+              Nenhum item nesta revisão.
+              {valores && <Botao type="button" variante="secundario" tamanho="sm" disabled={valores.ocupado} onClick={valores.criarItem}><Plus size={14} /> Criar item A</Botao>}
+            </div>
+          )}
           {itens.map((it) => (
-            <Campo key={it.letra} rotulo={`${it.letra} — ${it.descricao}`}>
-              <AreaTexto rows={2} value={s.descricoes[it.letra] ?? ''} onChange={(e) => onChange({ ...s, descricoes: { ...s.descricoes, [it.letra]: e.target.value } })} />
-            </Campo>
+            <div key={it.letra} className="space-y-2 rounded-lg p-3 ring-1 ring-borda">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-0 flex-1 text-sm font-semibold">{it.letra} — {it.descricao || 'Item sem descrição'}</div>
+                <div className="w-48">
+                  <div className="mb-1 text-xs font-medium text-suave">Valor do item</div>
+                  <CampoNumero moeda casas={2} valor={it.valor} disabled={!valores || !it.id || valores.ocupado}
+                    onConfirmar={(n) => valores && it.id && n >= 0 && Math.abs(n - it.valor) > 0.005 && valores.salvar(it.id, n)} className="py-1.5" />
+                </div>
+              </div>
+              <div className="text-xs text-suave">
+                {it.manual ? <>Valor digitado. Pelos custos daria {moeda(it.calculado ?? 0)}. {valores && it.id && <button type="button" className="font-medium text-roxo-600 hover:underline dark:text-roxo-100" onClick={() => valores.salvar(it.id!, null)}>Voltar ao calculado</button>}</>
+                  : 'Valor calculado pelos custos.'}
+              </div>
+              <Rotulo texto="Descrição do fornecimento">
+                <AreaTexto rows={2} value={s.descricoes[it.letra] ?? ''} onChange={(e) => onChange({ ...s, descricoes: { ...s.descricoes, [it.letra]: e.target.value } })} />
+              </Rotulo>
+            </div>
           ))}
+          {itens.length > 0 && (
+            <div className="flex items-center justify-between rounded-lg bg-pagina px-3 py-2 ring-1 ring-borda">
+              <span className="text-sm font-semibold">Valor total da proposta</span>
+              <span className="text-base font-bold tabular-nums">{moeda(itens.reduce((a, i) => a + i.valor, 0))}</span>
+            </div>
+          )}
         </div>
       );
     case 'pagamento':

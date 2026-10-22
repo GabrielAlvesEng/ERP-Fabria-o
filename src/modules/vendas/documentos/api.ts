@@ -87,7 +87,10 @@ export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoP
       descricao: r.numero === 0 ? 'Emissão inicial' : (r.motivo?.trim() || `Revisão ${r.numero}`),
       emissao: r.enviada_em ?? (r.numero === p.revisao_atual ? p.data_emissao : r.criado_em.slice(0, 10)),
     })),
-    itens: itens.map((it) => ({ letra: it.letra, descricao: it.descricao, quantidade: Number(it.quantidade) || 1, valor: resumoItem(it, linhas.filter((l) => l.item_id === it.id)).precoTotal })),
+    itens: itens.map((it) => {
+      const r = resumoItem(it, linhas.filter((l) => l.item_id === it.id));
+      return { id: it.id, letra: it.letra, descricao: it.descricao, quantidade: Number(it.quantidade) || 1, valor: r.precoTotal, manual: r.manual, calculado: r.precoCalculado };
+    }),
   };
 }
 
