@@ -154,7 +154,7 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 
 - Políticas `usuario_perfis_ler_rh` e `usuario_permissoes_ler_rh`: quem tem `rh.critica` lê perfis e ajustes de todos.
 - `conferir_gestao_acesso(usuário)`: exige `rh.critica`; quem não tem acesso total não muda a si mesmo nem quem tem acesso total.
-- `definir_perfis_usuario(usuário, perfis[])` e `definir_permissao_usuario(usuário, módulo, ação, concedida|null)` (security definer, com auditoria): trocam perfis e ajustes individuais; não dão acesso total nem permissão que quem chama não tem; não tiram o acesso total do último usuário ativo que o tem. **A migration 41 ainda não foi aplicada** (o Supabase pediu confirmação manual por ter `delete`; aguarda o Gabriel).
+- `definir_perfis_usuario(usuário, perfis[])` e `definir_permissao_usuario(usuário, módulo, ação, concedida|null)` (security definer, com auditoria): trocam perfis e ajustes individuais; não dão acesso total nem permissão que quem chama não tem; não tiram o acesso total do último usuário ativo que o tem. A migration 41 foi aplicada pelo Gabriel no SQL Editor em 22/10/2026 (por isso não aparece no histórico de migrations do Supabase).
 - Gatilho `funcionarios_desligado_acesso`: ao mudar a situação para desligado, o usuário ligado fica inativo (protege o último com acesso total).
 - Edge Function `rh-acesso` (criar_login, link_senha, desativar, reativar): usa a service_role só no Supabase; o login é bloqueado no Auth (`ban_duration`) além de `usuarios.ativo`. O ERP gera links (`generateLink`), nunca vê senhas.
 
