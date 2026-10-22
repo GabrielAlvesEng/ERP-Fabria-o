@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Signature } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { apenasDigitos, hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, EsqueletoDetalhe, Selecao, Selo } from '@/shared/ui';
@@ -11,6 +11,9 @@ import { AcessoFicha } from './AcessoFicha';
 import { DocumentosFicha } from './DocumentosFicha';
 import { IntegracoesFicha } from './IntegracoesFicha';
 import { formatarCPF, situacao, SITUACOES, UFS, validarFicha, VINCULOS, type Situacao } from './regras';
+
+// Gerador da assinatura (decisão 89): carregado só quando abre (desenho em canvas).
+const AssinaturaGeradaModal = lazy(() => import('./assinatura/AssinaturaGeradaModal'));
 
 type Form = Omit<DadosFuncionario, 'cpf' | 'nascimento' | 'admissao' | 'desligamento' | 'matricula' | 'funcao_id' | 'usuario_id'> & {
   cpf: string; nascimento: string; admissao: string; desligamento: string; matricula: string; funcao_id: string; usuario_id: string;
@@ -67,6 +70,7 @@ export function FuncionarioPage() {
   const [erro, setErro] = useState('');
   const [salvo, setSalvo] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [assinatura, setAssinatura] = useState(false);
 
   useEffect(() => { if (funcionario) setF(paraForm(funcionario)); }, [funcionario]);
 
@@ -115,8 +119,17 @@ export function FuncionarioPage() {
             {fn && <div className="text-sm text-suave">{fn.nome} · {nomeSetor.get(fn.setor_id)}</div>}
           </div>
         </div>
-        {editavel && <Botao onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : novo ? 'Cadastrar' : 'Salvar alterações'}</Botao>}
+        <div className="flex flex-wrap gap-2">
+          {editavel && !novo && <Botao variante="secundario" onClick={() => setAssinatura(true)}><Signature size={15} /> Assinatura de e-mail</Botao>}
+          {editavel && <Botao onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : novo ? 'Cadastrar' : 'Salvar alterações'}</Botao>}
+        </div>
       </div>
+      {assinatura && funcionario && (
+        <Suspense fallback={null}>
+          <AssinaturaGeradaModal funcionario={{ ...funcionario, ...paraBanco(f), id: funcionario.id, atualizado_em: funcionario.atualizado_em, usuarios: funcionario.usuarios }}
+            cargo={fn?.nome ?? ''} onFechar={() => setAssinatura(false)} />
+        </Suspense>
+      )}
       {erro && <Aviso>{erro}</Aviso>}
       {salvo && <Aviso tipo="info">Alterações salvas.</Aviso>}
 

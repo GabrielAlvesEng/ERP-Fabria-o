@@ -65,8 +65,12 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
   const [buscaCc, setBuscaCc] = useState('');
   const filtradosCc = opcoesCc.filter((o) => !cc.includes(o.email) && (!buscaCc || `${o.nome} ${o.email} ${o.grupo}`.toLowerCase().includes(buscaCc.toLowerCase())));
 
+  // Decisão 88: sem vendedor a proposta não sai (o banco também recusa).
+  const semVendedor = !proposta.responsavel_id;
+
   const m = useMutation({
     mutationFn: async () => {
+      if (semVendedor) throw new Error('Escolha o vendedor da proposta antes de enviá-la (aba Dados → Vendedor).');
       const paraLista = separarEmails(paraValor);
       const ccLista = [...cc, ...separarEmails(ccLivre)];
       if (gerarEmail) {
@@ -108,6 +112,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
     <Modal aberto titulo={`Enviar ao cliente · ${codigoComRevisao(proposta.codigo, proposta.revisao_atual)}`} onFechar={onFechar} largura="max-w-3xl">
       <form className="space-y-3" onSubmit={(e: FormEvent) => { e.preventDefault(); setErro(''); m.mutate(); }}>
         <Aviso tipo="info">Ao enviar, a revisão R{proposta.revisao_atual} fica congelada (dados, arquivos e custos). Ajustes depois disso geram nova revisão.</Aviso>
+        {semVendedor && <Aviso>Esta proposta está sem vendedor. Escolha o vendedor na aba Dados antes de enviar.</Aviso>}
         {erro && <Aviso>{erro}</Aviso>}
 
         <Caixa marcado={gerarEmail} onChange={setGerarEmail}>Gerar o e-mail com os anexos</Caixa>
@@ -192,7 +197,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
 
         <div className="flex justify-end gap-2 pt-1">
           <Botao type="button" variante="secundario" onClick={onFechar}>Cancelar</Botao>
-          <Botao type="submit" disabled={m.isPending}>{m.isPending ? 'Preparando…' : gerarEmail ? 'Enviar e abrir e-mail' : 'Marcar como enviada'}</Botao>
+          <Botao type="submit" disabled={m.isPending || semVendedor}>{m.isPending ? 'Preparando…' : gerarEmail ? 'Enviar e abrir e-mail' : 'Marcar como enviada'}</Botao>
         </div>
       </form>
     </Modal>
