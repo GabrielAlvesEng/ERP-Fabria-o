@@ -23,7 +23,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 | 1 | **Vendas** (Empresas, Contatos, Propostas, Kanban, Kick-off) | **Em planejamento, aguardando aprovação** |
 | 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Exemplar em andamento** (autorizado pelo Gabriel em 20/10/2026, decisão 33): projetos, árvore, peças, lista de materiais e importação do SolidWorks (inicial e por nova revisão do CAD) |
 | 3 | Compras e Financeiro (aprovação e pagamento) | Compras no menu, em construção (decisão 92); Financeiro no menu, em construção (decisão 93); planejamento não iniciado |
-| 4 | Almoxarifado | Não iniciado |
+| 4 | Almoxarifado | Módulo criado no menu, vazio (decisão 94, 22/10/2026). Planejamento não iniciado |
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |
 | 6 | Fabricação e Qualidade | Não iniciado |
 | 7 | Expedição, campo e Financeiro (faturamento e recebimento) | Não iniciado |

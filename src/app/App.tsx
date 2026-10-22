@@ -16,6 +16,8 @@ import { VendedoresPage } from '@/modules/vendas/vendedores/VendedoresPage';
 import { EngenhariaLayout } from '@/modules/engenharia/EngenhariaLayout';
 import { ProjetosPage } from '@/modules/engenharia/ProjetosPage';
 import { ProjetoPage } from '@/modules/engenharia/ProjetoPage';
+import { AlmoxarifadoLayout } from '@/modules/almoxarifado/AlmoxarifadoLayout';
+import { AlmoxarifadoInicioPage } from '@/modules/almoxarifado/AlmoxarifadoInicioPage';
 import { AdminLayout, ExcluidasPage, SenhasPage } from '@/modules/admin/AdminPages';
 import { FrotaPage } from '@/modules/admin/FrotaPage';
 import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
@@ -74,6 +76,9 @@ export function App() {
           </Route>
           <Route path="/compras" element={<ComprasLayout />}>
             <Route index element={<ComprasInicioPage />} />
+          </Route>
+          <Route path="/almoxarifado" element={<AlmoxarifadoLayout />}>
+            <Route index element={<AlmoxarifadoInicioPage />} />
           </Route>
           <Route path="/rh" element={<RhLayout />}>
             <Route index element={<FuncionariosPage />} />

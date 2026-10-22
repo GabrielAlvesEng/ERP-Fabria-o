@@ -12,7 +12,7 @@ import {
 // Ficha → Acesso ao ERP (decisão 69, resposta 1): o RH cria o login, gera o link para a pessoa definir a senha,
 // desativa ou reativa e escolhe perfis e ajustes. O ERP nunca vê nem guarda senhas. Quem garante as regras é o banco.
 const ACOES = ['ler', 'criar', 'editar', 'aprovar', 'excluir', 'critica'] as const;
-const ROTULO_MODULO: Record<string, string> = { vendas: 'Vendas', engenharia: 'Engenharia', rh: 'RH', admin: 'Administração', financeiro: 'Financeiro', compras: 'Compras' };
+const ROTULO_MODULO: Record<string, string> = { vendas: 'Vendas', engenharia: 'Engenharia', almoxarifado: 'Almoxarifado', rh: 'RH', admin: 'Administração', financeiro: 'Financeiro', compras: 'Compras' };
 const ROTULO_ACAO: Record<string, string> = { ler: 'Ler', criar: 'Criar', editar: 'Editar', aprovar: 'Aprovar', excluir: 'Excluir', critica: 'Crítica' };
 
 export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
