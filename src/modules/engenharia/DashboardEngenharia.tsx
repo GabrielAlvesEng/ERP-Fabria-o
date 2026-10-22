@@ -5,8 +5,9 @@ import { AlarmClock, CircleCheck, CircleDashed, Factory, Hammer } from 'lucide-r
 import type { LucideIcon } from 'lucide-react';
 import { dataBR, hojeISO } from '@/shared/lib/formato';
 import { Cabecalho, Cartao, EsqueletoDashboard, Selecao, Selo, Vazio } from '@/shared/ui';
-import { useContagem } from '@/shared/ui/graficos';
-import { listarPainel, listarProjetos, listarUsuariosAtivos } from './api';
+import { Linhas, Rosca, useContagem, type FatiaRosca } from '@/shared/ui/graficos';
+import { listarEventosPainel, listarItensPainel, listarPainel, listarProjetos, listarUsuariosAtivos } from './api';
+import { MESES, avancoMedio, seriePorMes } from './indicadores';
 import { COLUNAS_PROJETO, COR_STATUS_PROJETO, NOME_STATUS_PROJETO, atrasado, avanco, pendencias, type PainelProjeto, type Projeto } from './regras';
 
 // Ano do projeto: o início do código (26-01-001 → 2026); o projeto de exemplo usa o ano de abertura.
@@ -14,6 +15,9 @@ export function anoDoProjeto(p: Pick<Projeto, 'codigo' | 'criado_em'>): number {
   const m = /^(\d{2})-/.exec(p.codigo);
   return m ? 2000 + Number(m[1]) : Number(p.criado_em.slice(0, 4));
 }
+
+// Cores das colunas: paleta categórica do ERP (a mesma ordem fixa nos gráficos).
+const COR_STATUS: Record<string, string> = { nao_iniciado: 'var(--serie-4)', em_andamento: 'var(--serie-1)', liberado: 'var(--serie-2)', finalizado: 'var(--serie-3)' };
 
 type Kpi = { id: string; rotulo: string; valor: number; icone: LucideIcon; alerta?: boolean; destaque?: boolean };
 
@@ -28,6 +32,8 @@ export function DashboardEngenharia() {
   const [cliente, setCliente] = useState('');
   const [responsavel, setResponsavel] = useState('');
   const [status, setStatus] = useState('');
+  const { data: eventos = [] } = useQuery({ queryKey: ['painel_engenharia', 'eventos'], queryFn: listarEventosPainel });
+  const { data: itens = [] } = useQuery({ queryKey: ['painel_engenharia', 'itens'], queryFn: listarItensPainel });
 
   const porId = useMemo(() => new Map<string, PainelProjeto>(painel.map((p) => [p.id, p])), [painel]);
   const nomeUsuario = (id: string | null) => usuarios.find((u) => u.id === id)?.nome ?? '';
@@ -52,12 +58,26 @@ export function DashboardEngenharia() {
   const ordenados = [...lista].sort((a, b) => Number(b.status !== 'finalizado') - Number(a.status !== 'finalizado')
     || Number(atrasado(b, hoje)) - Number(atrasado(a, hoje)) || (a.prazo ?? '9999').localeCompare(b.prazo ?? '9999') || b.codigo.localeCompare(a.codigo));
 
+  // Gráficos por mês: o ano do filtro ou, sem filtro, o ano atual (até o mês atual).
+  const anoAtual = Number(hoje.slice(0, 4));
+  const anoGrafico = ano ? Number(ano) : anoAtual;
+  const ate = anoGrafico === anoAtual ? Number(hoje.slice(5, 7)) : 12;
+  const meses = seriePorMes(anoGrafico, eventos, itens, new Set(lista.map((p) => p.id))).slice(0, ate);
+  const rotulosMes = MESES.slice(0, ate);
+  const fatias: FatiaRosca[] = COLUNAS_PROJETO.map((s) => ({ id: s, rotulo: NOME_STATUS_PROJETO[s], valor: conta(s), cor: COR_STATUS[s] }));
+  const naEngenharia = lista.filter((p) => p.status === 'nao_iniciado' || p.status === 'em_andamento');
+  const medio = avancoMedio(naEngenharia.map((p) => porId.get(p.id)).filter((x): x is PainelProjeto => !!x));
+  // Prazos: atrasados primeiro, depois os que vencem nos próximos 30 dias.
+  const em30 = new Date(Date.parse(hoje) + 30 * 86_400_000).toISOString().slice(0, 10);
+  const prazos = lista.filter((p) => p.prazo && p.status !== 'finalizado' && (atrasado(p, hoje) || p.prazo <= em30)).sort((a, b) => a.prazo!.localeCompare(b.prazo!));
+  const dias = (iso: string) => Math.round((Date.parse(iso) - Date.parse(hoje)) / 86_400_000);
+
   if (l1 || l2) return <><Cabecalho titulo="Dashboard da Engenharia" /><EsqueletoDashboard /></>;
   return (
     <>
       <Cabecalho titulo="Dashboard da Engenharia" subtitulo={`${lista.length} projetos${ano ? ` em ${ano}` : ''}`} />
       <div className="mb-4 flex flex-wrap gap-3">
-        <Selecao className="w-32" value={ano} onChange={(e) => setAno(e.target.value)} aria-label="Ano">
+        <Selecao className="w-44" value={ano} onChange={(e) => setAno(e.target.value)} aria-label="Ano">
           <option value="">Todos os anos</option>
           {anos.map((a) => <option key={a} value={a}>{a}</option>)}
         </Selecao>
@@ -79,6 +99,74 @@ export function DashboardEngenharia() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         {kpis.map((k) => <CartaoKpi key={k.id} k={k} ativo={status === k.id} onClick={() => setStatus(status === k.id ? '' : k.id)} />)}
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <Cartao>
+          <div className="mb-3 font-semibold">Projetos por mês <span className="text-sm font-normal text-suave">· {anoGrafico}</span></div>
+          <Linhas inteiro rotulosX={rotulosMes} formatar={(v) => String(v)}
+            series={[
+              { id: 'abertos', rotulo: 'Abertos', cor: 'var(--serie-1)', valores: meses.map((m) => m.abertos) },
+              { id: 'liberados', rotulo: 'Liberados para fabricação', cor: 'var(--serie-2)', valores: meses.map((m) => m.liberados) },
+              { id: 'finalizados', rotulo: 'Finalizados', cor: 'var(--serie-3)', valores: meses.map((m) => m.finalizados) },
+            ]} />
+          <p className="mt-2 text-xs text-suave">Pelo histórico do Kanban: cada projeto conta uma vez por mês em cada linha.</p>
+        </Cartao>
+        <Cartao>
+          <div className="mb-3 font-semibold">Peças e itens lançados por mês <span className="text-sm font-normal text-suave">· {anoGrafico}</span></div>
+          <Linhas inteiro rotulosX={rotulosMes} formatar={(v) => `${v} itens`} formatarEixo={(v) => String(v)}
+            series={[{ id: 'itens', rotulo: 'Itens lançados (SolidWorks ou à mão)', cor: 'var(--serie-1)', valores: meses.map((m) => m.itens) }]} />
+          <p className="mt-2 text-xs text-suave">Peças, perfis e itens comerciais cadastrados nas árvores e listas de materiais, no mês em que entraram.</p>
+        </Cartao>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <Cartao>
+          <div className="mb-4 font-semibold">Projetos por status</div>
+          <div className="flex flex-col items-center gap-4">
+            <Rosca fatias={fatias} total={fatias.reduce((s, f) => s + f.valor, 0)} rotuloTotal="projetos" tamanho={180} />
+            <table className="w-full text-sm">
+              <tbody>
+                {fatias.map((f) => (
+                  <tr key={f.id} className="border-t border-borda">
+                    <td className="py-1.5"><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: f.cor }} />{f.rotulo}</span></td>
+                    <td className="py-1.5 pl-3 text-right font-semibold tabular-nums">{f.valor}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Cartao>
+        <Cartao>
+          <div className="mb-1 font-semibold">Avanço médio</div>
+          <div className="mb-4 text-xs text-suave">{naEngenharia.length} projeto(s) não iniciados ou em andamento</div>
+          <div className="space-y-5">
+            {([['Modelagem', medio.modelagem], ['Materiais', medio.materiais], ['Detalhamento', medio.detalhamento]] as const).map(([r, v]) => <Medidor key={r} rotulo={r} valor={v} />)}
+          </div>
+        </Cartao>
+        <Cartao>
+          <div className="mb-3 font-semibold">Prazos</div>
+          {prazos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-petroleo-50 text-petroleo-600 dark:bg-petroleo-500/15 dark:text-teal-300"><CircleCheck size={22} /></span>
+              <div className="font-semibold">Tudo em dia</div>
+              <div className="text-sm text-suave">Nenhum prazo vencido ou nos próximos 30 dias.</div>
+            </div>
+          ) : (
+            <ul className="divide-y divide-borda text-sm">
+              {prazos.slice(0, 8).map((p) => {
+                const d = dias(p.prazo!);
+                return (
+                  <li key={p.id} onClick={() => navegar(`/engenharia/projetos/${p.id}`)} className="flex cursor-pointer items-center justify-between gap-3 py-2 hover:text-roxo-600">
+                    <div className="min-w-0"><span className="font-mono text-xs font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span> <span className="truncate">{p.titulo}</span>
+                      <div className="truncate text-xs text-suave">{nomeUsuario(p.responsavel_id) || 'Sem responsável'}</div></div>
+                    <Selo cor={d < 0 ? 'vermelho' : d <= 7 ? 'amarelo' : 'cinza'}>{d < 0 ? `${-d} dia(s) atrasado` : d === 0 ? 'Vence hoje' : `${dataBR(p.prazo)} · ${d} dia(s)`}</Selo>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Cartao>
       </div>
 
       <Cartao className="mt-4 p-0">
@@ -130,6 +218,16 @@ export function DashboardEngenharia() {
         )}
       </Cartao>
     </>
+  );
+}
+
+function Medidor({ rotulo, valor }: { rotulo: string; valor: number | null }) {
+  const v = useContagem(valor ?? 0);
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between text-sm"><span>{rotulo}</span><span className="text-lg font-semibold tabular-nums">{valor == null ? '—' : `${Math.round(v)}%`}</span></div>
+      <div className="h-2.5 rounded-full bg-slate-200 dark:bg-marinho-700"><div className="h-2.5 rounded-full bg-petroleo-500 transition-[width] duration-500" style={{ width: `${valor ?? 0}%` }} /></div>
+    </div>
   );
 }
 

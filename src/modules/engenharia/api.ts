@@ -2,6 +2,7 @@ import { lerTudo } from '@/shared/lib/consulta';
 import { supabase } from '@/shared/lib/supabase';
 import type { ColunaProjeto, Conjunto, MaterialCatalogo, PainelProjeto, Peca, Projeto } from './regras';
 import type { RefsEng } from './biblioteca';
+import type { EventoMes, ItemMes } from './indicadores';
 
 function ok<T>(r: { data: T | null; error: unknown }): T {
   if (r.error) throw r.error;
@@ -47,6 +48,15 @@ export interface EventoProjeto { id: string; tipo: 'criado' | 'status' | 'pausa'
 
 export async function listarEventos(projetoId: string): Promise<EventoProjeto[]> {
   return ok(await supabase.from('projeto_eventos').select('id, tipo, de, para, justificativa, criado_em, usuarios(nome)').eq('projeto_id', projetoId).order('criado_em', { ascending: false })) as unknown as EventoProjeto[];
+}
+
+// Séries do Dashboard (decisão 97): aberturas e mudanças de coluna de todos os projetos e a data de cada item lançado.
+export async function listarEventosPainel(): Promise<EventoMes[]> {
+  return ok(await lerTudo((de, ate) => supabase.from('projeto_eventos').select('id, projeto_id, tipo, para, criado_em').in('tipo', ['criado', 'status']).order('criado_em').order('id').range(de, ate)));
+}
+
+export async function listarItensPainel(): Promise<ItemMes[]> {
+  return ok(await lerTudo((de, ate) => supabase.from('projeto_pecas').select('id, projeto_id, criado_em').order('criado_em').order('id').range(de, ate)));
 }
 
 export interface UsuarioAtivo { id: string; nome: string }

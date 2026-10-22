@@ -241,6 +241,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Kanban: o primeiro conjunto ou peça leva o projeto para Em andamento sozinho; liberar, finalizar e voltar de coluna (com justificativa) são do Chefe; pausar é selo e também do Chefe; o status só muda pelas funções do banco e cada mudança vai para o histórico (`projeto_eventos`). Atrasado = prazo vencido e não finalizado.
    - Projeto de exemplo (pedido do Gabriel): projeto sem proposta nem cliente (`exemplo`, código EX-001…), criado só pelo Chefe. Criado o EX-001 "Plataforma de manutenção (exemplo)" com 3 conjuntos e 7 itens.
    - Migration `20261022000054_engenharia_kanban.sql`.
+97. **Gráficos no Dashboard da Engenharia (22/10/2026)** (pedido do Gabriel: "gráficos de linha, mais legais"): linhas por mês de projetos abertos, liberados para fabricação e finalizados (pelo histórico do Kanban, cada projeto uma vez por mês em cada linha) e de peças e itens lançados; rosca de projetos por status; avanço médio (modelagem, materiais, detalhamento) dos projetos não iniciados e em andamento; lista de prazos vencidos e dos próximos 30 dias. Os gráficos usam o ano do filtro ou, sem filtro, o ano atual até o mês atual. Sem mudança no banco.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
