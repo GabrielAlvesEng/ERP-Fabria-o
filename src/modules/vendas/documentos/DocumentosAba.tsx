@@ -10,10 +10,15 @@ import { atualizarItem, criarItem } from '@/modules/vendas/custos/api';
 import type { Proposta } from '@/modules/vendas/types';
 import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadroes, salvarDocumento } from './api';
 import { EditorDocumento } from './EditorDocumento';
+import { aplicarDiferenca, diferencaDocumento, juntarDiferencas, type DiferencaDoc } from './aoVivoDoc';
+import { useDigitandoAoVivo } from '../aoVivo';
 import { aplicarTextosIA, aplicarTextosIASecao, completarDocumento, explicacaoParaSecao, fixarSecoesDoModelo, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
 
 const Previa = lazy(() => import('./Previa'));
 const SEM_IMAGENS: Record<string, string> = {};
+// Envio agrupado: troca de documento (técnica ↔ comercial) no meio do grupo manda só o último.
+const juntarPorTipo = (a: { tipo: TipoDocumento; dif: DiferencaDoc } | null, b: { tipo: TipoDocumento; dif: DiferencaDoc }) =>
+  a && a.tipo === b.tipo ? { tipo: b.tipo, dif: juntarDiferencas(a.dif, b.dif) } : b;
 
 // Aba Documentos da proposta (decisão 61): proposta técnica e comercial com textos editáveis, prévia A4 e PDF.
 export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
@@ -39,13 +44,15 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   // Salva sozinho 1 s depois da última alteração.
   const pendente = useRef<Partial<Record<TipoDocumento, Documento>>>({});
   const gravando = useRef<Partial<Record<TipoDocumento, boolean>>>({});
+  const recebido = useRef<Partial<Record<TipoDocumento, number>>>({});
   useEffect(() => {
     if (!salvos || !padroes) return;
     // Documento salvo numa versão antiga do modelo é convertido com os padrões atuais (decisão 67).
     const doBanco = { tecnica: fixarSecoesDoModelo(completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), padroes.tecnica), comercial: fixarSecoesDoModelo(completarDocumento(salvos.comercial, 'comercial', padroes.comercial), padroes.comercial) };
     // Ao vivo (decisão 83): o que outra pessoa salvou entra na tela, menos no documento com alteração daqui ainda não gravada.
     setDocs((atual) => {
-      const manter = (t: TipoDocumento) => Boolean(atual[t] && (pendente.current[t] || gravando.current[t]));
+      // Também fica o que chegou ao vivo há pouco: o banco pode estar um pouco atrás do que a outra pessoa já digitou.
+      const manter = (t: TipoDocumento) => Boolean(atual[t] && (pendente.current[t] || gravando.current[t] || Date.now() - (recebido.current[t] ?? 0) < 3000));
       return { tecnica: manter('tecnica') ? atual.tecnica : doBanco.tecnica, comercial: manter('comercial') ? atual.comercial : doBanco.comercial };
     });
   }, [salvos, padroes]);
@@ -67,7 +74,19 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
     }, 1000);
     return () => clearTimeout(t);
   }, [docs, editavel, rev]);
-  const alterar = (d: Documento) => { pendente.current[tipo] = d; setDocs((x) => ({ ...x, [tipo]: d })); };
+  // Ao vivo enquanto digita (decisão 85): o que mudou vai para quem está com o mesmo documento aberto. O que chega
+  // entra na tela e também no que falta salvar daqui, para o salvamento de um não apagar o texto do outro.
+  const enviarAoVivo = useDigitandoAoVivo<{ tipo: TipoDocumento; dif: DiferencaDoc }>(p.id, `documento:${rev?.id ?? ''}`,
+    juntarPorTipo, ({ tipo: t, dif }) => {
+      recebido.current[t] = Date.now();
+      setDocs((x) => ({ ...x, [t]: aplicarDiferenca(x[t], dif) }));
+      if (pendente.current[t]) pendente.current[t] = aplicarDiferenca(pendente.current[t], dif);
+    });
+  const alterar = (d: Documento) => {
+    const dif = editavel ? diferencaDocumento(docs[tipo], d) : null;
+    if (dif) enviarAoVivo({ tipo, dif });
+    pendente.current[tipo] = d; setDocs((x) => ({ ...x, [tipo]: d }));
+  };
 
   // Imagens usadas nos dois documentos, baixadas uma vez (o PDF é montado no navegador).
   const caminhos = useMemo(() => [...new Set([docs.tecnica, docs.comercial].flatMap((d) => (d ? imagensDoDocumento(d) : [])))].sort(), [docs]);

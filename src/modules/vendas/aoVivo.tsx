@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from '@/shared/auth/AuthProvider';
@@ -68,7 +68,7 @@ export function useVendasAoVivo() {
     const anotar = (chaves: QueryKey[]) => {
       chaves.forEach((k) => pendentes.set(JSON.stringify(k), k));
       clearTimeout(timer);
-      timer = setTimeout(recarregar, 300);
+      timer = setTimeout(recarregar, 100);
     };
     let caiu = false;
     let canal: RealtimeChannel = supabase.channel('vendas-ao-vivo');
@@ -102,7 +102,13 @@ export function outrasPessoas(estado: Record<string, Presente[]>, eu: string | u
     .sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
-const Ctx = createContext<{ outros: Presente[]; definir: (o: Onde) => void }>({ outros: [], definir: () => {} });
+// Decisão 85: o que está sendo digitado vai direto para as outras telas (Broadcast, ~0,1 s), sem esperar o banco.
+export interface Digitando { proposta_id: string; alvo: string; dados: unknown }
+type Ouvinte = (d: Digitando) => void;
+
+const Ctx = createContext<{ outros: Presente[]; definir: (o: Onde) => void; enviar: (d: Digitando) => void; ouvintes: Set<Ouvinte> }>({
+  outros: [], definir: () => {}, enviar: () => {}, ouvintes: new Set(),
+});
 const NENHUM: Onde = { proposta_id: null, aba: null, campo: null };
 
 export function PresencaVendas({ children }: { children: ReactNode }) {
@@ -113,10 +119,12 @@ export function PresencaVendas({ children }: { children: ReactNode }) {
   const [canal, setCanal] = useState<RealtimeChannel | null>(null);
   const [outros, setOutros] = useState<Presente[]>([]);
   const [onde, setOnde] = useState<Onde>(NENHUM);
+  const [ouvintes] = useState(() => new Set<Ouvinte>());
   useEffect(() => {
     if (!ligado || !meuId) return;
-    const c = supabase.channel('proposta:vendas', { config: { private: true, presence: { key: meuId } } });
+    const c = supabase.channel('proposta:vendas', { config: { private: true, presence: { key: meuId }, broadcast: { self: false } } });
     c.on('presence', { event: 'sync' }, () => setOutros(outrasPessoas(c.presenceState<Presente>(), meuId)));
+    c.on('broadcast', { event: 'digitando' }, ({ payload }) => ouvintes.forEach((f) => f(payload as Digitando)));
     c.subscribe((estado) => { if (estado === 'SUBSCRIBED') setCanal(c); });
     return () => { setCanal(null); setOutros([]); supabase.removeChannel(c); };
   }, [ligado, meuId]);
@@ -125,7 +133,8 @@ export function PresencaVendas({ children }: { children: ReactNode }) {
     canal.track({ id: meuId, nome: eu?.nome || session?.user.email || 'Alguém', foto_caminho: eu?.foto_caminho ?? null, foto_atualizada_em: eu?.foto_atualizada_em ?? null, ...onde });
   }, [canal, meuId, eu, onde, session?.user.email]);
   const definir = useCallback((o: Onde) => setOnde((a) => (a.proposta_id === o.proposta_id && a.aba === o.aba && a.campo === o.campo ? a : o)), []);
-  const valor = useMemo(() => ({ outros, definir }), [outros, definir]);
+  const enviar = useCallback((d: Digitando) => { canal?.send({ type: 'broadcast', event: 'digitando', payload: d }); }, [canal]);
+  const valor = useMemo(() => ({ outros, definir, enviar, ouvintes }), [outros, definir, enviar, ouvintes]);
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
 
@@ -141,4 +150,25 @@ export function usePresencaProposta(propostaId: string, aba: string, campo: stri
 
 export function paraBolhas(lista: Presente[], tamanho = 22): Bolha[] {
   return lista.map((x) => ({ id: x.id, nome: x.nome, campo: x.campo, avatar: <Avatar caminho={x.foto_caminho} versao={x.foto_atualizada_em} nome={x.nome} tamanho={tamanho} /> }));
+}
+
+// Envia o que mudou enquanto a pessoa digita (agrupado a cada 80 ms) e recebe o que as outras pessoas digitam
+// na mesma proposta e no mesmo alvo (ex.: "dados", "documento:<revisão>").
+export function useDigitandoAoVivo<T>(propostaId: string, alvo: string, juntar: (a: T | null, b: T) => T, aoReceber: (dados: T) => void) {
+  const { enviar, ouvintes } = useContext(Ctx);
+  const receber = useRef(aoReceber);
+  receber.current = aoReceber;
+  useEffect(() => {
+    const f: Ouvinte = (d) => { if (d.proposta_id === propostaId && d.alvo === alvo) receber.current(d.dados as T); };
+    ouvintes.add(f);
+    return () => { ouvintes.delete(f); };
+  }, [ouvintes, propostaId, alvo]);
+  const fila = useRef<{ dados: T | null; timer?: ReturnType<typeof setTimeout> }>({ dados: null });
+  useEffect(() => () => clearTimeout(fila.current.timer), []);
+  return useCallback((dados: T) => {
+    const q = fila.current;
+    q.dados = juntar(q.dados, dados);
+    if (q.timer) return;
+    q.timer = setTimeout(() => { q.timer = undefined; const d = q.dados; q.dados = null; if (d) enviar({ proposta_id: propostaId, alvo, dados: d }); }, 80);
+  }, [enviar, propostaId, alvo, juntar]);
 }

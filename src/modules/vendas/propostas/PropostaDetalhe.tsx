@@ -20,7 +20,7 @@ import { KickoffAba } from '../kickoff/KickoffAba';
 import { ExcluirModal } from './ExcluirModal';
 import { ArquivosAba } from './ArquivosAba';
 import { enderecoEntrega } from '../documentos/api';
-import { paraBolhas, usePresencaProposta, type Presente } from '../aoVivo';
+import { paraBolhas, useDigitandoAoVivo, usePresencaProposta, type Presente } from '../aoVivo';
 import { Avatar } from '@/modules/perfil/Avatar';
 
 // Decisão 70: "Revisões e arquivos" e "Aprovação" viraram a aba Arquivos (Propostas, Anexos e Aprovação).
@@ -165,6 +165,10 @@ function QuemEstaAqui({ presentes, aba }: { presentes: Presente[]; aba: string }
   );
 }
 
+// Campos da aba Dados que vão ao vivo enquanto se digita (decisão 85).
+const CAMPOS_DADOS = ['titulo', 'responsavel_id', 'descricao', 'valor', 'prazo_previsto', 'validade_dias', 'condicoes_comerciais', 'observacoes', 'data_emissao', 'contato_tecnico_id', 'frete'] as const satisfies readonly (keyof Proposta)[];
+const juntarCampos = (a: Partial<Proposta> | null, b: Partial<Proposta>) => ({ ...a, ...b });
+
 function AbaDados({ p }: { p: Proposta }) {
   const { pode } = useAuth();
   const qc = useQueryClient();
@@ -187,9 +191,29 @@ function AbaDados({ p }: { p: Proposta }) {
   const chave = (x: Proposta) => JSON.stringify(dadosDe(x));
   // Dados que vieram do banco: o formulário só é trocado por eles se não houver alteração ainda não salva.
   const base = useRef(chave(p));
+  const baseP = useRef(p);
+  // Decisão 85: o que outra pessoa digita chega direto (sem esperar o banco). Só os campos que mudaram vão e vêm.
+  const deFora = useRef<Proposta | null>(null);
+  const recebidoEm = useRef(0);
+  const enviarAoVivo = useDigitandoAoVivo<Partial<Proposta>>(p.id, 'dados', juntarCampos, (valores) => {
+    recebidoEm.current = Date.now();
+    baseP.current = { ...baseP.current, ...valores };
+    base.current = chave(baseP.current);
+    setF((atual) => (deFora.current = { ...atual, ...valores }));
+  });
+  const anterior = useRef(f);
   useEffect(() => {
-    setF((atual) => (chave(atual) === base.current ? p : atual));
+    const antes = anterior.current;
+    anterior.current = f;
+    if (!editavel || f === deFora.current || f === antes) return;
+    const mudou = Object.fromEntries(CAMPOS_DADOS.filter((k) => f[k] !== antes[k]).map((k) => [k, f[k]])) as Partial<Proposta>;
+    if (Object.keys(mudou).length) enviarAoVivo(mudou);
+  }, [f]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (Date.now() - recebidoEm.current < 3000) return; // o banco ainda pode estar atrás do que chegou ao vivo
+    setF((atual) => (chave(atual) === base.current ? (deFora.current = p) : atual));
     base.current = chave(p);
+    baseP.current = p;
   }, [p]); // eslint-disable-line react-hooks/exhaustive-deps
   const [estado, setEstado] = useState<'' | 'salvando' | 'salvo'>('');
   const m = useMutation({
@@ -197,6 +221,7 @@ function AbaDados({ p }: { p: Proposta }) {
     onMutate: () => { setEstado('salvando'); setMsg(''); },
     onSuccess: (_r, x) => {
       base.current = chave(x);
+      baseP.current = x;
       setEstado('salvo');
       qc.invalidateQueries({ queryKey: ['propostas'] });
       qc.invalidateQueries({ queryKey: ['proposta'] });

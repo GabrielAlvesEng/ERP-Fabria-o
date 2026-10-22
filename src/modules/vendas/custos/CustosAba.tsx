@@ -13,6 +13,7 @@ import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
 import { Aviso, Botao, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Entrada, EsqueletoTabela, Modal, type OpcaoEscolha, Selecao, Selo, Vazio, Bolhas, PrefixoCampo, useIdCampo } from '@/shared/ui';
 import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
+import { useDigitandoAoVivo } from '../aoVivo';
 import {
   adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarReferencias, listarVeiculosECombustivel, removerLinha, reordenarLinhas,
   precoDoVeiculo, type Combustivel, type Referencias, type RefVeiculo,
@@ -53,6 +54,15 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
     qc.invalidateQueries({ queryKey: ['custos', 'linhas', rev?.id] });
   };
   const trocarLinha = (nova: CustoLinha) => qc.setQueryData<CustoLinha[]>(chaveLinhas, (ant = []) => ant.map((l) => (l.id === nova.id ? nova : l)));
+  // Ao vivo (decisão 85): linha ou item alterado vai direto para quem está nos custos desta revisão, sem esperar o banco.
+  const enviarAoVivo = useDigitandoAoVivo<{ linhas: CustoLinha[]; itens: CustoItem[] }>(proposta.id, `custos:${rev?.id ?? ''}`,
+    (a, b) => ({ linhas: [...(a?.linhas ?? []).filter((x) => !b.linhas.some((y) => y.id === x.id)), ...b.linhas], itens: [...(a?.itens ?? []).filter((x) => !b.itens.some((y) => y.id === x.id)), ...b.itens] }),
+    ({ linhas: ls, itens: is }) => {
+      if (ls.length) qc.setQueriesData<CustoLinha[]>({ queryKey: ['custos', 'linhas', rev?.id] }, (ant) => ant?.map((l) => ls.find((n) => n.id === l.id) ?? l));
+      if (is.length) qc.setQueriesData<CustoItem[]>({ queryKey: ['custos', 'itens', rev?.id] }, (ant) => ant?.map((i) => is.find((n) => n.id === i.id) ?? i));
+    });
+  const linhaAlterada = (nova: CustoLinha) => { trocarLinha(nova); if (editavel) enviarAoVivo({ linhas: [nova], itens: [] }); };
+  const itemAlterado = (novo: CustoItem) => { if (editavel) enviarAoVivo({ linhas: [], itens: [novo] }); };
 
   const resumos = useMemo(() => new Map(itens.map((i) => [i.id, resumoItem(i, linhas.filter((l) => l.item_id === i.id))])), [itens, linhas]);
   const totalProposta = itens.reduce((s, i) => s + (resumos.get(i.id)?.precoTotal ?? 0), 0);
@@ -121,7 +131,8 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
           listas={{ catalogo, refs, veiculos: frota?.veiculos ?? [], precos: frota?.precos ?? {} }}
           editavel={editavel}
           onErro={(e) => setErro(mensagemErro(e))}
-          onLinha={trocarLinha}
+          onLinha={linhaAlterada}
+          onItem={itemAlterado}
           onRecarregar={recarregar}
           onExcluido={() => { setItemId(null); recarregar(); }}
         /></PrefixoCampo></div>
@@ -144,9 +155,9 @@ const larguraMinima = (l?: string) => { const n = /^w-(\d+)$/.exec(l ?? '')?.[1]
 
 interface Listas { catalogo: MaterialCatalogo[]; refs: Referencias; veiculos: RefVeiculo[]; precos: Partial<Record<Combustivel, number>> }
 
-function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarregar, onExcluido }: {
+function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onItem, onRecarregar, onExcluido }: {
   item: CustoItem; linhas: CustoLinha[]; listas: Listas; editavel: boolean;
-  onErro: (e: unknown) => void; onLinha: (l: CustoLinha) => void; onRecarregar: () => void; onExcluido: () => void;
+  onErro: (e: unknown) => void; onLinha: (l: CustoLinha) => void; onItem: (i: CustoItem) => void; onRecarregar: () => void; onExcluido: () => void;
 }) {
   const [it, setIt] = useState(item);
   useEffect(() => setIt(item), [item]);
@@ -164,6 +175,7 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarre
 
   async function salvarItem(dados: Partial<CustoItem>) {
     setIt({ ...it, ...dados });
+    onItem({ ...it, ...dados });
     try { await atualizarItem(item.id, dados); onRecarregar(); } catch (e) { onErro(e); setIt(item); }
   }
   async function salvarLinha(l: CustoLinha, dados: Partial<CustoLinha>) {

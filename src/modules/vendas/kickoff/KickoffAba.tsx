@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useDigitandoAoVivo } from '../aoVivo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ClipboardList, Lock, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
@@ -73,6 +74,11 @@ function KickoffConteudo({ k, editavel, propostaId, onErro }: { k: Kickoff; edit
   const [confirmar, setConfirmar] = useState(false);
   useEffect(() => setMarcos(k.marcos ?? []), [k.marcos]);
   const recarregar = () => qc.invalidateQueries({ queryKey: ['kickoff', propostaId] });
+  // Ao vivo enquanto digita (decisão 85): participantes e observações aparecem na outra tela letra a letra; o banco salva ao sair do campo.
+  type Texto = Partial<Record<'participantes' | 'observacoes', string>>;
+  const [deFora, setDeFora] = useState<Texto>({});
+  useEffect(() => setDeFora({}), [k.id, k.participantes, k.observacoes]);
+  const enviarTexto = useDigitandoAoVivo<Texto>(propostaId, `kickoff:${k.id}`, (a, b) => ({ ...a, ...b }), (t) => setDeFora((x) => ({ ...x, ...t })));
   const tentar = async (fn: () => Promise<unknown>) => { try { await fn(); recarregar(); } catch (e) { onErro(e); } };
 
   const setores = useMemo(() => {
@@ -99,7 +105,7 @@ function KickoffConteudo({ k, editavel, propostaId, onErro }: { k: Kickoff; edit
       <div className="grid gap-3 sm:grid-cols-3">
         <Campo rotulo="Data da reunião"><CampoData value={k.data_reuniao} disabled={!editavel} onChange={(v) => tentar(() => atualizarKickoff(k.id, { data_reuniao: v || null }))} /></Campo>
         <Campo rotulo="Participantes" className="sm:col-span-2">
-          <Entrada key={k.participantes} defaultValue={k.participantes} disabled={!editavel} placeholder="Ex.: Gabriel (Comercial), Kenny (cliente), Engenharia, Fabricação"
+          <Entrada key={deFora.participantes ?? k.participantes} defaultValue={deFora.participantes ?? k.participantes} disabled={!editavel} onInput={(e) => enviarTexto({ participantes: e.currentTarget.value })} placeholder="Ex.: Gabriel (Comercial), Kenny (cliente), Engenharia, Fabricação"
             onBlur={(e) => e.target.value !== k.participantes && tentar(() => atualizarKickoff(k.id, { participantes: e.target.value }))} />
         </Campo>
       </div>
@@ -164,7 +170,7 @@ function KickoffConteudo({ k, editavel, propostaId, onErro }: { k: Kickoff; edit
       </div>
 
       <Campo rotulo="Observações gerais da reunião">
-        <AreaTexto key={k.observacoes} defaultValue={k.observacoes} rows={4} disabled={!editavel} onBlur={(e) => e.target.value !== k.observacoes && tentar(() => atualizarKickoff(k.id, { observacoes: e.target.value }))} />
+        <AreaTexto key={deFora.observacoes ?? k.observacoes} defaultValue={deFora.observacoes ?? k.observacoes} rows={4} disabled={!editavel} onInput={(e) => enviarTexto({ observacoes: e.currentTarget.value })} onBlur={(e) => e.target.value !== k.observacoes && tentar(() => atualizarKickoff(k.id, { observacoes: e.target.value }))} />
       </Campo>
 
       {editavel && (
