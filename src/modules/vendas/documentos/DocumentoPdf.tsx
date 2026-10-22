@@ -639,8 +639,8 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
       {anexo ? (
         <View wrap={false} style={{ marginBottom: 12 }}>
           <Text style={[s.kicker, { marginBottom: 5 }]}>{anexo.titulo.toUpperCase()}</Text>
-          {/* Decisão 70: a proposta técnica da revisão e os anexos comerciais da aba Arquivos, em cards. */}
-          <ListaAnexos arquivos={[{ nome: `Proposta técnica ${d.codigo}-R${d.revisao}.pdf`, detalhe: 'Proposta técnica' }, ...(d.anexos?.comerciais ?? [])]} />
+          {/* Decisão 83: só os anexos comerciais da aba Arquivos → Anexos, em cards (a proposta técnica não entra). */}
+          <ListaAnexos arquivos={d.anexos?.comerciais ?? []} />
         </View>
       ) : null}
       {sigilo ? (
