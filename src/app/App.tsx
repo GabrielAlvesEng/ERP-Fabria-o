@@ -24,6 +24,8 @@ import { RhLayout } from '@/modules/rh/RhLayout';
 import { FuncionariosPage } from '@/modules/rh/FuncionariosPage';
 import { FuncionarioPage } from '@/modules/rh/FuncionarioPage';
 import { SetoresPage } from '@/modules/rh/SetoresPage';
+import { TiposDocumentoPage } from '@/modules/rh/TiposDocumentoPage';
+import { VencimentosPage } from '@/modules/rh/VencimentosPage';
 
 export function App() {
   const { session, carregando } = useAuth();
@@ -60,6 +62,8 @@ export function App() {
             <Route index element={<FuncionariosPage />} />
             <Route path="funcionarios/:id" element={<FuncionarioPage />} />
             <Route path="setores" element={<SetoresPage />} />
+            <Route path="documentos" element={<TiposDocumentoPage />} />
+            <Route path="vencimentos" element={<VencimentosPage />} />
           </Route>
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/admin" element={<AdminLayout />}>

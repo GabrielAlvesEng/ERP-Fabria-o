@@ -7,6 +7,7 @@ import { apenasDigitos, hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, EsqueletoDetalhe, Selecao, Selo } from '@/shared/ui';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { listarFuncoes, listarSetores, listarUsuariosSemFicha, obterFuncionario, salvarFuncionario, type DadosFuncionario, type Funcionario } from './api';
+import { DocumentosFicha } from './DocumentosFicha';
 import { formatarCPF, situacao, SITUACOES, UFS, validarFicha, VINCULOS, type Situacao } from './regras';
 
 type Form = Omit<DadosFuncionario, 'cpf' | 'nascimento' | 'admissao' | 'desligamento' | 'matricula' | 'funcao_id' | 'usuario_id'> & {
@@ -167,6 +168,12 @@ export function FuncionarioPage() {
         </div>
         {f.usuario_id && <p className="mt-2 text-xs text-suave">Telefone e nascimento ficam iguais aos de Meu perfil do funcionário: quem mudar por último vale para os dois.</p>}
       </Secao>
+
+      {!novo && (
+        <Secao titulo="Documentos e treinamentos" detalhe="Requisitos da função e individuais, com aviso 30 dias antes de vencer.">
+          <DocumentosFicha funcionarioId={id} editavel={editavel} />
+        </Secao>
+      )}
 
       <Secao titulo="Acesso ao ERP" detalhe="Criar login, mandar link de senha e escolher perfis entram na próxima etapa do RH. O ERP nunca guarda nem mostra senhas.">
         {funcionario?.usuarios && f.usuario_id === funcionario.usuario_id ? (

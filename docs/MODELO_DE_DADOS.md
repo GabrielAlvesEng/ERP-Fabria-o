@@ -133,3 +133,11 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - O vendedor (`vendedores.usuario_id`) chega à ficha pelo mesmo `usuario_id`; não há coluna nova em `vendedores`.
 - Permissão nova `rh.critica` (logins e perfis, entrega 4), dada ao perfil RH.
 - Carga: 7 setores padrão, 4 funções de Engenharia e os 5 funcionários da lista do Gabriel; Gabriel, Guilherme e Pedro ligados aos seus logins.
+
+## RH: documentos e vencimentos (`20261022000037_rh_documentos.sql`, decisão 69)
+
+- `tipos_documento` (nome único, categoria, tem_validade, validade_meses padrão, aviso_dias = 30, descrição, ativo). Carga inicial: ASO, CNH, RG, NR-10, NR-11, NR-12, NR-18, NR-33, NR-35 (validade padrão só onde a norma fixa a periodicidade).
+- `funcao_requisitos` (função × tipo) e `funcionario_requisitos` (requisitos individuais). Gravação por inclusão e remoção, com auditoria (`auditar_requisito`).
+- `funcionario_documentos` (tipo, número, emissão, validade, arquivo no espaço privado `rh` em `{id do funcionário}/…`, observações, `substituido_em`, `excluido_em`). O gatilho `validar_documento_funcionario` exige validade nos tipos que vencem, confere a pasta do arquivo, manda o anterior do mesmo tipo para o histórico e não deixa mudar um documento lançado (só observações e a exclusão). Excluir o atual reativa o anterior (`reativar_documento_anterior`).
+- Visão `situacao_requisitos` (security_invoker): por funcionário não desligado, cada requisito exigido (função + individual) e cada documento atual com validade, com a situação `em_dia`, `vencendo` (dentro do aviso), `vencido` ou `faltando`, na data de hoje em São Paulo.
+- Leitura: `rh.ler` ou o próprio funcionário (`eh_meu_funcionario`); gravação: `rh.editar`. Storage `rh`: lê o RH ou o dono da pasta; envia o RH, só em pasta de funcionário existente.

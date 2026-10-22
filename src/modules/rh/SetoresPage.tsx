@@ -1,22 +1,29 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus } from 'lucide-react';
+import { ListChecks, Pencil, Plus } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Entrada, EsqueletoCartoes, Modal, Selecao, Selo } from '@/shared/ui';
-import { listarFuncionarios, listarFuncoes, listarSetores, salvarFuncao, salvarSetor, type Funcao, type Setor } from './api';
+import { listarFuncionarios, listarFuncoes, listarRequisitosFuncoes, listarSetores, listarTiposDocumento, salvarFuncao, salvarRequisitosFuncao, salvarSetor, type Funcao, type Setor } from './api';
+import { EscolherRequisitos } from './EscolherRequisitos';
 
 type Editando = { tipo: 'setor'; item: Partial<Setor> } | { tipo: 'funcao'; item: Partial<Funcao> };
 
 // RH → Setores e funções (decisão 69). Nada é apagado: setor ou função sem uso fica inativo.
-// Os requisitos de cada função (documentos e treinamentos) entram na próxima entrega.
+// Cada função tem os seus requisitos: os documentos e treinamentos que o RH cobra de quem a ocupa.
 export function SetoresPage() {
   const { pode } = useAuth();
   const editavel = pode('rh', 'editar');
   const { data: setores = [], isLoading } = useQuery({ queryKey: ['rh', 'setores'], queryFn: listarSetores });
   const { data: funcoes = [] } = useQuery({ queryKey: ['rh', 'funcoes'], queryFn: listarFuncoes });
   const { data: funcionarios = [] } = useQuery({ queryKey: ['rh', 'funcionarios'], queryFn: listarFuncionarios, enabled: pode('rh', 'ler') });
+  const { data: tipos = [] } = useQuery({ queryKey: ['rh', 'tipos_documento'], queryFn: listarTiposDocumento });
+  const { data: requisitos = [] } = useQuery({ queryKey: ['rh', 'funcao_requisitos'], queryFn: listarRequisitosFuncoes });
+  const qc = useQueryClient();
   const [editando, setEditando] = useState<Editando | null>(null);
+  const [requisitosDe, setRequisitosDe] = useState<Funcao | null>(null);
+  const reqs = (funcaoId: string) => requisitos.filter((r) => r.funcao_id === funcaoId).map((r) => r.tipo_documento_id);
+  const nomeTipo = new Map(tipos.map((t) => [t.id, t.nome]));
   const pessoas = (funcaoId: string) => funcionarios.filter((f) => f.funcao_id === funcaoId && f.situacao !== 'desligado').length;
 
   return (
@@ -43,9 +50,11 @@ export function SetoresPage() {
                         <span className="min-w-0">
                           <span className="block truncate">{f.nome}{!f.ativo && ' (inativa)'}</span>
                           {f.descricao && <span className="block truncate text-xs text-suave">{f.descricao}</span>}
+                          {reqs(f.id).length > 0 && <span className="block text-xs text-suave">Exige: {reqs(f.id).map((t) => nomeTipo.get(t)?.split(' (')[0]).join(', ')}</span>}
                         </span>
                         <span className="flex shrink-0 items-center gap-1">
                           {pessoas(f.id) > 0 && <Selo cor="roxo">{pessoas(f.id)} pessoa(s)</Selo>}
+                          {editavel && <button type="button" onClick={() => setRequisitosDe(f)} className="rounded p-1 text-suave hover:bg-pagina hover:text-texto" title="Requisitos da função"><ListChecks size={14} /></button>}
                           {editavel && <button type="button" onClick={() => setEditando({ tipo: 'funcao', item: f })} className="rounded p-1 text-suave hover:bg-pagina hover:text-texto" title="Editar função"><Pencil size={14} /></button>}
                         </span>
                       </li>
@@ -58,6 +67,11 @@ export function SetoresPage() {
         </div>
       )}
       {editando && <EditarModal editando={editando} setores={setores} onFechar={() => setEditando(null)} />}
+      {requisitosDe && (
+        <EscolherRequisitos titulo={`Requisitos · ${requisitosDe.nome}`} tipos={tipos} marcados={reqs(requisitosDe.id)} onFechar={() => setRequisitosDe(null)}
+          explicacao="Documentos e treinamentos obrigatórios para quem ocupa esta função. O RH vê no painel quem está com algum vencido, vencendo ou faltando."
+          onSalvar={async (ids) => { await salvarRequisitosFuncao(requisitosDe.id, reqs(requisitosDe.id), ids); await qc.invalidateQueries({ queryKey: ['rh'] }); }} />
+      )}
     </>
   );
 }

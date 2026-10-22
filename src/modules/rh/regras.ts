@@ -48,3 +48,38 @@ export function validarFicha(f: DadosFicha, hoje: string): string {
   if (f.desligamento && f.admissao && f.desligamento < f.admissao) return 'O desligamento não pode ser antes da admissão.';
   return '';
 }
+
+// Situação de um requisito (a mesma conta da visão situacao_requisitos do banco).
+export type SituacaoReq = 'em_dia' | 'vencendo' | 'vencido' | 'faltando';
+export const SITUACAO_REQ: Record<SituacaoReq, { rotulo: string; cor: 'verde' | 'amarelo' | 'vermelho' | 'cinza'; ordem: number }> = {
+  vencido: { rotulo: 'Vencido', cor: 'vermelho', ordem: 0 },
+  faltando: { rotulo: 'Faltando', cor: 'cinza', ordem: 1 },
+  vencendo: { rotulo: 'Vence em breve', cor: 'amarelo', ordem: 2 },
+  em_dia: { rotulo: 'Em dia', cor: 'verde', ordem: 3 },
+};
+
+const somarDias = (iso: string, dias: number) => {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+};
+
+export function situacaoDocumento(validade: string | null, avisoDias: number, hoje: string): Exclude<SituacaoReq, 'faltando'> {
+  if (!validade) return 'em_dia';
+  if (validade < hoje) return 'vencido';
+  return validade <= somarDias(hoje, avisoDias) ? 'vencendo' : 'em_dia';
+}
+
+// Validade sugerida: emissão + meses do tipo (31/01 + 1 mês = 28 ou 29/02).
+export function sugerirValidade(emissao: string, meses: number | null): string {
+  if (!emissao || !meses) return '';
+  const [a, m, d] = emissao.split('-').map(Number) as [number, number, number];
+  const alvo = new Date(Date.UTC(a, m - 1 + meses, 1));
+  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(d, ultimo));
+  return alvo.toISOString().slice(0, 10);
+}
+
+export function diasAte(iso: string, hoje: string): number {
+  return Math.round((Date.parse(`${iso}T12:00:00Z`) - Date.parse(`${hoje}T12:00:00Z`)) / 86_400_000);
+}

@@ -5,6 +5,7 @@ import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
 import { RetornosSino } from '@/modules/vendas/RetornosSino';
+import { VencimentosSino } from '@/modules/rh/VencimentosSino';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { useMeuUsuario } from '@/modules/perfil/api';
 
@@ -58,6 +59,7 @@ export function Layout() {
           </div>
           <div className="flex items-center sm:gap-1">
             <RetornosSino />
+            <VencimentosSino />
             <button onClick={() => setTema(tema === 'claro' ? 'escuro' : 'claro')} className="rounded-lg p-2 text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700" aria-label="Alternar tema">
               {tema === 'claro' ? <Moon size={18} /> : <Sun size={18} />}
             </button>
