@@ -21,7 +21,7 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
   const gerencia = pode('rh', 'critica');
   const usuario = funcionario.usuarios;
   const [email, setEmail] = useState(funcionario.email_corporativo || funcionario.email_pessoal || '');
-  const [link, setLink] = useState<{ link: string; email: string; convite: boolean } | null>(null);
+  const [link, setLink] = useState<{ link: string; email: string; convite: boolean; motivo: string } | null>(null);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -35,13 +35,18 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
 
   const criar = () => executar(async () => {
     const r = await rhAcesso({ acao: 'criar_login', funcionario_id: funcionario.id, email: email.trim() });
-    setLink({ link: r.link!, email: r.email!, convite: true });
+    mostrar(r, 'Login criado. O convite foi enviado');
     await qc.invalidateQueries({ queryKey: ['rh'] });
   });
   const gerarLink = () => executar(async () => {
     const r = await rhAcesso({ acao: 'link_senha', usuario_id: funcionario.usuario_id! });
-    setLink({ link: r.link!, email: r.email!, convite: r.tipo === 'invite' });
+    mostrar(r, r.tipo === 'invite' ? 'Convite enviado' : 'Link para nova senha enviado');
   });
+  // O e-mail sai sozinho pelo Supabase; se não sair, o RH vê o link para mandar por outro meio.
+  function mostrar(r: Awaited<ReturnType<typeof rhAcesso>>, texto: string) {
+    if (r.enviado) { setLink(null); setAviso(`${texto} para ${r.email}. O link vale por pouco tempo e funciona uma vez.`); }
+    else setLink({ link: r.link!, email: r.email!, convite: r.tipo === 'invite', motivo: r.motivo ?? '' });
+  }
   const alternar = (ativar: boolean) => executar(async () => {
     if (!ativar && !confirm(`Desativar o login de ${funcionario.nome}? A pessoa não consegue mais entrar no ERP até ser reativada.`)) return;
     await rhAcesso({ acao: ativar ? 'reativar' : 'desativar', usuario_id: funcionario.usuario_id! });
@@ -54,6 +59,7 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
     return (
       <div className="space-y-3">
         {erro && <Aviso>{erro}</Aviso>}
+        {aviso && <Aviso tipo="info">{aviso}</Aviso>}
         {link ? <LinkSenha {...link} nome={funcionario.nome} /> : funcionario.situacao === 'desligado' ? (
           <p className="text-sm text-suave">Funcionário desligado não recebe login.</p>
         ) : (
@@ -64,7 +70,7 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
             <Botao onClick={criar} disabled={ocupado || !email.trim()}><UserPlus size={15} /> Criar login</Botao>
           </div>
         )}
-        <p className="text-xs text-suave">O ERP gera um link de convite para a pessoa escolher a própria senha. Depois de criar, escolha os perfis abaixo.</p>
+        <p className="text-xs text-suave">O ERP manda um convite por e-mail para a pessoa escolher a própria senha. Depois de criar, escolha os perfis abaixo.</p>
       </div>
     );
   }
@@ -82,7 +88,7 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
       {gerencia && !proprio && (
         <>
           <div className="flex flex-wrap gap-2">
-            <Botao variante="secundario" tamanho="sm" onClick={gerarLink} disabled={ocupado}><KeyRound size={14} /> Gerar link de senha</Botao>
+            <Botao variante="secundario" tamanho="sm" onClick={gerarLink} disabled={ocupado}><KeyRound size={14} /> Enviar link de senha</Botao>
             {usuario.ativo
               ? <Botao variante="secundario" tamanho="sm" onClick={() => alternar(false)} disabled={ocupado}><Ban size={14} /> Desativar login</Botao>
               : <Botao variante="secundario" tamanho="sm" onClick={() => alternar(true)} disabled={ocupado || funcionario.situacao === 'desligado'}><RotateCcw size={14} /> Reativar login</Botao>}
@@ -95,7 +101,7 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
   );
 }
 
-function LinkSenha({ link, email, convite, nome }: { link: string; email: string; convite: boolean; nome: string }) {
+function LinkSenha({ link, email, convite, nome, motivo }: { link: string; email: string; convite: boolean; nome: string; motivo: string }) {
   const [copiado, setCopiado] = useState(false);
   const assunto = convite ? 'Seu acesso ao ERP Fabriaço' : 'Nova senha do ERP Fabriaço';
   const corpo = `Olá, ${nome.split(' ')[0]}.\n\n${convite ? 'Seu login no ERP Fabriaço foi criado' : 'Foi gerado um link para você definir uma nova senha no ERP Fabriaço'} (${email}).\nAbra o link abaixo e escolha a sua senha:\n\n${link}\n\nO link vale por pouco tempo e só funciona uma vez.`;
@@ -105,6 +111,7 @@ function LinkSenha({ link, email, convite, nome }: { link: string; email: string
   return (
     <div className="space-y-2 rounded-lg bg-roxo-50 p-3 text-sm ring-1 ring-roxo-100 dark:bg-roxo-700/20 dark:ring-roxo-700/40">
       <div className="font-medium">{convite ? 'Link de convite' : 'Link para nova senha'} de {email}</div>
+      <p className="text-xs text-amber-700 dark:text-amber-300">O e-mail automático não saiu{motivo ? ` (${motivo})` : ''}. Mande o link abaixo por outro meio.</p>
       <p className="text-xs text-suave">Mande este link só para a própria pessoa. Ele vale por pouco tempo e funciona uma vez; se expirar, gere outro.</p>
       <Entrada readOnly value={link} onFocus={(e) => e.target.select()} className="font-mono text-xs" />
       <div className="flex flex-wrap gap-2">

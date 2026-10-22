@@ -187,7 +187,7 @@ export function FuncionarioPage() {
         </Secao>
       )}
 
-      <Secao titulo="Acesso ao ERP" detalhe="O RH cria o login, gera o link para a pessoa definir a senha e escolhe os perfis. O ERP nunca guarda nem mostra senhas.">
+      <Secao titulo="Acesso ao ERP" detalhe="O RH cria o login (o convite vai por e-mail para a pessoa definir a senha) e escolhe os perfis. O ERP nunca guarda nem mostra senhas.">
         {funcionario && f.usuario_id === (funcionario.usuario_id ?? '') && (funcionario.usuarios || pode('rh', 'critica')) ? (
           <div className="space-y-3">
             <AcessoFicha funcionario={funcionario} />

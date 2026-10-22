@@ -1,6 +1,7 @@
 // RH, entrega 4 (decisão 69, resposta 1): o RH gerencia os logins do ERP.
-// criar_login: cria o usuário no Auth e devolve o link de convite (o funcionário escolhe a própria senha).
-// link_senha: devolve um link para o funcionário definir uma nova senha. desativar / reativar: bloqueia ou libera o login.
+// criar_login: cria o usuário no Auth e manda o convite por e-mail (o funcionário escolhe a própria senha).
+// link_senha: manda por e-mail o link para definir uma nova senha. Se o e-mail não sair, devolve o link para o RH.
+// desativar / reativar: bloqueia ou libera o login.
 // A chave service_role vem do ambiente da Edge Function (SUPABASE_SERVICE_ROLE_KEY) e nunca vai para o site.
 // O ERP nunca vê nem guarda senhas: só gera links. As regras de quem pode mexer em quem são as do banco
 // (conferir_gestao_acesso, migration 39), chamadas como o próprio usuário logado.
@@ -39,13 +40,17 @@ Deno.serve(async (req) => {
     const voltar = String(corpo.voltar ?? '');
     const redirectTo = ORIGENS.some((o) => voltar.startsWith(`${o}/`)) ? voltar : `${ORIGENS[0]}/ERP-Fabria-o/`;
 
-    // Link para a pessoa definir a senha. Quem nunca entrou aparece como convite.
+    // Link para a pessoa definir a senha, mandado por e-mail pelo Supabase Auth (SMTP configurado no painel).
+    // Se o e-mail não sair, devolve o link para o RH mandar. Quem nunca entrou aparece como convite.
     async function linkSenha(usuarioId: string, email: string) {
       const { data: u } = await adm.auth.admin.getUserById(usuarioId);
-      const convite = !u?.user?.last_sign_in_at;
+      const tipo = u?.user?.last_sign_in_at ? 'recovery' : 'invite';
+      const publico = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false } });
+      const { error: falhou } = await publico.auth.resetPasswordForEmail(email, { redirectTo });
+      if (!falhou) return { enviado: true, email, tipo };
       const { data, error } = await adm.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } });
       if (error) throw new Error(`Não foi possível gerar o link: ${error.message}.`);
-      return { link: data.properties.action_link, email, tipo: convite ? 'invite' : 'recovery' };
+      return { enviado: false, motivo: falhou.message, link: data.properties.action_link, email, tipo };
     }
 
     if (corpo.acao === 'criar_login') {
@@ -64,16 +69,25 @@ Deno.serve(async (req) => {
         const { error } = await sb.rpc('vincular_login_funcionario', { p_funcionario: funcionarioId, p_usuario: existente.id });
         if (error) return resposta({ erro: error.message }, 400);
         const r = await linkSenha(existente.id, email);
-        await auditar(existente.id, { email, funcionario_id: funcionarioId, ligado_a_ficha: true });
+        await auditar(existente.id, { email, funcionario_id: funcionarioId, ligado_a_ficha: true, email_enviado: r.enviado });
         return resposta({ usuario_id: existente.id, ...r });
       }
 
-      const { data, error } = await adm.auth.admin.generateLink({ type: 'invite', email, options: { data: { nome: ficha.nome }, redirectTo } });
-      if (error || !data.user) return resposta({ erro: `Não foi possível criar o login: ${error?.message ?? 'erro desconhecido'}.` }, 400);
-      const { error: e2 } = await sb.rpc('vincular_login_funcionario', { p_funcionario: funcionarioId, p_usuario: data.user.id });
+      // Convite por e-mail (Supabase Auth). Se o e-mail não sair, cria pelo link e devolve o link para o RH mandar.
+      const convite = await adm.auth.admin.inviteUserByEmail(email, { data: { nome: ficha.nome }, redirectTo });
+      let novo = convite.data.user;
+      let r: Record<string, unknown> = { enviado: true, email, tipo: 'invite' };
+      if (convite.error || !novo) {
+        const { data: ja } = await sb.from('usuarios').select('id').ilike('email', email).maybeSingle();
+        const { data, error } = await adm.auth.admin.generateLink({ type: ja ? 'recovery' : 'invite', email, options: { data: { nome: ficha.nome }, redirectTo } });
+        if (error || !data.user) return resposta({ erro: `Não foi possível criar o login: ${error?.message ?? convite.error?.message ?? 'erro desconhecido'}.` }, 400);
+        novo = data.user;
+        r = { enviado: false, motivo: convite.error?.message ?? '', link: data.properties.action_link, email, tipo: 'invite' };
+      }
+      const { error: e2 } = await sb.rpc('vincular_login_funcionario', { p_funcionario: funcionarioId, p_usuario: novo.id });
       if (e2) return resposta({ erro: `Login criado, mas não foi ligado à ficha: ${e2.message}. Clique em "Criar login" de novo.` }, 500);
-      await auditar(data.user.id, { email, funcionario_id: funcionarioId, convite: true });
-      return resposta({ usuario_id: data.user.id, link: data.properties.action_link, email, tipo: 'invite' });
+      await auditar(novo.id, { email, funcionario_id: funcionarioId, convite: true, email_enviado: r.enviado });
+      return resposta({ usuario_id: novo.id, ...r });
     }
 
     const usuarioId = String(corpo.usuario_id ?? '');
@@ -85,7 +99,7 @@ Deno.serve(async (req) => {
 
     if (corpo.acao === 'link_senha') {
       const r = await linkSenha(usuarioId, alvo.email);
-      await auditar(usuarioId, { link_senha: r.tipo });
+      await auditar(usuarioId, { link_senha: r.tipo, email_enviado: r.enviado });
       return resposta(r);
     }
 

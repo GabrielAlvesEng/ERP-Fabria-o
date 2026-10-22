@@ -214,7 +214,7 @@ type AcaoLogin =
   | { acao: 'criar_login'; funcionario_id: string; email: string }
   | { acao: 'link_senha' | 'desativar' | 'reativar'; usuario_id: string };
 
-export async function rhAcesso(pedido: AcaoLogin): Promise<{ link?: string; email?: string; tipo?: string; ativo?: boolean }> {
+export async function rhAcesso(pedido: AcaoLogin): Promise<{ enviado?: boolean; motivo?: string; link?: string; email?: string; tipo?: string; ativo?: boolean }> {
   // O link do convite volta para o próprio ERP, na tela de definir senha.
   const voltar = new URL(import.meta.env.BASE_URL, window.location.origin).href;
   const { data, error } = await supabase.functions.invoke('rh-acesso', { body: { ...pedido, voltar } });
