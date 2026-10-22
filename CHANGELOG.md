@@ -203,3 +203,4 @@
 - **Correção:** no Dashboard Comercial, a tabela de "Propostas por etapa" desce para baixo da rosca quando o cartão fica estreito (tela dividida), em vez de vazar. Conferido a 1100 e 1680 px com dados simulados.
 - **Decisão 80:** códigos dos contatos de 2026 iguais à pasta de clientes do Gabriel (01 a 54). Migration `20261022000044_codigos_contatos_2026.sql` aplicada, com conferência no fim (01 a 54 sem buraco, 54 contatos ativos) e verificada no banco depois; gatilho de proteção religado. 29 contatos fora da lista na lixeira (lógica).
 - **Decisão 81:** "Refazer só esta seção com IA" em cada seção que a IA escreve, com pedido de ajuste opcional. Conferido na tela com dados de exemplo; a chamada real à IA não foi testada daqui. 144 testes ok.
+- **Validação (22/10/2026, 15:00 de Brasília):** o Gabriel testou as propostas com uma proposta real e aprovou o módulo Vendas ("está funcionando perfeitamente"). O próximo módulo depende da autorização dele.
