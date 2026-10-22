@@ -200,6 +200,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - A seção **Valores** da proposta comercial tem um campo de valor para cada item. O valor digitado é o mesmo "valor de venda manual" da aba Custos (`custo_itens.valor_manual`), com "Voltar ao calculado". A soma aparece como valor total e atualiza o valor da proposta enquanto ela está "À enviar". Sem item nos Custos, dá para criar o item A ali mesmo.
     - **Sobre nós e Dados da Empresa são obrigatórios na técnica:** saem sempre no PDF (mesmo em documentos antigos com a seção desligada) e não aparecem mais no editor.
     - A imagem principal da capa ocupa todo o espaço livre até o rodapé (antes tinha no máximo 210 pt de altura). Na capa clara, sem moldura.
+    - **Publicação só pelo GitHub por enquanto (22/10/2026, 13:44 de Brasília):** o Gabriel pediu para esquecer o Netlify. A decisão 37 volta a valer: nada de Netlify até ele liberar de novo.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
