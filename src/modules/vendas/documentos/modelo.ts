@@ -426,3 +426,29 @@ export function pendencias(s: Secao, itens: { letra: string; valor: number }[] =
   return [...new Set(f)];
 }
 
+// Decisão 81: refazer com a IA só uma seção. A IA escreve o documento todo, mas só a seção escolhida é trocada;
+// o texto atual dela e o pedido de ajuste vão junto na explicação.
+export const SECOES_IA = ['objetivo', 'aplicacao', 'normas', 'competencias', 'escopo', 'fora', 'valores'];
+export function aplicarTextosIASecao(doc: Documento, t: TextosIA, secaoId: string): Documento {
+  const novo = aplicarTextosIA(doc, t).secoes.find((s) => s.id === secaoId);
+  return novo ? { ...doc, secoes: doc.secoes.map((s) => (s.id === secaoId ? novo : s)) } : doc;
+}
+export function textoAtualDaSecao(s: Secao): string {
+  switch (s.tipo) {
+    case 'texto': return s.texto;
+    case 'cartoes': return [s.intro, ...s.cartoes.map((c, i) => `${marcadorCartao(s.marcador, i)}. ${c.titulo}: ${c.texto}`)].filter(Boolean).join('\n\n');
+    case 'competencias': return s.itens.map((i) => `${i.nome}: ${i.valor}`).join('\n');
+    case 'valores': return Object.entries(s.descricoes).map(([l, d]) => `${l}: ${d}`).join('\n');
+    default: return '';
+  }
+}
+export function explicacaoParaSecao(explicacao: string, s: Secao, pedido: string): string {
+  const atual = textoAtualDaSecao(s).trim();
+  return [
+    explicacao.trim(),
+    `ATENÇÃO: desta vez só a seção "${s.titulo}" será usada. Capriche nela.`,
+    atual ? `Texto atual da seção "${s.titulo}":\n${atual}` : '',
+    pedido.trim() ? `Ajuste pedido para a seção "${s.titulo}": ${pedido.trim()}` : `Reescreva a seção "${s.titulo}" melhorando o texto atual.`,
+  ].filter(Boolean).join('\n\n');
+}
+

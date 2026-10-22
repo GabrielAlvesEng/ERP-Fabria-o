@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, fixarSecoesDoModelo, pendencias, sincronizarEscopo, substituir, trechos } from './modelo';
+import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, fixarSecoesDoModelo, pendencias, aplicarTextosIASecao, explicacaoParaSecao, sincronizarEscopo, substituir, trechos } from './modelo';
 
 describe('documentos da proposta', () => {
   it('lê negrito', () => {
@@ -171,6 +171,20 @@ describe('pendencias (decisão 77)', () => {
     expect(pendencias(val, [{ letra: 'A', valor: 0 }, { letra: 'B', valor: 5 }])).toEqual(['Valor do item A']);
     const garantia = doc.secoes.find((s) => s.tipo === 'garantia')!;
     expect(pendencias(garantia)).toEqual([]);
+  });
+});
+
+describe('IA em uma seção só (decisão 81)', () => {
+  it('troca só a seção pedida e leva o texto atual e o pedido na explicação', () => {
+    const doc = documentoPadrao('tecnica');
+    doc.secoes = doc.secoes.map((s) => (s.tipo === 'texto' && (s.id === 'objetivo' || s.id === 'aplicacao') ? { ...s, texto: `Antigo ${s.id}` } : s));
+    const r = aplicarTextosIASecao(doc, { objetivo: 'Novo objetivo', aplicacao: 'Nova aplicação' }, 'aplicacao');
+    const txt = (id: string) => { const s = r.secoes.find((x) => x.id === id)!; return s.tipo === 'texto' ? s.texto : ''; };
+    expect(txt('aplicacao')).toBe('Nova aplicação');
+    expect(txt('objetivo')).toBe('Antigo objetivo');
+    const e = explicacaoParaSecao('Troca de corrimãos', doc.secoes.find((x) => x.id === 'objetivo')!, 'mais curto');
+    expect(e).toContain('Antigo objetivo');
+    expect(e).toContain('Ajuste pedido para a seção "Objetivo": mais curto');
   });
 });
 

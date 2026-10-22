@@ -2,11 +2,11 @@ import { useState, type ReactNode } from 'react';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Trash2 } from 'lucide-react';
+import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { AreaTexto, Botao, Caixa, Campo, CampoInteiro, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
 import {
-  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, marcadorCartao, numerar, pendencias, sincronizarEscopo,
+  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, SECOES_IA, marcadorCartao, numerar, pendencias, sincronizarEscopo,
   type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type LinhaMatriz, type Marca3, type Secao,
 } from './modelo';
 import { TextoFormatado } from './TextoFormatado';
@@ -23,10 +23,11 @@ export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<st
 export type ItemValor = { id?: string; letra: string; descricao: string; valor: number; manual?: boolean; calculado?: number };
 export type AcoesValor = { salvar: (id: string, valor: number | null) => void; criarItem: () => void; ocupado: boolean };
 
-export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados, modelo }: {
+export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados, modelo, ia }: {
   doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: ItemValor[]; imagens?: Imagens; valores?: AcoesValor;
   capaDados?: { titulo: string; descricao: string }; // decisão 72: título e subtítulo da capa vêm da aba Dados
   modelo?: boolean; // Administração → Modelos de proposta: lá o Anexo é editado (decisão 75)
+  ia?: { refazer: (secaoId: string, pedido: string) => void; pensando: boolean }; // decisão 81
 }) {
   const [aberta, setAberta] = useState<string | null>(null);
   doc = sincronizarEscopo(doc, itens); // decisão 74: Escopo com os itens (e nomes) da aba Custos
@@ -107,7 +108,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
               {aberta === s.id ? 'Fechar' : fixa ? 'Ver' : 'Editar'}
             </button>
           </div>
-          {aberta === s.id && <div className="border-t border-borda p-3">{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} valores={valores} escopoDosCustos={escopoDosCustos} />}</div>}
+          {aberta === s.id && <div className="border-t border-borda p-3">{!fixa && ia && SECOES_IA.includes(s.id) && <PedirIA titulo={s.titulo} pensando={ia.pensando} onPedir={(pedido) => ia.refazer(s.id, pedido)} />}{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} valores={valores} escopoDosCustos={escopoDosCustos} />}</div>}
         </div>
         );
       })}
@@ -447,5 +448,19 @@ function Situacao({ faltando }: { faltando: string[] }) {
   return faltando.length
     ? <span title={`Falta preencher: ${faltando.join(', ')}`} aria-label="Falta preencher" className="shrink-0 text-amber-500"><CircleX size={16} /></span>
     : <span title="Preenchido" aria-label="Preenchido" className="shrink-0 text-emerald-600 dark:text-emerald-400"><CircleCheck size={16} /></span>;
+}
+
+// Decisão 81: pedir à IA só esta seção, com um ajuste opcional ("deixe mais curto", "cite a NR-12"...).
+function PedirIA({ titulo, pensando, onPedir }: { titulo: string; pensando: boolean; onPedir: (pedido: string) => void }) {
+  const [pedido, setPedido] = useState('');
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-roxo-50 p-2 ring-1 ring-roxo-100 dark:bg-roxo-500/10 dark:ring-roxo-700/40">
+      <Sparkles size={15} className="shrink-0 text-roxo-600 dark:text-roxo-100" />
+      <input value={pedido} onChange={(e) => setPedido(e.target.value)} placeholder={`O que mudar em "${titulo}"? (opcional)`}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !pensando) { e.preventDefault(); onPedir(pedido); } }}
+        className="min-w-[12rem] flex-1 rounded-md border border-transparent bg-superficie px-2 py-1 text-sm outline-none focus:border-roxo-500" />
+      <Botao type="button" variante="secundario" tamanho="sm" disabled={pensando} onClick={() => onPedir(pedido)}>{pensando ? 'A IA está escrevendo…' : 'Refazer só esta seção com IA'}</Botao>
+    </div>
+  );
 }
 

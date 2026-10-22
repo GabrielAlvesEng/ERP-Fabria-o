@@ -10,7 +10,7 @@ import { atualizarItem, criarItem } from '@/modules/vendas/custos/api';
 import type { Proposta } from '@/modules/vendas/types';
 import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadroes, salvarDocumento } from './api';
 import { EditorDocumento } from './EditorDocumento';
-import { aplicarTextosIA, completarDocumento, fixarSecoesDoModelo, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
+import { aplicarTextosIA, aplicarTextosIASecao, completarDocumento, explicacaoParaSecao, fixarSecoesDoModelo, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
 
 const Previa = lazy(() => import('./Previa'));
 const SEM_IMAGENS: Record<string, string> = {};
@@ -140,6 +140,27 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
     setPensando(false);
   }
 
+  // Decisão 81: refazer com a IA só uma seção, com um pedido de ajuste opcional.
+  async function gerarSecaoComIA(secaoId: string, pedido: string) {
+    if (!doc || !dados) return;
+    const s = doc.secoes.find((x) => x.id === secaoId);
+    if (!s) return;
+    if (explicacao.trim().length < 15) return setMsg({ tipo: 'erro', texto: 'Antes, explique a proposta no quadro "Gerar textos com IA" (o que será feito, para quem e onde).' });
+    setMsg(null); setPensando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gerar-textos-proposta', {
+        body: { tipo, explicacao: explicacaoParaSecao(explicacao, s, pedido), titulo: p.titulo, cliente: dados.cliente.nome, local: dados.cliente.local, itens: dados.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) },
+      });
+      if (error) {
+        const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
+        throw new Error(corpo?.erro ?? error.message);
+      }
+      alterar(aplicarTextosIASecao({ ...doc, explicacao }, (data as { textos: TextosIA }).textos, secaoId));
+      setMsg({ tipo: 'info', texto: `Seção "${s.titulo}" refeita pela IA. As outras não mudaram. Revise antes de gerar o PDF.` });
+    } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); }
+    setPensando(false);
+  }
+
   function restaurar() {
     if (!padroes || !confirm(`Voltar a proposta ${tipo === 'tecnica' ? 'técnica' : 'comercial'} para os textos padrão? O que foi escrito nesta revisão será substituído.`)) return;
     alterar(padroes[tipo]);
@@ -180,7 +201,8 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
       {msg && <Aviso tipo={msg.tipo === 'info' ? 'info' : undefined}>{msg.texto}</Aviso>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className={verPrevia ? 'hidden lg:block' : ''}>
-          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} capaDados={{ titulo: p.titulo, descricao: p.descricao ?? '' }} />
+          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} capaDados={{ titulo: p.titulo, descricao: p.descricao ?? '' }}
+            ia={editavel ? { refazer: gerarSecaoComIA, pensando } : undefined} />
         </div>
         <div className={`lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:block'}`}>
           {dados ? <Suspense fallback={<EsqueletoPagina />}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} tecnica={tipo === 'comercial' ? docs.tecnica : null} /></Suspense> : <EsqueletoPagina />}
