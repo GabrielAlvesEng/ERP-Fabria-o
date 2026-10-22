@@ -2,11 +2,11 @@ import { useState, type ReactNode } from 'react';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Trash2 } from 'lucide-react';
+import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Trash2 } from 'lucide-react';
 import { AreaTexto, Botao, Caixa, Campo, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
 import {
-  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, marcadorCartao, numerar, sincronizarEscopo,
+  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, marcadorCartao, numerar, pendencias, sincronizarEscopo,
   type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type LinhaMatriz, type Marca3, type Secao,
 } from './modelo';
 import { TextoFormatado } from './TextoFormatado';
@@ -74,6 +74,12 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
         </div>
       </div>
       <p className="text-xs text-suave">Use a barra de cada texto para negrito, sublinhado e listas. Linha em branco separa parágrafos. Cliente, Local, Código e Validade viram os dados da proposta.</p>
+      {!modelo && (() => {
+        const abertas = doc.secoes.filter((s) => s.ativo && !SECOES_DO_MODELO[doc.tipo].includes(s.id) && s.tipo !== 'sobre' && s.tipo !== 'dados_empresas' && pendencias(s, itens).length);
+        return abertas.length
+          ? <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400"><CircleX size={14} /> Falta preencher: {abertas.map((s) => s.titulo).join(', ')}.</p>
+          : <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"><CircleCheck size={14} /> Todas as seções estão preenchidas.</p>;
+      })()}
       {doc.secoes.map((s, i) => {
         // Sobre nós e Dados da Empresa são obrigatórios na técnica (decisão 71): nem aparecem no editor.
         if (s.tipo === 'sobre' || s.tipo === 'dados_empresas') return null;
@@ -86,6 +92,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
           <div className="flex items-center gap-2 px-3 py-2">
             <Caixa marcado={s.ativo} onChange={(ativo) => setSecao(i, { ...s, ativo })} />
             <span className="w-6 text-xs font-semibold text-roxo-600 dark:text-roxo-100">{doc.tipo === 'tecnica' ? numeros[s.id] ?? '—' : ''}</span>
+            {!modelo && !fixa && s.ativo && <Situacao faltando={pendencias(s, itens)} />}
             {fixa ? (
               <span className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-0.5 text-sm font-semibold">{s.titulo} <span className="inline-flex items-center gap-0.5 text-[11px] font-normal text-suave"><Lock size={11} /> fixa</span></span>
             ) : (
@@ -434,3 +441,11 @@ function InicioPrazo({ valor, onChange }: { valor: string; onChange: (v: string)
     </Campo>
   );
 }
+
+// Decisão 77: X amarelo quando falta algo obrigatório na seção (a lista aparece ao passar o mouse); certinho verde quando está completa.
+function Situacao({ faltando }: { faltando: string[] }) {
+  return faltando.length
+    ? <span title={`Falta preencher: ${faltando.join(', ')}`} aria-label="Falta preencher" className="shrink-0 text-amber-500"><CircleX size={16} /></span>
+    : <span title="Preenchido" aria-label="Preenchido" className="shrink-0 text-emerald-600 dark:text-emerald-400"><CircleCheck size={16} /></span>;
+}
+

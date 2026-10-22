@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, fixarSecoesDoModelo, sincronizarEscopo, substituir, trechos } from './modelo';
+import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, fixarSecoesDoModelo, pendencias, sincronizarEscopo, substituir, trechos } from './modelo';
 
 describe('documentos da proposta', () => {
   it('lê negrito', () => {
@@ -155,6 +155,22 @@ describe('fixarSecoesDoModelo na comercial (decisão 76)', () => {
     expect(i.ativo && i.tipo === 'impostos' && i.ncm).toBe('7308.90.10');
     const p = r.secoes.find((s) => s.tipo === 'pagamento')!;
     expect(p.tipo === 'pagamento' && p.condicao).toBe('30 DDL');
+  });
+});
+
+describe('pendencias (decisão 77)', () => {
+  it('aponta o que falta e fica vazio quando está completo', () => {
+    const doc = documentoPadrao('tecnica');
+    const obj = doc.secoes.find((s) => s.id === 'objetivo')!;
+    expect(pendencias(obj)).toEqual(['Texto']);
+    expect(pendencias({ ...obj, tipo: 'texto', texto: 'Ok' } as typeof obj)).toEqual([]);
+    const esc = sincronizarEscopo(doc, [{ descricao: 'Plataforma' }]).secoes.find((s) => s.id === 'escopo')!;
+    expect(pendencias(esc, [{ letra: 'A', valor: 10 }])).toEqual(['Descrição do item A']);
+    const val = documentoPadrao('comercial').secoes.find((s) => s.tipo === 'valores')!;
+    expect(pendencias(val, [])).toEqual(['Itens na aba Custos']);
+    expect(pendencias(val, [{ letra: 'A', valor: 0 }, { letra: 'B', valor: 5 }])).toEqual(['Valor do item A']);
+    const garantia = doc.secoes.find((s) => s.tipo === 'garantia')!;
+    expect(pendencias(garantia)).toEqual([]);
   });
 });
 

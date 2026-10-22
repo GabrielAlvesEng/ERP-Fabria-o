@@ -367,3 +367,63 @@ export function fixarSecoesDoModelo(doc: Documento, modelo: Documento): Document
   return { ...doc, secoes };
 }
 
+// Decisão 77: o que falta preencher em cada seção editável (vazio = completa). Aparece no editor como um X amarelo
+// (com a lista no balão) ou um certinho verde. Itens são os da aba Custos, com o valor de venda.
+export function pendencias(s: Secao, itens: { letra: string; valor: number }[] = []): string[] {
+  const vazio = (t?: string) => !t || !t.trim();
+  const f: string[] = [];
+  switch (s.tipo) {
+    case 'texto':
+      if (vazio(s.texto)) f.push('Texto');
+      break;
+    case 'cartoes':
+      if (s.id === 'escopo' && !itens.length) f.push('Itens na aba Custos');
+      if (!s.cartoes.length) f.push('Pelo menos um item');
+      s.cartoes.forEach((c, i) => {
+        const m = marcadorCartao(s.marcador, i);
+        if (vazio(c.titulo)) f.push(`Nome do item ${m}`);
+        if (vazio(c.texto)) f.push(`Descrição do item ${m}`);
+      });
+      break;
+    case 'competencias':
+      if (!s.itens.some((x) => !vazio(x.nome))) f.push('Pelo menos uma competência');
+      if (s.itens.some((x) => vazio(x.nome))) f.push('Competência sem nome');
+      break;
+    case 'responsabilidades':
+      if (!s.grupos.some((g) => g.itens.length)) f.push('Pelo menos uma responsabilidade');
+      s.grupos.forEach((g) => {
+        if (vazio(g.area)) f.push('Área sem nome');
+        if (g.itens.some((x) => vazio(x.texto))) f.push(`Item sem texto em ${g.area || 'uma área'}`);
+        if (g.itens.some((x) => !x.cliente && !x.fabriaco)) f.push(`Responsável não marcado em ${g.area || 'uma área'}`);
+      });
+      break;
+    case 'matriz':
+      if (!s.itens.length) f.push('Pelo menos um item');
+      break;
+    case 'garantia':
+      if (!(Number(s.meses) > 0)) f.push('Meses de garantia');
+      break;
+    case 'cronograma':
+      if (!s.etapas.length) f.push('Pelo menos uma etapa');
+      s.etapas.forEach((e, i) => {
+        if (vazio(e.nome)) f.push(`Nome da etapa ${i + 1}`);
+        if (!(Number(e.dias) > 0)) f.push(`Dias da etapa ${e.nome || i + 1}`);
+      });
+      if (vazio(s.inicio)) f.push('Início do prazo');
+      break;
+    case 'pagamento':
+      if (vazio(s.condicao)) f.push('Condição');
+      if (vazio(s.marco)) f.push('Marco do pagamento');
+      if (vazio(s.forma)) f.push('Forma');
+      break;
+    case 'valores':
+      if (!itens.length) f.push('Itens na aba Custos');
+      itens.forEach((it) => { if (!(it.valor > 0)) f.push(`Valor do item ${it.letra}`); });
+      break;
+    case 'impostos':
+      if (vazio(s.ncm)) f.push('NCM');
+      break;
+  }
+  return [...new Set(f)];
+}
+
