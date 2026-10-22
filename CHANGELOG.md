@@ -201,3 +201,4 @@
 - **Decisão 79:** prazo total da técnica com os dias em destaque e o "após ..." embaixo. Conferido no PDF.
 - **Correções:** o Prazo de Entrega aparecia incompleto em documento sem o início do prazo gravado (vale o padrão). Novo `CampoInteiro` (− e +) para dias e meses nas propostas; setinhas do navegador escondidas. Conferido na tela com dados de exemplo; 143 testes ok.
 - **Correção:** no Dashboard Comercial, a tabela de "Propostas por etapa" desce para baixo da rosca quando o cartão fica estreito (tela dividida), em vez de vazar. Conferido a 1100 e 1680 px com dados simulados.
+- **Decisão 80:** códigos dos contatos de 2026 iguais à pasta de clientes do Gabriel (01 a 54). Migration `20261022000044_codigos_contatos_2026.sql` aplicada, com conferência no fim (01 a 54 sem buraco, 54 contatos ativos) e verificada no banco depois; gatilho de proteção religado. 29 contatos fora da lista na lixeira (lógica).
