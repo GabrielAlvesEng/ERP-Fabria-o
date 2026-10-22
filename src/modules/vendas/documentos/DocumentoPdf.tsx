@@ -10,6 +10,7 @@ import {
   resumoTecnica, substituir, VALIDADE_CONDICOES, type Cartao, type DadosEmpresaFabriaco, type Documento, type Etapa, type Secao, type Trecho, type Variaveis,
 } from './modelo';
 import { MAPA_SP } from './mapaSP';
+import { dividirTexto, larguraTexto } from './fluxo';
 
 // PDF da proposta (decisão 61; novo design na decisão 67). A prévia na tela e o arquivo gerado saem deste mesmo componente.
 // Técnica: capa + páginas com as seções numeradas. Comercial: 4 páginas (capa, visão geral, valores e encerramento).
@@ -35,15 +36,19 @@ const C = {
   navy: '#141a2e', navy2: '#1f2640', navy3: '#262d4d', teal: '#15303a', roxo: '#6e48d0', roxoMarca: '#410FA0', roxoClaro: '#9a78ea', lavanda: '#ece8fb', lavanda2: '#f5f2fd',
   texto: '#1f2433', suave: '#6b7280', borda: '#e5e7eb', fundo: '#f6f7fb', verde: '#0f766e', verdeFundo: '#d9f2ee', vermelho: '#b42318', vermelhoFundo: '#fde2e1',
 };
+const A4_ALTURA = 841.89;
 const MARCA = `${import.meta.env.BASE_URL}marca/pdf/`;
 // Cards de imagem ao lado do item (pt): 5 imagens por item cabem numa página.
-const IMG = { largura: 178, altura: 104, espaco: 8, ligacao: 26, saida: 16 };
+const IMG = { largura: 178, altura: 104, espaco: 8, ligacao: 26, saida: 16, textoAoLado: 0 };
+// Largura do texto no card ao lado das imagens: página (595,28) − margens (2 × 46) − ligação − imagens − padding (2 × 10) − marcador (32).
+IMG.textoAoLado = 595.28 - 92 - IMG.ligacao - IMG.largura - 20 - 32;
 
 const s = StyleSheet.create({
   pagina: { fontFamily: 'Geist', fontSize: 9.5, color: C.texto, paddingTop: 62, paddingBottom: 56, paddingHorizontal: 46, lineHeight: 1.45 },
   topo: { position: 'absolute', top: 22, left: 46, right: 46, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: 7, letterSpacing: 1,
     borderBottomWidth: 0.5, borderBottomColor: C.borda, paddingBottom: 7 },
-  rodape: { position: 'absolute', bottom: 24, left: 46, right: 46, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, color: C.suave, borderTopWidth: 0.5, borderTopColor: C.borda, paddingTop: 6 },
+  // Rodapé pelo topo: com o número de página (render), o react-pdf refaz a página sem altura e "bottom" jogava o rodapé para o alto da folha.
+  rodape: { position: 'absolute', top: A4_ALTURA - 24 - 16, left: 46, right: 46, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, color: C.suave, borderTopWidth: 0.5, borderTopColor: C.borda, paddingTop: 6 },
   kicker: { fontSize: 7.5, fontWeight: 600, color: C.roxo, letterSpacing: 1.6, lineHeight: 1.3, marginBottom: 6 },
   h1: { fontSize: 22, fontWeight: 700, letterSpacing: -0.4, lineHeight: 1.25, marginBottom: 6 },
   sub: { fontSize: 9.5, color: C.suave, marginBottom: 14 },
@@ -70,7 +75,7 @@ const somarDias = (iso: string, dias: number) => {
 const qtd = (n: number) => (Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 3 }));
 
 function Rico({ trechos, estilo }: { trechos: Trecho[]; estilo?: Styles[string] }) {
-  return <Text style={estilo}>{trechos.map((t, i) => <Text key={i} style={t.negrito ? { fontWeight: 600 } : undefined}>{t.texto}</Text>)}</Text>;
+  return <Text style={estilo} wrap={false}>{trechos.map((t, i) => <Text key={i} style={t.negrito ? { fontWeight: 600 } : undefined}>{t.texto}</Text>)}</Text>;
 }
 
 // "topo" (título da seção) fica colado ao primeiro parágrafo ou item, para nunca sobrar sozinho no pé da página.
@@ -80,7 +85,7 @@ function TextoRico({ texto, v, topo, estilo }: { texto: string; v: Variaveis; to
   const lista = blocos(substituir(texto, v));
   if (!lista.length) return topo ? <View wrap={false}>{topo}</View> : null;
   return (
-    <View>
+    <>
       {lista.map((b, i) => {
         if (b.tipo === 'p') return i === 0 && topo ? <View key={i} wrap={false}>{topo}<Rico trechos={b.trechos} estilo={p as Styles[string]} /></View> : <Rico key={i} trechos={b.trechos} estilo={p as Styles[string]} />;
         return (
@@ -90,7 +95,7 @@ function TextoRico({ texto, v, topo, estilo }: { texto: string; v: Variaveis; to
           </View>
         );
       })}
-    </View>
+    </>
   );
 }
 
@@ -331,14 +336,14 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
       const comIntro = Boolean(secao.intro.trim());
       const comDestaque = Boolean(secao.destaque?.trim());
       const caixaCartao = { flexDirection: 'row' as const, borderWidth: 0.5, borderColor: C.borda, borderRadius: 6, backgroundColor: C.fundo, padding: 10 };
-      const miolo = (c: Cartao, i: number) => (
+      const miolo = (c: Cartao, i: number, texto = substituir(c.texto, v)) => (
         <>
           <View style={{ width: 22, height: 22, borderRadius: 4, backgroundColor: C.lavanda, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
             <Text style={{ fontSize: 8.5, fontWeight: 700, lineHeight: 1, color: C.roxo }}>{marcadorCartao(secao.marcador, i)}</Text>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 8.5, fontWeight: 700, marginBottom: 3 }}>{substituir(c.titulo, v).toUpperCase()}</Text>
-            <Text style={{ fontSize: 8, color: '#374151', lineHeight: 1.45 }}>{substituir(c.texto, v)}</Text>
+            {texto ? <Text style={{ fontSize: 8, color: '#374151', lineHeight: 1.45 }}>{texto}</Text> : null}
           </View>
         </>
       );
@@ -350,9 +355,14 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
         const centros = figs.map((_, k) => k * (IMG.altura + IMG.espaco) + IMG.altura / 2);
         const ultimo = centros[centros.length - 1];
         const tronco = IMG.ligacao / 2;
-        return (
-          <View key={i} wrap={false} style={{ flexDirection: 'row', marginBottom: 10 }}>
-            <View style={{ ...caixaCartao, flex: 1, minHeight: coluna }}>{miolo(c, i)}</View>
+        // Texto maior que a coluna de imagens: o que sobra continua numa faixa de largura total, por baixo das imagens.
+        const titulo = substituir(c.titulo, v).toUpperCase();
+        const linhasTitulo = Math.ceil(larguraTexto(titulo, 8.5) * 1.06 / IMG.textoAoLado) || 1;
+        const maxLinhas = Math.floor((coluna + 8 - 10 - linhasTitulo * 8.5 * 1.45 - 3) / (8 * 1.45));
+        const { antes, depois } = dividirTexto(substituir(c.texto, v), IMG.textoAoLado, 8, Math.max(maxLinhas, 0));
+        const corpo = (
+          <View style={{ flexDirection: 'row' }}>
+            <View style={{ ...caixaCartao, flex: 1, minHeight: coluna, ...(depois ? { minHeight: coluna + 8, paddingBottom: 0, borderBottomWidth: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 } : {}) }}>{miolo(c, i, antes)}</View>
             <Svg width={IMG.ligacao} height={Math.max(coluna, IMG.saida + 1)} viewBox={`0 0 ${IMG.ligacao} ${Math.max(coluna, IMG.saida + 1)}`}>
               <Path d={`M0 ${IMG.saida} H${tronco} V${Math.max(ultimo, IMG.saida)}`} stroke={C.roxoClaro} strokeWidth={0.9} fill="none" />
               {centros.map((y, k) => <Path key={k} d={`M${tronco} ${y} H${IMG.ligacao - 2}`} stroke={C.roxoClaro} strokeWidth={0.9} fill="none" />)}
@@ -366,6 +376,18 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
                   {f.legenda.trim() ? <Text style={{ fontSize: 6.5, color: C.suave, marginTop: 3, textAlign: 'center', lineHeight: 1.2 }}>{f.legenda}</Text> : null}
                 </View>
               ))}
+            </View>
+          </View>
+        );
+        if (!depois) return <View key={i} wrap={false} style={{ marginBottom: 10 }}>{corpo}</View>;
+        return (
+          <View key={i} style={{ marginBottom: 10 }}>
+            <View wrap={false}>{corpo}</View>
+            <View style={{ ...caixaCartao, borderTopWidth: 0, borderTopLeftRadius: 0, paddingTop: 0 }}>
+              {/* Borda de cima só no trecho embaixo das imagens: o card vira um "L" */}
+              <View style={{ position: 'absolute', top: 0, right: -0.5, width: IMG.ligacao + IMG.largura + 0.5, height: 6, borderTopWidth: 0.5, borderRightWidth: 0.5, borderColor: C.borda, borderTopRightRadius: 6 }} />
+              <View style={{ width: 32 }} />
+              <Text style={{ flex: 1, fontSize: 8, color: '#374151', lineHeight: 1.45, paddingTop: 3 }}>{depois}</Text>
             </View>
           </View>
         );

@@ -5,6 +5,8 @@ import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
 import { RetornosSino } from '@/modules/vendas/RetornosSino';
+import { Avatar } from '@/modules/perfil/Avatar';
+import { useMeuUsuario } from '@/modules/perfil/api';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 const modulos = [
@@ -104,11 +106,19 @@ function ListaModulos({ menu, grande = false }: { menu: typeof modulos; grande?:
   );
 }
 
+// Pé do menu: foto e nome levam ao Meu perfil (decisão 68), em qualquer módulo.
 function Rodape({ email, sair }: { email?: string; sair: () => void }) {
+  const { data: eu } = useMeuUsuario();
   return (
-    <div className="border-t border-borda px-5 py-4 text-xs text-suave">
-      <div className="truncate">{email}</div>
-      <button onClick={sair} className="mt-2 inline-flex items-center gap-1 hover:text-texto">
+    <div className="border-t border-borda px-3 py-3 text-xs text-suave">
+      <NavLink to="/perfil" className={({ isActive }) => `flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors ${isActive ? 'bg-roxo-50 dark:bg-roxo-500/20' : 'hover:bg-pagina dark:hover:bg-marinho-700'}`}>
+        <Avatar caminho={eu?.foto_caminho} versao={eu?.foto_atualizada_em} nome={eu?.nome ?? email} tamanho={32} />
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium text-texto">{eu?.nome ?? email}</span>
+          <span className="block truncate">Meu perfil · {email}</span>
+        </span>
+      </NavLink>
+      <button onClick={sair} className="ml-2 mt-2 inline-flex items-center gap-1 hover:text-texto">
         <LogOut size={14} /> Sair
       </button>
     </div>

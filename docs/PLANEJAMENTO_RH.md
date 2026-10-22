@@ -1,6 +1,6 @@
 # Recursos Humanos (RH)
 
-Versão 1, 22/10/2026. **Estado: planejamento, aguardando aprovação do Gabriel.** Nenhum código escrito.
+Versão 1.1, 22/10/2026 (ajustada à tela Meu perfil, decisão 68). **Estado: planejamento, aguardando aprovação do Gabriel.** Nenhum código escrito.
 
 Pedido do Gabriel (22/10), com a decisão de fazer o RH **antes de seguir com a Engenharia**:
 - o RH serve para ter o controle de cada funcionário e das suas informações;
@@ -11,7 +11,8 @@ Pedido do Gabriel (22/10), com a decisão de fazer o RH **antes de seguir com a 
 Também vale o que o Documento Mestre (seção 5.8) pede para o RH: colaboradores, usuários do ERP, setores e funções, permissões individuais, documentações, integrações de segurança por cliente, validade de documentos e treinamentos, holerites e informações funcionais. E a decisão 62: o vendedor passa a apontar para o cadastro de funcionário quando o RH existir.
 
 ## Hoje
-- Os logins do ERP são criados direto no Supabase (Auth). O ERP tem a tabela `usuarios`, perfis e permissões por módulo e ação, mas **não tem tela para criar, desativar ou redefinir login**.
+- Os logins do ERP são criados direto no Supabase (Auth). O ERP tem a tabela `usuarios`, perfis e permissões por módulo e ação, mas **não tem tela para criar, desativar ou redefinir login, nem para dar perfil a um usuário** (hoje isso é feito no banco, como foi com o Pedro Vinicius e o Guilherme Santos na decisão 68).
+- **Meu perfil (decisão 68):** cada usuário já edita o próprio nome, telefone, data de nascimento e foto (colunas em `usuarios`, foto no espaço privado `perfis`). A decisão 68 deixou endereço e documentos para o RH.
 - Já existem a permissão `rh` (ler, editar) e o perfil **RH** (migration `20261021000032_vendedores.sql`). Hoje só os vendedores usam essa permissão.
 - Frota tem o tipo de veículo **caminhão munck**, mas nenhum vínculo com quem pode dirigir cada veículo.
 - O cadastro de **empresas** (clientes) de Vendas já existe e será reaproveitado nas integrações.
@@ -30,6 +31,8 @@ Abas da ficha:
 - **Integrações em clientes** (seção 4).
 - **Acesso ao ERP** (seção 5).
 - **Observações** e histórico (quem mudou o quê, pela auditoria que o ERP já tem).
+
+**Relação com Meu perfil:** nome, telefone, nascimento e foto continuam onde estão hoje (em `usuarios`, editados pelo próprio funcionário em Meu perfil), e a ficha do RH mostra e edita esses mesmos campos, sem cópia. Para quem ainda não tem login, esses campos ficam na ficha do funcionário e passam para o usuário quando o login for criado. Os outros dados pessoais (CPF, RG, endereço, contato de emergência) só o RH edita.
 
 Nada é apagado: funcionário que sai fica **desligado**, com a data, e some das listas do dia a dia.
 
@@ -50,7 +53,7 @@ Nada é apagado: funcionário que sai fica **desligado**, com a data, e some das
 ## 5. Acesso ao ERP (e-mail de acesso e senhas)
 - Na aba **Acesso ao ERP** da ficha, o RH:
   - **cria o login** com o e-mail de acesso. O funcionário recebe um e-mail para criar a própria senha;
-  - escolhe os **perfis** (Comercial, RH, Financeiro…) e os ajustes individuais de permissão que já existem no ERP;
+  - escolhe os **perfis** (Comercial, RH, Financeiro…) e os ajustes individuais de permissão que já existem no ERP. É a tela que falta hoje para dar perfil a um usuário;
   - **envia link de redefinição** de senha quando alguém esquece;
   - **desativa o login**, o que acontece sozinho também quando o funcionário é desligado.
 - **O ERP nunca guarda nem mostra a senha de ninguém.** A senha é do funcionário e fica só no Supabase Auth, criptografada. Nem o RH nem a Administração conseguem vê-la; eles só mandam o link para criar ou trocar.
@@ -97,7 +100,7 @@ Fica para depois: holerites (pergunta 7), e-mail diário de vencimentos e o uso 
 
 ## Perguntas
 1. **"Senhas":** você quer dizer o login do ERP (o RH cria, desativa e manda link para trocar a senha, sem nunca vê-la, que é o que recomendo) ou guardar senhas de outros sistemas? Se for o segundo, recomendo usar um gerenciador de senhas (ex.: Bitwarden) em vez do ERP, e no ERP registrar só "tem acesso ao sistema X".
-2. **Dados da ficha:** os campos da seção 2 servem? Recomendo deixar **salário e dados bancários fora** por agora (eles entram com Holerites/Financeiro).
+2. **Dados da ficha:** os campos da seção 2 servem? O funcionário continua editando nome, telefone, nascimento e foto em Meu perfil (recomendado), ou isso passa a ser só do RH? Recomendo deixar **salário e dados bancários fora** por agora (eles entram com Holerites/Financeiro).
 3. **ART:** é a ART por obra/serviço (lista por cliente e projeto, como na seção 3) ou o registro do profissional no CREA? Quem da equipe tem?
 4. **Validade das integrações:** cada cliente define a sua validade (recomendado, com 12 meses como padrão)?
 5. **Avisos:** 30 dias antes como padrão (ajustável por tipo de documento) serve? Quem recebe: só o RH (recomendado) ou também o responsável do setor? Quer o e-mail diário já nesta etapa?

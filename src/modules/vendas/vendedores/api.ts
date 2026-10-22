@@ -10,12 +10,12 @@ function ok<T>(r: { data: T | null; error: unknown }): T {
 
 export interface Vendedor {
   usuario_id: string; nome: string; cargo: string; telefone: string; observacoes: string; ativo: boolean;
-  usuarios?: { nome: string; email: string; ativo: boolean } | null;
+  usuarios?: { nome: string; email: string; ativo: boolean; foto_caminho: string | null; foto_atualizada_em: string | null } | null;
 }
 export interface Usuario { id: string; nome: string; email: string; ativo: boolean }
 
 export const listarVendedores = async (): Promise<Vendedor[]> =>
-  ok(await supabase.from('vendedores').select('*, usuarios!vendedores_usuario_id_fkey(nome, email, ativo)').order('nome'));
+  ok(await supabase.from('vendedores').select('*, usuarios!vendedores_usuario_id_fkey(nome, email, ativo, foto_caminho, foto_atualizada_em)').order('nome'));
 
 export const listarUsuarios = async (): Promise<Usuario[]> => ok(await supabase.from('usuarios').select('id, nome, email, ativo').order('nome'));
 
