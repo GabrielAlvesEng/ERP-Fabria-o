@@ -409,7 +409,6 @@ export function pendencias(s: Secao, itens: { letra: string; valor: number }[] =
         if (vazio(e.nome)) f.push(`Nome da etapa ${i + 1}`);
         if (!(Number(e.dias) > 0)) f.push(`Dias da etapa ${e.nome || i + 1}`);
       });
-      if (vazio(s.inicio)) f.push('Início do prazo');
       break;
     case 'pagamento':
       if (vazio(s.condicao)) f.push('Condição');

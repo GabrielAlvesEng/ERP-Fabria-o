@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
-import { CalendarDays, Check, Paperclip, X } from 'lucide-react';
+import { CalendarDays, Check, Minus, Paperclip, Plus, X } from 'lucide-react';
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
@@ -35,6 +35,27 @@ export function Campo({ rotulo, erro, children, className }: { rotulo: string; e
 }
 
 export const Entrada = (p: InputHTMLAttributes<HTMLInputElement>) => <input {...p} className={cx(campoBase, p.className)} />;
+// Número inteiro com botões − e + no lugar das setinhas do navegador (decisão 79). Vazio vira null.
+export function CampoInteiro({ valor, onChange, min = 0, max, disabled, placeholder, sufixo, className }: {
+  valor: number | null | undefined; onChange: (n: number | null) => void; min?: number; max?: number; disabled?: boolean; placeholder?: string; sufixo?: string; className?: string;
+}) {
+  const limitar = (n: number) => Math.min(max ?? Infinity, Math.max(min, Math.round(n)));
+  const passo = (d: number) => onChange(limitar((valor ?? min) + d));
+  const botao = 'flex w-8 shrink-0 items-center justify-center text-suave transition-colors hover:bg-pagina hover:text-texto disabled:opacity-40 dark:hover:bg-marinho-700';
+  return (
+    <div className={cx('flex h-[38px] overflow-hidden rounded-lg border border-slate-300 bg-superficie focus-within:border-roxo-500 focus-within:ring-2 focus-within:ring-roxo-100 dark:border-marinho-500 dark:focus-within:border-roxo-300 dark:focus-within:ring-roxo-700/40', disabled && 'opacity-60', className)}>
+      <button type="button" className={cx(botao, 'border-r border-borda')} disabled={disabled || (valor ?? min) <= min} onClick={() => passo(-1)} aria-label="Diminuir"><Minus size={14} /></button>
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-1 px-1">
+        <input inputMode="numeric" disabled={disabled} placeholder={placeholder} value={valor ?? ''}
+          className="w-full min-w-0 bg-transparent text-center text-sm tabular-nums outline-none"
+          onChange={(e) => { const t = e.target.value.replace(/\D/g, ''); onChange(t === '' ? null : limitar(Number(t))); }}
+          onKeyDown={(e) => { if (e.key === 'ArrowUp') { e.preventDefault(); passo(1); } if (e.key === 'ArrowDown') { e.preventDefault(); passo(-1); } }} />
+        {sufixo && <span className="shrink-0 text-xs text-suave">{sufixo}</span>}
+      </div>
+      <button type="button" className={cx(botao, 'border-l border-borda')} disabled={disabled || (max != null && (valor ?? min) >= max)} onClick={() => passo(1)} aria-label="Aumentar"><Plus size={14} /></button>
+    </div>
+  );
+}
 export const AreaTexto = (p: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea rows={3} {...p} className={cx(campoBase, p.className)} />;
 export { Selecao } from './Selecao';
 

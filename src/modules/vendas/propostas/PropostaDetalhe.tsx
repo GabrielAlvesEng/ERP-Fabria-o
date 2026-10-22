@@ -4,7 +4,7 @@ import { FileText, Lock, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
 import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
-import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, EntradaMoeda, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, CampoData, CampoInteiro, Entrada, EntradaMoeda, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
   abrirArquivo, atualizarRascunho, listarContatos, listarEmpresas, listarEventos, listarReprovacoes,
   moverProposta, obterAprovacao, obterProposta,
@@ -183,8 +183,8 @@ function AbaDados({ p }: { p: Proposta }) {
         <Campo rotulo="Prazo previsto"><Entrada value={f.prazo_previsto} onChange={set('prazo_previsto')} disabled={!editavel} /></Campo>
         <Campo rotulo="Validade (dias)">
           <div className="flex items-center gap-2">
-            <Entrada type="number" min={1} max={3650} className="w-24" value={f.validade_dias ?? ''} disabled={!editavel}
-              onChange={(e) => setF({ ...f, validade_dias: e.target.value ? Math.max(1, Math.round(Number(e.target.value))) : null })} />
+            <CampoInteiro min={1} max={3650} className="w-36" valor={f.validade_dias ?? null} disabled={!editavel}
+              onChange={(n) => setF({ ...f, validade_dias: n })} />
             <span className="text-xs text-suave">{validadeAte(f.data_emissao, f.validade_dias)}</span>
           </div>
         </Campo>

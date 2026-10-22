@@ -3,7 +3,7 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Trash2 } from 'lucide-react';
-import { AreaTexto, Botao, Caixa, Campo, CampoNumero, Entrada, Selecao } from '@/shared/ui';
+import { AreaTexto, Botao, Caixa, Campo, CampoInteiro, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
 import {
   INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, marcadorCartao, numerar, pendencias, sincronizarEscopo,
@@ -239,7 +239,7 @@ function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: {
       return (
         <div className="space-y-2">
           <Campo rotulo="Tempo de garantia (meses, após a emissão da NF)" className="max-w-xs">
-            <Entrada type="number" min={1} max={120} value={s.meses} onChange={(e) => onChange({ ...s, meses: Math.max(1, Math.round(Number(e.target.value) || 1)) })} />
+            <CampoInteiro min={1} max={120} sufixo="meses" valor={s.meses} onChange={(n) => onChange({ ...s, meses: n ?? 1 })} className="max-w-[11rem]" />
           </Campo>
           <p className="text-xs text-suave">O resto da garantia (o que cobre e onde não se aplica) é texto fixo, igual em todas as propostas. A proposta comercial mostra este mesmo prazo.</p>
         </div>
@@ -249,11 +249,11 @@ function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: {
       return (
         <div className="space-y-2">
           <InicioPrazo valor={s.inicio?.trim() || INICIO_PRAZO_PADRAO} onChange={(inicio) => onChange({ ...s, inicio })} />
-          <div className="flex gap-2 text-[11px] font-semibold uppercase text-suave"><span className="flex-1">Etapa</span><span className="w-20 text-right">Dias</span><span className="w-6" /></div>
+          <div className="flex gap-2 text-[11px] font-semibold uppercase text-suave"><span className="flex-1">Etapa</span><span className="w-36 text-center">Dias</span><span className="w-6" /></div>
           {s.etapas.map((e, i) => (
             <div key={i} className="flex items-center gap-2">
               <Entrada value={e.nome} onChange={(ev) => onChange({ ...s, etapas: s.etapas.map((x, j) => (j === i ? { ...x, nome: ev.target.value } : x)) })} placeholder="Etapa" />
-              <Entrada type="number" min={0} className="w-20 text-right" value={e.dias} onChange={(ev) => onChange({ ...s, etapas: s.etapas.map((x, j) => (j === i ? { ...x, dias: Math.max(0, Math.round(Number(ev.target.value) || 0)) } : x)) })} />
+              <CampoInteiro min={0} max={999} sufixo="dias" className="w-36 shrink-0" valor={e.dias} onChange={(n) => onChange({ ...s, etapas: s.etapas.map((x, j) => (j === i ? { ...x, dias: n ?? 0 } : x)) })} />
               <button type="button" onClick={() => onChange({ ...s, etapas: s.etapas.filter((_, j) => j !== i) })} className="w-6 rounded p-1 text-suave hover:text-red-600" title="Remover"><Trash2 size={13} /></button>
             </div>
           ))}

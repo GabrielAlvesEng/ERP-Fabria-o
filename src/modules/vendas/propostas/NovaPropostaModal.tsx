@@ -4,7 +4,7 @@ import { listarVendedores } from '../vendedores/api';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { hojeISO, mensagemErro, numeroBR } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, Entrada, Modal, Selecao, EntradaMoeda } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, Campo, CampoInteiro, Entrada, EntradaMoeda, Modal, Selecao } from '@/shared/ui';
 import { criarProposta, listarContatos, listarEmpresas, sugerirCodigoProposta } from '../api';
 import { validadeAte } from './regras';
 
@@ -108,7 +108,7 @@ export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; on
         <Campo rotulo="Prazo previsto"><Entrada value={f.prazo_previsto} onChange={set('prazo_previsto')} placeholder="ex.: 30 dias" /></Campo>
         <Campo rotulo="Validade da proposta (dias)">
           <div className="flex items-center gap-2">
-            <Entrada type="number" min={1} max={3650} className="w-24" value={f.validade_dias} onChange={set('validade_dias')} placeholder="ex.: 15" />
+            <CampoInteiro min={1} max={3650} className="w-36" valor={f.validade_dias ? Number(f.validade_dias) : null} onChange={(n) => setF({ ...f, validade_dias: n == null ? '' : String(n) })} placeholder="ex.: 15" />
             <span className="text-xs text-suave">{validadeAte(hojeISO(), Number(f.validade_dias) || null)}</span>
           </div>
         </Campo>

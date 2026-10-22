@@ -199,3 +199,4 @@
 - **Decisão 77:** X amarelo ou certinho verde em cada seção editável das propostas, com resumo do que falta. Conferido na tela (editor isolado, dados de exemplo); 143 testes, typecheck e build ok.
 - **Decisão 78:** menu lateral dividido em Módulos operacionais (Vendas, Engenharia) e Módulos administrativos (RH, Administração). Conferido na tela com dados simulados.
 - **Decisão 79:** prazo total da técnica com os dias em destaque e o "após ..." embaixo. Conferido no PDF.
+- **Correções:** o Prazo de Entrega aparecia incompleto em documento sem o início do prazo gravado (vale o padrão). Novo `CampoInteiro` (− e +) para dias e meses nas propostas; setinhas do navegador escondidas. Conferido na tela com dados de exemplo; 143 testes ok.

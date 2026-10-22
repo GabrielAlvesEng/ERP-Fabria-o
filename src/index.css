@@ -82,3 +82,8 @@ table, .tabular-nums { font-variant-numeric: tabular-nums; }
 ::-webkit-scrollbar-thumb { background: rgb(var(--suave) / 0.35); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: rgb(var(--suave) / 0.6); border: 3px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-corner { background: transparent; }
+
+/* Decisão 79: sem as setinhas do navegador nos campos numéricos que restarem (os de dias usam CampoInteiro, com − e +). */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
