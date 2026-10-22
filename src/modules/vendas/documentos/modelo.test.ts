@@ -184,7 +184,11 @@ describe('IA em uma seção só (decisão 81)', () => {
     expect(txt('objetivo')).toBe('Antigo objetivo');
     const e = explicacaoParaSecao('Troca de corrimãos', doc.secoes.find((x) => x.id === 'objetivo')!, 'mais curto');
     expect(e).toContain('Antigo objetivo');
-    expect(e).toContain('Ajuste pedido para a seção "Objetivo": mais curto');
+    expect(e.startsWith('PEDIDO PARA A SEÇÃO "Objetivo" (prioridade): mais curto')).toBe(true);
+    // Texto longo não empurra o pedido para fora do limite da Edge Function.
+    const longa = explicacaoParaSecao('x'.repeat(9000), { id: 'fora', titulo: 'Fora do Escopo', ativo: true, tipo: 'texto', texto: 'y'.repeat(9000) }, 'tire o item de pintura');
+    expect(longa.length).toBeLessThanOrEqual(6000);
+    expect(longa).toContain('tire o item de pintura');
   });
 });
 

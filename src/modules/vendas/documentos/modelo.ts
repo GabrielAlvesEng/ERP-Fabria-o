@@ -442,13 +442,20 @@ export function textoAtualDaSecao(s: Secao): string {
     default: return '';
   }
 }
+// A Edge Function só lê os primeiros 6.000 caracteres: o pedido vai primeiro e os textos longos são cortados,
+// senão o pedido ficava de fora (era o que acontecia no Fora do Escopo, que tem texto grande).
+export const LIMITE_EXPLICACAO_IA = 6000;
 export function explicacaoParaSecao(explicacao: string, s: Secao, pedido: string): string {
+  const cortar = (t: string, max: number) => (t.length > max ? `${t.slice(0, max)}…` : t);
   const atual = textoAtualDaSecao(s).trim();
+  const ordem = pedido.trim()
+    ? `PEDIDO PARA A SEÇÃO "${s.titulo}" (prioridade): ${cortar(pedido.trim(), 800)}`
+    : `PEDIDO: reescreva a seção "${s.titulo}" melhorando o texto atual.`;
   return [
-    explicacao.trim(),
-    `ATENÇÃO: desta vez só a seção "${s.titulo}" será usada. Capriche nela.`,
-    atual ? `Texto atual da seção "${s.titulo}":\n${atual}` : '',
-    pedido.trim() ? `Ajuste pedido para a seção "${s.titulo}": ${pedido.trim()}` : `Reescreva a seção "${s.titulo}" melhorando o texto atual.`,
-  ].filter(Boolean).join('\n\n');
+    ordem,
+    `Desta vez só a seção "${s.titulo}" será usada. Capriche nela.`,
+    `Explicação da proposta:\n${cortar(explicacao.trim(), 2200)}`,
+    atual ? `Texto atual da seção "${s.titulo}":\n${cortar(atual, 2500)}` : '',
+  ].filter(Boolean).join('\n\n').slice(0, LIMITE_EXPLICACAO_IA);
 }
 

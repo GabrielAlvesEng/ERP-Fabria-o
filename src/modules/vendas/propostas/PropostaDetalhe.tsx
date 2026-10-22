@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Lock, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
@@ -135,23 +135,39 @@ function AbaDados({ p }: { p: Proposta }) {
   const empresa = empresas.find((e) => e.id === p.empresa_id);
   const comprador = contatos.find((c) => c.id === p.contato_id);
   const daEmpresa = contatos.filter((c) => c.empresa_id === p.empresa_id && c.id !== p.contato_id).sort((a, b) => a.nome.localeCompare(b.nome));
-  useEffect(() => setF(p), [p]);
   const set = (k: keyof Proposta) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
+  // Decisão 82: salva sozinho 1 s depois da última alteração (sem botão Salvar).
+  const dadosDe = (x: Proposta) => ({
+    titulo: x.titulo, responsavel_id: x.responsavel_id, descricao: x.descricao, valor: Number(numeroBR(String(x.valor)) || 0), prazo_previsto: x.prazo_previsto,
+    validade_dias: x.validade_dias || null, condicoes_comerciais: x.condicoes_comerciais, observacoes: x.observacoes, data_emissao: x.data_emissao,
+    contato_tecnico_id: x.contato_tecnico_id || null, frete: x.frete ?? 'CIF',
+  });
+  const chave = (x: Proposta) => JSON.stringify(dadosDe(x));
+  // Dados que vieram do banco: o formulário só é trocado por eles se não houver alteração ainda não salva.
+  const base = useRef(chave(p));
+  useEffect(() => {
+    setF((atual) => (chave(atual) === base.current ? p : atual));
+    base.current = chave(p);
+  }, [p]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [estado, setEstado] = useState<'' | 'salvando' | 'salvo'>('');
   const m = useMutation({
-    mutationFn: () =>
-      atualizarRascunho(p.id, {
-        titulo: f.titulo, responsavel_id: f.responsavel_id, descricao: f.descricao, valor: Number(numeroBR(String(f.valor)) || 0), prazo_previsto: f.prazo_previsto,
-        validade_dias: f.validade_dias || null, condicoes_comerciais: f.condicoes_comerciais, observacoes: f.observacoes, data_emissao: f.data_emissao,
-        contato_tecnico_id: f.contato_tecnico_id || null, frete: f.frete ?? 'CIF',
-      }),
-    onSuccess: () => {
-      setMsg('Salvo. Edição em À enviar não gera revisão.');
+    mutationFn: (x: Proposta) => atualizarRascunho(p.id, dadosDe(x)),
+    onMutate: () => { setEstado('salvando'); setMsg(''); },
+    onSuccess: (_r, x) => {
+      base.current = chave(x);
+      setEstado('salvo');
       qc.invalidateQueries({ queryKey: ['propostas'] });
       qc.invalidateQueries({ queryKey: ['proposta'] });
     },
-    onError: (e) => setMsg(mensagemErro(e)),
+    onError: (e) => { setEstado(''); setMsg(mensagemErro(e)); },
   });
+  const pendente = editavel && chave(f) !== base.current;
+  useEffect(() => {
+    if (!pendente || m.isPending) return;
+    const t = setTimeout(() => m.mutate(f), 1000);
+    return () => clearTimeout(t);
+  }, [f, pendente, m.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-3">
@@ -193,7 +209,11 @@ function AbaDados({ p }: { p: Proposta }) {
           Responsável: {p.usuarios?.nome ?? '—'} · Próximo follow-up: {dataBR(p.proximo_followup)}
         </div>
       </div>
-      {editavel && <div className="flex justify-end"><Botao onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? 'Salvando…' : 'Salvar alterações'}</Botao></div>}
+      {editavel && (
+        <div className="text-right text-xs text-suave" aria-live="polite">
+          {pendente || estado === 'salvando' ? 'Salvando…' : estado === 'salvo' ? 'Salvo automaticamente. Edição em À enviar não gera revisão.' : 'As alterações são salvas automaticamente.'}
+        </div>
+      )}
     </div>
   );
 }

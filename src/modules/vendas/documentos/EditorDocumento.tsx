@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, Lock, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { AreaTexto, Botao, Caixa, Campo, CampoInteiro, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
 import {
@@ -27,7 +27,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
   doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: ItemValor[]; imagens?: Imagens; valores?: AcoesValor;
   capaDados?: { titulo: string; descricao: string }; // decisão 72: título e subtítulo da capa vêm da aba Dados
   modelo?: boolean; // Administração → Modelos de proposta: lá o Anexo é editado (decisão 75)
-  ia?: { refazer: (secaoId: string, pedido: string) => void; pensando: boolean }; // decisão 81
+  ia?: { refazer: (secaoId: string, pedido: string) => void; pensando: boolean; secao?: string | null; aviso?: { secao: string; tipo: 'info' | 'erro'; texto: string } | null }; // decisão 81
 }) {
   const [aberta, setAberta] = useState<string | null>(null);
   doc = sincronizarEscopo(doc, itens); // decisão 74: Escopo com os itens (e nomes) da aba Custos
@@ -108,7 +108,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
               {aberta === s.id ? 'Fechar' : fixa ? 'Ver' : 'Editar'}
             </button>
           </div>
-          {aberta === s.id && <div className="border-t border-borda p-3">{!fixa && ia && SECOES_IA.includes(s.id) && <PedirIA titulo={s.titulo} pensando={ia.pensando} onPedir={(pedido) => ia.refazer(s.id, pedido)} />}{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} valores={valores} escopoDosCustos={escopoDosCustos} />}</div>}
+          {aberta === s.id && <div className="border-t border-borda p-3">{!fixa && ia && SECOES_IA.includes(s.id) && <PedirIA titulo={s.titulo} pensando={ia.pensando} estaSecao={ia.secao === s.id} aviso={ia.aviso?.secao === s.id ? ia.aviso : null} onPedir={(pedido) => ia.refazer(s.id, pedido)} />}{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} valores={valores} escopoDosCustos={escopoDosCustos} />}</div>}
         </div>
         );
       })}
@@ -451,7 +451,7 @@ function Situacao({ faltando }: { faltando: string[] }) {
 }
 
 // Decisão 81: pedir à IA só esta seção, com um ajuste opcional ("deixe mais curto", "cite a NR-12"...).
-function PedirIA({ titulo, pensando, onPedir }: { titulo: string; pensando: boolean; onPedir: (pedido: string) => void }) {
+function PedirIA({ titulo, pensando, estaSecao, aviso, onPedir }: { titulo: string; pensando: boolean; estaSecao: boolean; aviso: { tipo: 'info' | 'erro'; texto: string } | null; onPedir: (pedido: string) => void }) {
   const [pedido, setPedido] = useState('');
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-roxo-50 p-2 ring-1 ring-roxo-100 dark:bg-roxo-500/10 dark:ring-roxo-700/40">
@@ -459,7 +459,10 @@ function PedirIA({ titulo, pensando, onPedir }: { titulo: string; pensando: bool
       <input value={pedido} onChange={(e) => setPedido(e.target.value)} placeholder={`O que mudar em "${titulo}"? (opcional)`}
         onKeyDown={(e) => { if (e.key === 'Enter' && !pensando) { e.preventDefault(); onPedir(pedido); } }}
         className="min-w-[12rem] flex-1 rounded-md border border-transparent bg-superficie px-2 py-1 text-sm outline-none focus:border-roxo-500" />
-      <Botao type="button" variante="secundario" tamanho="sm" disabled={pensando} onClick={() => onPedir(pedido)}>{pensando ? 'A IA está escrevendo…' : 'Refazer só esta seção com IA'}</Botao>
+      <Botao type="button" variante={estaSecao ? 'primario' : 'secundario'} tamanho="sm" disabled={pensando} aria-busy={estaSecao} onClick={() => onPedir(pedido)}>
+        {estaSecao ? <><Loader2 size={14} className="animate-spin" /> Carregando… (até 1 min)</> : pensando ? 'Aguarde a IA…' : 'Refazer só esta seção com IA'}
+      </Botao>
+      {aviso && <p className={`w-full text-xs ${aviso.tipo === 'erro' ? 'text-red-600 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300'}`}>{aviso.texto}</p>}
     </div>
   );
 }
