@@ -200,3 +200,4 @@
 - **Decisão 78:** menu lateral dividido em Módulos operacionais (Vendas, Engenharia) e Módulos administrativos (RH, Administração). Conferido na tela com dados simulados.
 - **Decisão 79:** prazo total da técnica com os dias em destaque e o "após ..." embaixo. Conferido no PDF.
 - **Correções:** o Prazo de Entrega aparecia incompleto em documento sem o início do prazo gravado (vale o padrão). Novo `CampoInteiro` (− e +) para dias e meses nas propostas; setinhas do navegador escondidas. Conferido na tela com dados de exemplo; 143 testes ok.
+- **Correção:** no Dashboard Comercial, a tabela de "Propostas por etapa" desce para baixo da rosca quando o cartão fica estreito (tela dividida), em vez de vazar. Conferido a 1100 e 1680 px com dados simulados.

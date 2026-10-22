@@ -56,8 +56,10 @@ export function DashboardPage() {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Cartao>
           <div className="mb-4 font-semibold">Propostas por etapa</div>
-          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
-            <Rosca fatias={fatias} total={propostas.length} rotuloTotal="propostas" />
+          {/* A tabela desce para baixo da rosca quando o cartão fica estreito (tela dividida), em vez de vazar. */}
+          <div className="flex flex-wrap items-center justify-center gap-6">
+            <div className="shrink-0"><Rosca fatias={fatias} total={propostas.length} rotuloTotal="propostas" /></div>
+            <div className="min-w-[18rem] max-w-full flex-1 overflow-x-auto">
             {/* Legenda e tabela ao mesmo tempo: cada cor com nome, quantidade, % e valor (a cor nunca carrega a informação sozinha). */}
             <table className="w-full text-sm">
               <thead><tr className="text-left text-[11px] uppercase text-suave"><th className="pb-1 font-medium">Etapa</th><th className="pb-1 pl-3 text-right font-medium">Qtd</th><th className="pb-1 pl-3 text-right font-medium">%</th><th className="pb-1 pl-3 text-right font-medium">Valor</th></tr></thead>
@@ -75,6 +77,7 @@ export function DashboardPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </Cartao>
         <Cartao>
