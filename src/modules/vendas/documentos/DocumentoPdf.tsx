@@ -330,7 +330,11 @@ function Cronograma({ etapas, inicio, topo }: { etapas: Etapa[]; inicio: string;
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.navy, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, marginTop: 8 }}>
         <Text style={{ fontSize: 7.5, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.2 }}>PRAZO TOTAL DE ENTREGA</Text>
-        <Text style={{ fontSize: 13, fontWeight: 700, color: '#ffffff' }}>{fim} dias após {inicio}</Text>
+        {/* Decisão 79: os dias em destaque e o marco de início embaixo, menor. */}
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: 20, fontWeight: 700, color: '#ffffff', lineHeight: 1.1 }}>{fim} dias</Text>
+          <Text style={{ fontSize: 8, color: '#c7cbe0', marginTop: 2 }}>após {inicio}</Text>
+        </View>
       </View>
     </View>
   );

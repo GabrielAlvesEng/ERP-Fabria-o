@@ -198,3 +198,4 @@
 - **Decisão 76:** comercial com Visão geral, Impostos, Anexo e Confidencialidade fixos (só pelo modelo). 142 testes, typecheck e build ok.
 - **Decisão 77:** X amarelo ou certinho verde em cada seção editável das propostas, com resumo do que falta. Conferido na tela (editor isolado, dados de exemplo); 143 testes, typecheck e build ok.
 - **Decisão 78:** menu lateral dividido em Módulos operacionais (Vendas, Engenharia) e Módulos administrativos (RH, Administração). Conferido na tela com dados simulados.
+- **Decisão 79:** prazo total da técnica com os dias em destaque e o "após ..." embaixo. Conferido no PDF.
