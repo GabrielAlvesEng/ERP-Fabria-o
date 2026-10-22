@@ -30,68 +30,72 @@ Deno.serve(async (req) => {
     if (!(perms as { modulo: string; acao: string }[] | null)?.some((p) => p.modulo === 'rh' && p.acao === 'critica')) {
       return resposta({ erro: 'Sem permissão para gerenciar acessos.' }, 403);
     }
+    // A service_role só é usada no Auth (criar usuário, gerar link, bloquear login). Tabelas são lidas e gravadas
+    // como o usuário logado, pelas funções do banco (migration 42), com as regras de lá.
     const adm = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
-    const auditar = (registro: string, acao: string, depois: Record<string, unknown>) =>
-      adm.from('auditoria').insert({ tabela: 'auth.users', registro_id: registro, acao, antes: null, depois, usuario_id: eu.user!.id });
+    const auditar = (usuario: string, dados: Record<string, unknown>) => sb.rpc('registrar_acesso_rh', { p_usuario: usuario, p_dados: dados });
 
     // O link volta para o próprio ERP, na tela de definir senha.
     const voltar = String(corpo.voltar ?? '');
     const redirectTo = ORIGENS.some((o) => voltar.startsWith(`${o}/`)) ? voltar : `${ORIGENS[0]}/ERP-Fabria-o/`;
 
+    // Link para a pessoa definir a senha. Quem nunca entrou aparece como convite.
+    async function linkSenha(usuarioId: string, email: string) {
+      const { data: u } = await adm.auth.admin.getUserById(usuarioId);
+      const convite = !u?.user?.last_sign_in_at;
+      const { data, error } = await adm.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } });
+      if (error) throw new Error(`Não foi possível gerar o link: ${error.message}.`);
+      return { link: data.properties.action_link, email, tipo: convite ? 'invite' : 'recovery' };
+    }
+
     if (corpo.acao === 'criar_login') {
       const funcionarioId = String(corpo.funcionario_id ?? '');
       const email = String(corpo.email ?? '').trim().toLowerCase();
       if (!EMAIL.test(email)) return resposta({ erro: 'E-mail inválido.' }, 400);
-      // A ficha é lida como o usuário logado: o RLS do RH vale aqui também.
       const { data: ficha } = await sb.from('funcionarios').select('id, nome, usuario_id, situacao').eq('id', funcionarioId).maybeSingle();
       if (!ficha) return resposta({ erro: 'Funcionário não encontrado.' }, 404);
       if (ficha.usuario_id) return resposta({ erro: 'Este funcionário já tem login.' }, 400);
       if (ficha.situacao === 'desligado') return resposta({ erro: 'Funcionário desligado não recebe login.' }, 400);
-      const { data: existente } = await adm.from('usuarios').select('id').ilike('email', email).maybeSingle();
-      if (existente) return resposta({ erro: 'Já existe um login com este e-mail. Use "Vincular login existente".' }, 400);
+
+      const { data: existente, error: e0 } = await sb.from('usuarios').select('id').ilike('email', email).maybeSingle();
+      if (e0) return resposta({ erro: e0.message }, 500);
+      if (existente) {
+        // Login já existe (ex.: convite criado antes e não ligado): liga à ficha se ninguém mais usa e gera o link de novo.
+        const { error } = await sb.rpc('vincular_login_funcionario', { p_funcionario: funcionarioId, p_usuario: existente.id });
+        if (error) return resposta({ erro: error.message }, 400);
+        const r = await linkSenha(existente.id, email);
+        await auditar(existente.id, { email, funcionario_id: funcionarioId, ligado_a_ficha: true });
+        return resposta({ usuario_id: existente.id, ...r });
+      }
 
       const { data, error } = await adm.auth.admin.generateLink({ type: 'invite', email, options: { data: { nome: ficha.nome }, redirectTo } });
       if (error || !data.user) return resposta({ erro: `Não foi possível criar o login: ${error?.message ?? 'erro desconhecido'}.` }, 400);
-      const { error: e2 } = await adm.from('funcionarios').update({ usuario_id: data.user.id }).eq('id', funcionarioId);
-      if (e2) return resposta({ erro: `Login criado, mas não foi vinculado à ficha: ${e2.message}.` }, 500);
-      await auditar(data.user.id, 'INSERT', { email, funcionario_id: funcionarioId, convite: true });
-      return resposta({ usuario_id: data.user.id, link: data.properties.action_link, email });
+      const { error: e2 } = await sb.rpc('vincular_login_funcionario', { p_funcionario: funcionarioId, p_usuario: data.user.id });
+      if (e2) return resposta({ erro: `Login criado, mas não foi ligado à ficha: ${e2.message}. Clique em "Criar login" de novo.` }, 500);
+      await auditar(data.user.id, { email, funcionario_id: funcionarioId, convite: true });
+      return resposta({ usuario_id: data.user.id, link: data.properties.action_link, email, tipo: 'invite' });
     }
 
     const usuarioId = String(corpo.usuario_id ?? '');
-    const { data: alvo } = await adm.from('usuarios').select('id, email, ativo').eq('id', usuarioId).maybeSingle();
+    const { data: alvo } = await sb.from('usuarios').select('id, email, ativo').eq('id', usuarioId).maybeSingle();
     if (!alvo) return resposta({ erro: 'Usuário não encontrado.' }, 404);
     if (usuarioId === eu.user.id) return resposta({ erro: 'Você não pode mudar o próprio acesso por aqui. Use "Esqueci minha senha" no login.' }, 400);
     const { error: regra } = await sb.rpc('conferir_gestao_acesso', { p_usuario: usuarioId });
     if (regra) return resposta({ erro: regra.message }, 403);
 
     if (corpo.acao === 'link_senha') {
-      const { data: u } = await adm.auth.admin.getUserById(usuarioId);
-      // Quem nunca aceitou o convite recebe um convite novo; quem já entrou recebe o link de nova senha.
-      const tipo = u?.user?.email_confirmed_at || u?.user?.last_sign_in_at ? 'recovery' : 'invite';
-      const { data, error } = await adm.auth.admin.generateLink({ type: tipo, email: alvo.email, options: { redirectTo } });
-      if (error) return resposta({ erro: `Não foi possível gerar o link: ${error.message}.` }, 400);
-      await auditar(usuarioId, 'UPDATE', { link_senha: tipo });
-      return resposta({ link: data.properties.action_link, email: alvo.email, tipo });
+      const r = await linkSenha(usuarioId, alvo.email);
+      await auditar(usuarioId, { link_senha: r.tipo });
+      return resposta(r);
     }
 
     if (corpo.acao === 'desativar' || corpo.acao === 'reativar') {
       const ativar = corpo.acao === 'reativar';
-      if (ativar) {
-        const { data: f } = await adm.from('funcionarios').select('situacao').eq('usuario_id', usuarioId).maybeSingle();
-        if (f?.situacao === 'desligado') return resposta({ erro: 'O funcionário está desligado. Mude a situação na ficha antes de reativar o login.' }, 400);
-      } else {
-        // Não deixa o ERP sem ninguém com acesso total.
-        const { data: totais } = await adm.from('usuario_perfis').select('usuario_id, perfis!inner(acesso_total), usuarios!inner(ativo)')
-          .eq('perfis.acesso_total', true).eq('usuarios.ativo', true);
-        const ids = new Set((totais ?? []).map((t: { usuario_id: string }) => t.usuario_id));
-        if (ids.has(usuarioId) && ids.size === 1) return resposta({ erro: 'Este é o único usuário com acesso total; dê o acesso total a outra pessoa antes.' }, 400);
-      }
+      // O banco confere as regras (desligado, último com acesso total) e grava a auditoria; depois o Auth.
+      const { error: e1 } = await sb.rpc('definir_login_ativo', { p_usuario: usuarioId, p_ativo: ativar });
+      if (e1) return resposta({ erro: e1.message }, 400);
       const { error } = await adm.auth.admin.updateUserById(usuarioId, { ban_duration: ativar ? 'none' : '876000h' });
-      if (error) return resposta({ erro: `Não foi possível ${ativar ? 'reativar' : 'desativar'} o login: ${error.message}.` }, 400);
-      const { error: e2 } = await adm.from('usuarios').update({ ativo: ativar }).eq('id', usuarioId);
-      if (e2) return resposta({ erro: e2.message }, 500);
-      await auditar(usuarioId, 'UPDATE', { ativo: ativar });
+      if (error) return resposta({ erro: `Não foi possível ${ativar ? 'reativar' : 'desativar'} o login no Auth: ${error.message}.` }, 400);
       return resposta({ ativo: ativar });
     }
 
