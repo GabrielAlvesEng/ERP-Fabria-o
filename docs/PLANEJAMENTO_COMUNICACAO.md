@@ -1,6 +1,8 @@
 # Comunicação
 
-Versão 1, 22/10/2026. **Estado: planejamento, aguardando aprovação do Gabriel. Nenhum código escrito.**
+Versão 2, 22/10/2026. **Estado: planejamento, aguardando aprovação do Gabriel. Nenhum código escrito.**
+
+Resposta do Gabriel (22/10): "quero ativar os itens A e C, enviar pelo app do celular e pelo email também se quiser". Ou seja: **o push no celular (A) é o canal principal**, e **quem envia escolhe, em cada comunicado, se também manda por e-mail (C)**.
 
 Pedido do Gabriel (22/10):
 > "quero criar um novo módulo de Comunicação, onde cada um dos líderes de cada setor poderá ter o poder de enviar notificações para cada funcionário, e os chefes podem enviar comunicados gerais para toda a empresa. e essa notificação deve chegar ao celular do funcionário."
@@ -23,7 +25,7 @@ Pedido do Gabriel (22/10):
 | D. SMS | Mensagem de texto pelo número de celular. | Cobrado por mensagem | Chega em qualquer celular. | Custo, texto curto, cara de propaganda. |
 | E. App próprio na Play Store / App Store | Um aplicativo publicado nas lojas. | Conta de desenvolvedor (Apple cobra por ano) | Experiência de app nativo. | Muito mais trabalho para fazer e manter, e a aprovação nas lojas. Exagero para o tamanho da equipe. |
 
-**Recomendação: opção A (PWA com notificação push)**, com o **e-mail como reserva opcional** para quem não ativou o push (fica para a entrega 4). O WhatsApp pode entrar depois, se na prática muita gente não ativar o push; o módulo fica preparado para ganhar outros "canais" sem refazer nada.
+**Escolha do Gabriel: A + C.** Todo comunicado vai para o celular pelo push; quem envia marca "Também enviar por e-mail" quando quiser. O WhatsApp pode entrar depois, se na prática muita gente não ativar o push; o módulo fica preparado para ganhar outros "canais" sem refazer nada.
 
 Por que A: é grátis, chega com o ERP fechado, e o funcionário cai direto no comunicado dentro do ERP, onde a empresa tem o registro de entrega e de leitura ("Ciente"). O WhatsApp tira o comunicado do ERP e tem custo e burocracia com a Meta.
 
@@ -55,6 +57,7 @@ Menu **Comunicação** no grupo **Módulos administrativos**, com um contador de
 - **Novo comunicado** (líderes e chefes):
   - Para: "Toda a empresa" (só chefe), setores, ou pessoas (busca por nome; o líder só vê o próprio setor).
   - Título, texto, **prioridade** (Normal ou Urgente), "Exigir ciente", "Fixar até dd/mm/aaaa" (opcional) e um anexo opcional (foto ou PDF).
+  - **"Também enviar por e-mail"** (desmarcado por padrão): manda uma cópia para o e-mail corporativo de cada destinatário (ou o e-mail do login, se não houver corporativo), com o texto e um botão "Abrir no ERP". O anexo não vai no e-mail; abre só no ERP, logado.
   - Antes de enviar, mostra quantas pessoas vão receber e quantas ainda não ativaram o celular.
 - **Enviados** (líderes e chefes): os comunicados enviados, cada um com **entregue / lido / ciente / pendente por pessoa**, e o botão "Lembrar quem não leu" (manda o push de novo só para os pendentes).
 - **Sino** da barra superior: passa a mostrar também os comunicados não lidos.
@@ -71,21 +74,21 @@ Comunicado enviado **não é editado nem apagado** (fica o registro). Quem envio
 
 ## 5. Modelo de dados (resumo)
 - `setor_lideres` (setor_id, funcionario_id): líderes de cada setor.
-- `comunicados` (autor_id, alcance: `empresa` | `setores` | `pessoas`, titulo, texto, prioridade, exige_ciente, fixado_ate, anexo, cancelado_em).
+- `comunicados` (autor_id, alcance: `empresa` | `setores` | `pessoas`, titulo, texto, prioridade, exige_ciente, enviar_email, fixado_ate, anexo, cancelado_em).
 - `comunicado_setores` (comunicado_id, setor_id), quando o alcance é por setor.
-- `comunicado_destinatarios` (comunicado_id, usuario_id, push_enviado_em, lido_em, ciente_em): uma linha por pessoa, gerada pelo banco no envio. É daqui que saem o contador e o relatório.
+- `comunicado_destinatarios` (comunicado_id, usuario_id, push_enviado_em, email_enviado_em, lido_em, ciente_em): uma linha por pessoa, gerada pelo banco no envio. É daqui que saem o contador e o relatório.
 - `push_aparelhos` (usuario_id, endpoint, chaves, nome do aparelho, criado_em, ultimo_envio_em, ativo): os celulares/computadores ativados de cada pessoa.
 - Funções no banco: `enviar_comunicado(...)` (confere quem pode mandar para quem e gera os destinatários), `marcar_lido`, `dar_ciente`, `cancelar_comunicado`.
 - Permissões novas: `comunicacao` ler (todos os perfis), criar (quem é líder) e critica ("Comunicado geral").
 - **Envio do push:** Edge Function `comunicacao-push`, chamada logo depois do envio. Ela assina o aviso com as chaves VAPID (a chave privada fica nos Secrets do Supabase, nunca no navegador) e manda para cada aparelho. Aparelho que o Google/Apple diz que não existe mais é desativado sozinho. Como o `service_role` deste projeto não tem acesso às tabelas, a função lê os aparelhos por uma função do banco própria para isso (mesmo cuidado do `rh-acesso`).
+- **Envio do e-mail:** a mesma Edge Function manda o e-mail pelo SMTP da Locaweb que já funciona (contato@fabriacobrasil.com.br). A senha desse e-mail hoje só está nas configurações de Auth do Supabase, que a função não consegue ler: o Gabriel precisa cadastrá-la uma vez em Supabase → Edge Functions → Secrets (nome `SMTP_SENHA`). O passo a passo vai junto da entrega.
 - **No navegador:** um *service worker* (arquivo `sw.js`) que recebe o aviso com o ERP fechado e abre o comunicado ao tocar; o `manifest` existente ganha o ajuste de endereço do GitHub Pages.
 - Tabelas na publicação do Realtime, para a caixa de entrada e o contador atualizarem ao vivo com o ERP aberto (como em Vendas).
 
 ## 6. Entregas
 1. **Base:** líderes por setor no RH, permissões, envio de comunicado (empresa, setores, pessoas), Caixa de entrada, Enviados com lido/ciente, sino e contador ao vivo. Já funciona no computador e no navegador do celular, mas sem aviso com o app fechado.
-2. **Celular:** app instalável (PWA), service worker, "Ativar notificações" com o passo a passo de Android e iPhone, aparelhos em Meu perfil com "Enviar teste", Edge Function de envio e "Lembrar quem não leu".
+2. **Celular e e-mail:** opção "Também enviar por e-mail", app instalável (PWA), service worker, "Ativar notificações" com o passo a passo de Android e iPhone, aparelhos em Meu perfil com "Enviar teste", Edge Function de envio e "Lembrar quem não leu".
 3. **Anexos e fixados:** foto/PDF no comunicado e fixar até uma data.
-4. **Reserva por e-mail (opcional):** quem não tem aparelho ativado recebe o comunicado por e-mail pelo SMTP que já existe.
 
 Teste real: a entrega 2 precisa ser testada pelo Gabriel em um Android e um iPhone de verdade, porque o ambiente do Claude não recebe push nem acessa o Supabase pela rede.
 
@@ -96,4 +99,4 @@ Teste real: a entrega 2 precisa ser testada pelo Gabriel em um Android e um iPho
 4. **Ciente obrigatório?** Recomendação: quem envia escolhe, comunicado por comunicado.
 5. **Horário de silêncio:** avisos à noite e no fim de semana tocam normalmente, ou só os urgentes? Recomendação: tudo toca na primeira versão; ajustamos se incomodar.
 6. **Endereço definitivo do ERP:** o celular vai usar o endereço do GitHub Pages, o do Netlify ou um domínio próprio da Fabriaço? Recomendação: decidir antes da entrega 2, porque mudar depois obriga todos a reinstalar.
-7. **WhatsApp:** fica só como possibilidade futura? Recomendação: sim, e voltamos ao assunto se muita gente não ativar o push.
+7. ~~WhatsApp~~ Respondida: fica fora; os canais são o celular (push) e o e-mail opcional.
