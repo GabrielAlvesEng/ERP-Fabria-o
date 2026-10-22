@@ -23,6 +23,7 @@ import { PredefinicoesPage } from '@/modules/admin/predefinicoes/PredefinicoesPa
 import { PerfilPage } from '@/modules/perfil/PerfilPage';
 import { ComprasLayout } from '@/modules/compras/ComprasLayout';
 import { ComprasInicioPage } from '@/modules/compras/ComprasInicioPage';
+import { FinanceiroPage } from '@/modules/financeiro/FinanceiroPage';
 import { RhLayout } from '@/modules/rh/RhLayout';
 import { FuncionariosPage } from '@/modules/rh/FuncionariosPage';
 import { FuncionarioPage } from '@/modules/rh/FuncionarioPage';
@@ -82,6 +83,7 @@ export function App() {
             <Route path="vencimentos" element={<VencimentosPage />} />
             <Route path="integracoes" element={<IntegracoesPage />} />
           </Route>
+          <Route path="/financeiro" element={<FinanceiroPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<SenhasPage />} />
