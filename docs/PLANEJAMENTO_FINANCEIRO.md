@@ -25,7 +25,7 @@ Financeiro: conta a pagar criada → A pagar → Vence em breve → Vencida
 ```
 
 - **A conta nasce sozinha** quando Compras emite a ordem de compra `OC-AA-NNN`. Ninguém digita nada de novo: fornecedor, projeto, itens, valor (itens + frete), condição de pagamento, previsão de entrega e o **orçamento anexado** vêm da OC e da cotação escolhida.
-- **Data de pagamento (vencimento):** vem calculada da OC pela condição de pagamento (Compras v2, item 2.4); a partir daí a data é do Financeiro, que confirma ou ajusta:
+- **Data de pagamento (vencimento):** o ERP calcula pela condição de pagamento que vem na OC, e o Financeiro confirma ou ajusta:
   - Antecipado: vence na data da emissão da OC.
   - Após o recebimento: fica "aguardando entrega" até Compras registrar a entrega; aí vence em N dias depois da entrega (N do cadastro do fornecedor, ex.: 28 dias).
   - Parcelado (ex.: 30/60/90): o ERP cria as parcelas, cada uma com data e valor; o Financeiro pode mudar.
@@ -52,9 +52,8 @@ Financeiro: conta a pagar criada → A pagar → Vence em breve → Vencida
 
 O plano v2 de Compras (`/mnt/project-files/compras/PLANEJAMENTO_COMPRAS_V2.md`) já prevê o que o Financeiro precisa: orçamento anexado em cada cotação, escolha do fornecedor por item com uma OC por fornecedor (o Financeiro recebe uma conta por OC) e a OC saindo com a data de pagamento calculada. Para o Financeiro funcionar, a OC precisa levar:
 
-- **Condição de pagamento escolhida, não texto livre:** antecipado, após o recebimento em N dias, parcelado (ex.: 30/60/90 dias) ou a combinar.
-- **Data de pagamento** (ou as datas das parcelas) calculada pela condição.
-- **O arquivo do orçamento** da cotação escolhida, que o Financeiro consegue abrir.
+- **Condição de pagamento escolhida, não texto livre:** antecipado, após o recebimento em N dias, parcelado (ex.: 30/60/90 dias) ou a combinar. O Financeiro calcula as datas a partir dela.
+- **O arquivo do orçamento** da cotação escolhida (bucket privado `compras`, com leitura para quem tem `compras.ler` ou `financeiro.ler`).
 - **A data de entrega** registrada (para as compras "após o recebimento") e o **cancelamento** da OC, se houver.
 
 A conta a pagar é criada pelo banco no momento em que a OC é emitida, e atualizada quando a entrega é registrada ou a OC é cancelada. Compras não precisa fazer nada além de emitir a OC.
