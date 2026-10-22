@@ -20,6 +20,8 @@ import { KickoffAba } from '../kickoff/KickoffAba';
 import { ExcluirModal } from './ExcluirModal';
 import { ArquivosAba } from './ArquivosAba';
 import { enderecoEntrega } from '../documentos/api';
+import { usePresencaProposta, type Presente } from '../aoVivo';
+import { Avatar } from '@/modules/perfil/Avatar';
 
 // Decisão 70: "Revisões e arquivos" e "Aprovação" viraram a aba Arquivos (Propostas, Anexos e Aprovação).
 const abas = ['Dados', 'Custos', 'Documentos', 'Arquivos', 'Kick-off', 'Histórico'] as const;
@@ -43,6 +45,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
   const [excluir, setExcluir] = useState(false);
   const { data: p } = useQuery({ queryKey: ['proposta', id], queryFn: () => obterProposta(id) });
   const linhaAbas = useIndicadorAbas(`${aba}|${p ? 1 : 0}`);
+  const presentes = usePresencaProposta(id, aba);
 
   const mover = useMutation({
     mutationFn: (para: StatusProposta) => moverProposta(id, para),
@@ -100,6 +103,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
                 )}
               </div>
               {erro && <div className="mt-2"><Aviso>{erro}</Aviso></div>}
+              <QuemEstaAqui presentes={presentes} aba={aba} />
             </div>
             <div ref={linhaAbas} className="abas abas-indicador gap-x-1 border-b border-borda px-3" role="tablist">
               {abas.filter((a) => a !== 'Custos' || pode('custos', 'ler')).map((a) => (
@@ -120,6 +124,32 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
       </div>
       {followup && p && <FollowupModal proposta={p} onFechar={() => setFollowup(false)} />}
       {excluir && p && <ExcluirModal proposta={p} onFechar={() => setExcluir(false)} onExcluida={() => { setExcluir(false); onFechar(); }} />}
+    </div>
+  );
+}
+
+// Decisão 83: quem mais está com esta proposta aberta agora. Na mesma aba de edição, avisa que o último a salvar prevalece.
+function QuemEstaAqui({ presentes, aba }: { presentes: Presente[]; aba: string }) {
+  if (!presentes.length) return null;
+  const mesmaAba = presentes.filter((x) => x.aba === aba);
+  const nomes = (l: Presente[]) => l.map((x) => x.nome.split(' ')[0]).join(', ').replace(/, ([^,]*)$/, ' e $1');
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex items-center gap-2 text-xs text-suave">
+        <div className="flex -space-x-1.5">
+          {presentes.slice(0, 5).map((x) => (
+            <span key={x.id} title={`${x.nome} · aba ${x.aba}`} className="rounded-full ring-2 ring-superficie">
+              <Avatar caminho={x.foto_caminho} versao={x.foto_atualizada_em} nome={x.nome} tamanho={24} />
+            </span>
+          ))}
+        </div>
+        <span><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-petroleo-500 align-middle" />
+          {presentes.map((x) => `${x.nome.split(' ')[0]} (${x.aba})`).join(', ')} {presentes.length === 1 ? 'também está' : 'também estão'} com esta proposta aberta
+        </span>
+      </div>
+      {mesmaAba.length > 0 && ['Dados', 'Custos', 'Documentos', 'Kick-off'].includes(aba) && (
+        <Aviso tipo="info">{nomes(mesmaAba)} {mesmaAba.length === 1 ? 'está' : 'estão'} nesta aba agora. As alterações de cada um aparecem para o outro sozinhas; se os dois mexerem no mesmo campo, vale o último que salvar.</Aviso>
+      )}
     </div>
   );
 }

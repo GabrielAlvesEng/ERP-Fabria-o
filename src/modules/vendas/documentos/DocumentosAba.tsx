@@ -36,15 +36,21 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
 
   // Documento em edição: o salvo da revisão ou, se ainda não existe, o padrão.
   const [docs, setDocs] = useState<Partial<Record<TipoDocumento, Documento>>>({});
+  // Salva sozinho 1 s depois da última alteração.
+  const pendente = useRef<Partial<Record<TipoDocumento, Documento>>>({});
+  const gravando = useRef<Partial<Record<TipoDocumento, boolean>>>({});
   useEffect(() => {
     if (!salvos || !padroes) return;
     // Documento salvo numa versão antiga do modelo é convertido com os padrões atuais (decisão 67).
-    setDocs({ tecnica: fixarSecoesDoModelo(completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), padroes.tecnica), comercial: fixarSecoesDoModelo(completarDocumento(salvos.comercial, 'comercial', padroes.comercial), padroes.comercial) });
+    const doBanco = { tecnica: fixarSecoesDoModelo(completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), padroes.tecnica), comercial: fixarSecoesDoModelo(completarDocumento(salvos.comercial, 'comercial', padroes.comercial), padroes.comercial) };
+    // Ao vivo (decisão 83): o que outra pessoa salvou entra na tela, menos no documento com alteração daqui ainda não gravada.
+    setDocs((atual) => {
+      const manter = (t: TipoDocumento) => Boolean(atual[t] && (pendente.current[t] || gravando.current[t]));
+      return { tecnica: manter('tecnica') ? atual.tecnica : doBanco.tecnica, comercial: manter('comercial') ? atual.comercial : doBanco.comercial };
+    });
   }, [salvos, padroes]);
   const doc = docs[tipo];
 
-  // Salva sozinho 1 s depois da última alteração.
-  const pendente = useRef<Partial<Record<TipoDocumento, Documento>>>({});
   const [salvando, setSalvando] = useState<'' | 'salvando' | 'salvo'>('');
   useEffect(() => {
     if (!editavel || !rev || !Object.keys(pendente.current).length) return;
@@ -52,7 +58,10 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
       const lote = pendente.current; pendente.current = {};
       setSalvando('salvando');
       try {
-        for (const [k, d] of Object.entries(lote)) await salvarDocumento(rev.id, k as TipoDocumento, d!);
+        for (const [k, d] of Object.entries(lote)) {
+          gravando.current[k as TipoDocumento] = true;
+          try { await salvarDocumento(rev.id, k as TipoDocumento, d!); } finally { gravando.current[k as TipoDocumento] = false; }
+        }
         setSalvando('salvo');
       } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); setSalvando(''); }
     }, 1000);

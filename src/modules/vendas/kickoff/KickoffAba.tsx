@@ -99,7 +99,7 @@ function KickoffConteudo({ k, editavel, propostaId, onErro }: { k: Kickoff; edit
       <div className="grid gap-3 sm:grid-cols-3">
         <Campo rotulo="Data da reunião"><CampoData value={k.data_reuniao} disabled={!editavel} onChange={(v) => tentar(() => atualizarKickoff(k.id, { data_reuniao: v || null }))} /></Campo>
         <Campo rotulo="Participantes" className="sm:col-span-2">
-          <Entrada defaultValue={k.participantes} disabled={!editavel} placeholder="Ex.: Gabriel (Comercial), Kenny (cliente), Engenharia, Fabricação"
+          <Entrada key={k.participantes} defaultValue={k.participantes} disabled={!editavel} placeholder="Ex.: Gabriel (Comercial), Kenny (cliente), Engenharia, Fabricação"
             onBlur={(e) => e.target.value !== k.participantes && tentar(() => atualizarKickoff(k.id, { participantes: e.target.value }))} />
         </Campo>
       </div>
@@ -164,7 +164,7 @@ function KickoffConteudo({ k, editavel, propostaId, onErro }: { k: Kickoff; edit
       </div>
 
       <Campo rotulo="Observações gerais da reunião">
-        <AreaTexto defaultValue={k.observacoes} rows={4} disabled={!editavel} onBlur={(e) => e.target.value !== k.observacoes && tentar(() => atualizarKickoff(k.id, { observacoes: e.target.value }))} />
+        <AreaTexto key={k.observacoes} defaultValue={k.observacoes} rows={4} disabled={!editavel} onBlur={(e) => e.target.value !== k.observacoes && tentar(() => atualizarKickoff(k.id, { observacoes: e.target.value }))} />
       </Campo>
 
       {editavel && (

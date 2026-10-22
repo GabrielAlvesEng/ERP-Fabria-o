@@ -8,6 +8,7 @@ import { RetornosSino } from '@/modules/vendas/RetornosSino';
 import { VencimentosSino } from '@/modules/rh/VencimentosSino';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { useMeuUsuario } from '@/modules/perfil/api';
+import { useVendasAoVivo } from '@/modules/vendas/aoVivo';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 // Decisão 78: o menu é dividido em Operacionais (a operação dos projetos: Vendas, Engenharia, Fabricação...)
@@ -24,6 +25,7 @@ export function Layout() {
   const { session, sair, pode } = useAuth();
   const menu = modulos.filter((m) => pode(m.modulo, ('acao' in m && m.acao) || 'ler'));
   const { ano, setAno } = useAno();
+  useVendasAoVivo(); // decisão 83: telas de Vendas atualizam sozinhas quando outra pessoa altera
   const [tema, setTema] = useState<Tema>(lerTema);
   useEffect(() => aplicarTema(tema), [tema]);
   // Celular: menu lateral que abre pelo botão ☰ e fecha ao trocar de tela, tocar fora ou apertar Esc.
