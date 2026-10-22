@@ -26,6 +26,7 @@ import { FuncionarioPage } from '@/modules/rh/FuncionarioPage';
 import { SetoresPage } from '@/modules/rh/SetoresPage';
 import { TiposDocumentoPage } from '@/modules/rh/TiposDocumentoPage';
 import { VencimentosPage } from '@/modules/rh/VencimentosPage';
+import { IntegracoesPage } from '@/modules/rh/IntegracoesPage';
 
 export function App() {
   const { session, carregando } = useAuth();
@@ -64,6 +65,7 @@ export function App() {
             <Route path="setores" element={<SetoresPage />} />
             <Route path="documentos" element={<TiposDocumentoPage />} />
             <Route path="vencimentos" element={<VencimentosPage />} />
+            <Route path="integracoes" element={<IntegracoesPage />} />
           </Route>
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/admin" element={<AdminLayout />}>

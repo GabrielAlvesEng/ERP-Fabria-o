@@ -121,3 +121,69 @@ export async function abrirArquivoRh(caminho: string): Promise<void> {
   if (janela) janela.location.href = signedUrl;
   else window.location.href = signedUrl;
 }
+
+// Entrega 3: integrações nos clientes (cada cliente define a validade) e a liberação por data (resposta 8).
+
+export interface EmpresaResumo { id: string; nome_fantasia: string; cidade: string; uf: string }
+export interface ExigenciaCliente { empresa_id: string; validade_meses: number; observacoes: string }
+export interface IntegracaoAtual {
+  id: string; funcionario_id: string; empresa_id: string; empresa_nome: string; realizada_em: string; validade: string;
+  arquivo_caminho: string | null; arquivo_nome: string; observacoes: string; situacao: Exclude<SituacaoReq, 'faltando'>;
+}
+export interface Liberacao { funcionario_id: string; liberado: boolean; motivos: string[] }
+
+export const listarEmpresasClientes = async (): Promise<EmpresaResumo[]> =>
+  ok(await supabase.from('empresas').select('id, nome_fantasia, cidade, uf').eq('ativo', true).order('nome_fantasia'));
+
+export const listarExigencias = async (): Promise<ExigenciaCliente[]> => ok(await supabase.from('empresa_integracao').select('empresa_id, validade_meses, observacoes'));
+export const listarDocumentosExigidos = async (empresaId: string): Promise<string[]> =>
+  (ok(await supabase.from('empresa_documentos_exigidos').select('tipo_documento_id').eq('empresa_id', empresaId)) as { tipo_documento_id: string }[]).map((r) => r.tipo_documento_id);
+
+export async function salvarExigencia(e: ExigenciaCliente, novo: boolean): Promise<void> {
+  ok(novo ? await supabase.from('empresa_integracao').insert(e) : await supabase.from('empresa_integracao').update({ validade_meses: e.validade_meses, observacoes: e.observacoes }).eq('empresa_id', e.empresa_id));
+}
+export async function salvarDocumentosExigidos(empresaId: string, antes: string[], depois: string[]): Promise<void> {
+  const novos = depois.filter((t) => !antes.includes(t));
+  const saem = antes.filter((t) => !depois.includes(t));
+  if (novos.length) ok(await supabase.from('empresa_documentos_exigidos').insert(novos.map((t) => ({ empresa_id: empresaId, tipo_documento_id: t }))));
+  if (saem.length) ok(await supabase.from('empresa_documentos_exigidos').delete().eq('empresa_id', empresaId).in('tipo_documento_id', saem));
+}
+
+export async function listarIntegracoes(funcionarioId?: string): Promise<IntegracaoAtual[]> {
+  let q = supabase.from('situacao_integracoes').select('*').order('empresa_nome');
+  if (funcionarioId) q = q.eq('funcionario_id', funcionarioId);
+  return ok(await q);
+}
+
+export const listarHistoricoIntegracoes = async (funcionarioId: string): Promise<{ id: string; empresa_id: string; realizada_em: string; validade: string; substituido_em: string }[]> =>
+  ok(await supabase.from('funcionario_integracoes').select('id, empresa_id, realizada_em, validade, substituido_em').eq('funcionario_id', funcionarioId)
+    .not('substituido_em', 'is', null).is('excluido_em', null).order('realizada_em', { ascending: false }));
+
+export async function lancarIntegracao(i: { funcionario_id: string; empresa_id: string; realizada_em: string; validade: string; observacoes: string }, arquivo: File | null): Promise<void> {
+  let arquivo_caminho: string | null = null;
+  if (arquivo) {
+    const ext = (arquivo.name.split('.').pop() ?? 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
+    arquivo_caminho = `${i.funcionario_id}/integracoes/${crypto.randomUUID()}.${ext}`;
+    ok(await supabase.storage.from('rh').upload(arquivo_caminho, arquivo, { contentType: arquivo.type }));
+  }
+  ok(await supabase.from('funcionario_integracoes').insert({ ...i, arquivo_caminho, arquivo_nome: arquivo?.name ?? '' }));
+}
+
+export async function excluirIntegracao(id: string): Promise<void> {
+  ok(await supabase.from('funcionario_integracoes').update({ excluido_em: new Date().toISOString() }).eq('id', id));
+}
+
+// Integrações atuais no mesmo formato dos requisitos, para o painel de vencimentos e o aviso do RH.
+export async function listarIntegracoesComoRequisitos(): Promise<SituacaoRequisito[]> {
+  return (await listarIntegracoes()).map((i) => ({
+    funcionario_id: i.funcionario_id, tipo_documento_id: `integracao:${i.empresa_id}`, exigido: true, tipo_nome: `Integração · ${i.empresa_nome}`,
+    categoria: 'Integração', aviso_dias: 30, documento_id: i.id, numero: null, emissao: i.realizada_em, validade: i.validade, situacao: i.situacao,
+  }));
+}
+
+export const liberacaoNoCliente = async (empresaId: string, data: string): Promise<Liberacao[]> =>
+  ok(await supabase.rpc('liberacao_no_cliente', { p_empresa: empresaId, p_data: data }));
+
+// A ficha do próprio usuário logado (Meu perfil → Minha ficha). O RLS só devolve a dele.
+export const obterMinhaFicha = async (usuarioId: string): Promise<Funcionario | null> =>
+  ok(await supabase.from('funcionarios').select(COM_USUARIO).eq('usuario_id', usuarioId).maybeSingle());

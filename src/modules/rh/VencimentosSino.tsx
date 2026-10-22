@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileWarning } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO } from '@/shared/lib/formato';
-import { listarFuncionarios, listarSituacoes } from './api';
+import { listarFuncionarios, listarIntegracoesComoRequisitos, listarSituacoes } from './api';
 import { SITUACAO_REQ } from './regras';
 
 // Aviso de vencimentos do RH (decisão 69, resposta 5): só para quem tem rh.ler. Mostra o que venceu
@@ -15,11 +15,12 @@ export function VencimentosSino() {
   const [aberto, setAberto] = useState(false);
   const rh = pode('rh', 'ler');
   const { data: situacoes = [] } = useQuery({ queryKey: ['rh', 'situacoes', 'todas', hojeISO()], queryFn: () => listarSituacoes(), enabled: rh, refetchInterval: 30 * 60_000 });
+  const { data: integracoes = [] } = useQuery({ queryKey: ['rh', 'integracoes', 'todas', hojeISO()], queryFn: listarIntegracoesComoRequisitos, enabled: rh, refetchInterval: 30 * 60_000 });
   const { data: funcionarios = [] } = useQuery({ queryKey: ['rh', 'funcionarios'], queryFn: listarFuncionarios, enabled: rh });
   if (!rh) return null;
 
   const nome = new Map(funcionarios.map((f) => [f.id, f.nome]));
-  const avisos = situacoes.filter((s) => s.situacao === 'vencido' || s.situacao === 'vencendo')
+  const avisos = [...situacoes, ...integracoes].filter((s) => s.situacao === 'vencido' || s.situacao === 'vencendo')
     .sort((a, b) => (a.validade ?? '').localeCompare(b.validade ?? ''));
   const vencidos = avisos.filter((s) => s.situacao === 'vencido').length;
 

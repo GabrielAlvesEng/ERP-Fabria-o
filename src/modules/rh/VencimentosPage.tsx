@@ -4,15 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { dataBR, hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Cabecalho, EsqueletoTabela, Selecao, Selo, Vazio } from '@/shared/ui';
-import { listarFuncionarios, listarFuncoes, listarSetores, listarSituacoes, listarTiposDocumento } from './api';
+import { listarFuncionarios, listarFuncoes, listarIntegracoesComoRequisitos, listarSetores, listarSituacoes, listarTiposDocumento } from './api';
 import { diasAte, SITUACAO_REQ, type SituacaoReq } from './regras';
 
 // RH → Vencimentos (decisão 69): o painel do RH com o que venceu, vence nos próximos dias (aviso de 30 dias)
-// ou falta, por funcionário e requisito. Desligados não entram.
+// ou falta, por funcionário e requisito, mais as integrações nos clientes. Desligados não entram.
 export function VencimentosPage() {
   const navegar = useNavigate();
   const hoje = hojeISO();
-  const { data: situacoes = [], isLoading, error } = useQuery({ queryKey: ['rh', 'situacoes', 'todas'], queryFn: () => listarSituacoes() });
+  const { data: requisitos = [], isLoading, error } = useQuery({ queryKey: ['rh', 'situacoes', 'todas'], queryFn: () => listarSituacoes() });
+  const { data: integracoes = [] } = useQuery({ queryKey: ['rh', 'integracoes', 'todas'], queryFn: listarIntegracoesComoRequisitos });
+  const situacoes = useMemo(() => [...requisitos, ...integracoes], [requisitos, integracoes]);
   const { data: funcionarios = [] } = useQuery({ queryKey: ['rh', 'funcionarios'], queryFn: listarFuncionarios });
   const { data: funcoes = [] } = useQuery({ queryKey: ['rh', 'funcoes'], queryFn: listarFuncoes });
   const { data: setores = [] } = useQuery({ queryKey: ['rh', 'setores'], queryFn: listarSetores });
@@ -28,7 +30,7 @@ export function VencimentosPage() {
   const lista = situacoes
     .filter((x) => (filtro === 'pendentes' ? x.situacao !== 'em_dia' : !filtro || x.situacao === filtro))
     .filter((x) => !setor || setorDaFuncao.get(pessoa.get(x.funcionario_id)?.funcao_id ?? '') === setor)
-    .filter((x) => !tipo || x.tipo_documento_id === tipo)
+    .filter((x) => !tipo || x.tipo_documento_id === tipo || (tipo === 'integracoes' && x.tipo_documento_id.startsWith('integracao:')))
     .sort((a, b) => SITUACAO_REQ[a.situacao].ordem - SITUACAO_REQ[b.situacao].ordem || (a.validade ?? '').localeCompare(b.validade ?? '') || a.tipo_nome.localeCompare(b.tipo_nome));
 
   const Contador = ({ s }: { s: SituacaoReq }) => (
@@ -41,7 +43,7 @@ export function VencimentosPage() {
 
   return (
     <>
-      <Cabecalho titulo="Vencimentos" subtitulo="Documentos e treinamentos vencidos, vencendo nos próximos 30 dias ou faltando, de quem não está desligado." />
+      <Cabecalho titulo="Vencimentos" subtitulo="Documentos, treinamentos e integrações vencidos, vencendo nos próximos 30 dias ou faltando, de quem não está desligado." />
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Contador s="vencido" /><Contador s="vencendo" /><Contador s="faltando" /><Contador s="em_dia" />
       </div>
@@ -62,6 +64,7 @@ export function VencimentosPage() {
         <div className="w-64">
           <Selecao value={tipo} onChange={(e) => setTipo(e.target.value)}>
             <option value="">Todos os documentos</option>
+            <option value="integracoes">Integrações nos clientes</option>
             {tipos.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
           </Selecao>
         </div>

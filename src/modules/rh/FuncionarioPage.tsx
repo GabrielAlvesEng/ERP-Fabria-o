@@ -8,6 +8,7 @@ import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, EsqueletoDetalhe, S
 import { Avatar } from '@/modules/perfil/Avatar';
 import { listarFuncoes, listarSetores, listarUsuariosSemFicha, obterFuncionario, salvarFuncionario, type DadosFuncionario, type Funcionario } from './api';
 import { DocumentosFicha } from './DocumentosFicha';
+import { IntegracoesFicha } from './IntegracoesFicha';
 import { formatarCPF, situacao, SITUACOES, UFS, validarFicha, VINCULOS, type Situacao } from './regras';
 
 type Form = Omit<DadosFuncionario, 'cpf' | 'nascimento' | 'admissao' | 'desligamento' | 'matricula' | 'funcao_id' | 'usuario_id'> & {
@@ -172,6 +173,12 @@ export function FuncionarioPage() {
       {!novo && (
         <Secao titulo="Documentos e treinamentos" detalhe="Requisitos da função e individuais, com aviso 30 dias antes de vencer.">
           <DocumentosFicha funcionarioId={id} editavel={editavel} />
+        </Secao>
+      )}
+
+      {!novo && (
+        <Secao titulo="Integrações nos clientes" detalhe="Cada cliente define a validade. Integração vencida na data impede a ida ao cliente.">
+          <IntegracoesFicha funcionarioId={id} editavel={editavel} />
         </Secao>
       )}
 

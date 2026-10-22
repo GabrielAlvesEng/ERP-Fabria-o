@@ -141,3 +141,11 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `funcionario_documentos` (tipo, número, emissão, validade, arquivo no espaço privado `rh` em `{id do funcionário}/…`, observações, `substituido_em`, `excluido_em`). O gatilho `validar_documento_funcionario` exige validade nos tipos que vencem, confere a pasta do arquivo, manda o anterior do mesmo tipo para o histórico e não deixa mudar um documento lançado (só observações e a exclusão). Excluir o atual reativa o anterior (`reativar_documento_anterior`).
 - Visão `situacao_requisitos` (security_invoker): por funcionário não desligado, cada requisito exigido (função + individual) e cada documento atual com validade, com a situação `em_dia`, `vencendo` (dentro do aviso), `vencido` ou `faltando`, na data de hoje em São Paulo.
 - Leitura: `rh.ler` ou o próprio funcionário (`eh_meu_funcionario`); gravação: `rh.editar`. Storage `rh`: lê o RH ou o dono da pasta; envia o RH, só em pasta de funcionário existente.
+
+## RH: integrações nos clientes (`20261022000038_rh_integracoes.sql`, decisão 69)
+
+- `empresa_integracao` (empresa_id PK → empresas, validade_meses definida pelo cliente, observações): cliente com linha aqui exige integração. `empresa_documentos_exigidos` (cliente × tipo de documento).
+- `funcionario_integracoes` (funcionário, cliente, realizada_em, validade, comprovante no espaço `rh` em `{id do funcionário}/integracoes/…`, observações, `substituido_em`, `excluido_em`), com as mesmas regras dos documentos: a nova manda a anterior do mesmo cliente para o histórico, lançada não muda, excluir a atual reativa a anterior.
+- Visão `situacao_integracoes` (security_invoker): integrações atuais com a situação de hoje (aviso 30 dias antes); o nome do cliente vem de `nome_empresa(id)`, para o funcionário ver as próprias sem ler o cadastro de empresas.
+- `liberacao_no_cliente(empresa, data)` e `funcionario_liberado(funcionário, empresa, data)` (security definer, só logados): liberado ou não na data e os motivos (férias/afastado, sem integração ou integração vencida, documento exigido pela função, individual ou pelo cliente faltando ou vencido na data). A Agenda vai usar para impedir o agendamento (resposta 8).
+- Política nova `empresas_ler_rh`: quem tem `rh.ler` lê o cadastro de empresas (para escolher o cliente).

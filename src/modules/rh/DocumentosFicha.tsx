@@ -73,7 +73,7 @@ export function DocumentosFicha({ funcionarioId, editavel }: { funcionarioId: st
           )}
         </div>
         {exigidos.length === 0 ? (
-          <p className="text-sm text-suave">A função não exige documentos. Escolha os requisitos da função em RH → Setores e funções{editavel ? ', ou acrescente requisitos individuais' : ''}.</p>
+          <p className="text-sm text-suave">{editavel ? 'A função não exige documentos. Escolha os requisitos da função em RH → Setores e funções, ou acrescente requisitos individuais.' : 'Nenhum documento exigido.'}</p>
         ) : (
           <ul className="divide-y divide-borda rounded-lg px-3 ring-1 ring-borda">
             {exigidos.map((r) => {
