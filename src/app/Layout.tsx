@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, LogOut, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, Lock, LogOut, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
@@ -22,6 +22,9 @@ const modulos = [
   { to: '/financeiro', rotulo: 'Financeiro', icone: Wallet, modulo: 'financeiro', grupo: 'administrativo' },
   { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const, grupo: 'administrativo' },
 ];
+// Decisão 95: módulos que aparecem no menu com cadeado e não abrem (nem pelo endereço) até o Gabriel liberar.
+// Para liberar um módulo, basta tirá-lo desta lista.
+const BLOQUEADOS = new Set(['/compras', '/financeiro', '/almoxarifado']);
 const GRUPOS = [['operacional', 'Módulos operacionais'], ['administrativo', 'Módulos administrativos']] as const;
 
 export function Layout() {
@@ -90,7 +93,9 @@ export function Layout() {
             para a página não "encolher" quando uma aba tem rolagem. */}
         <div id="area-principal" className="area-rolagem min-h-0 flex-1 overflow-y-auto">
           <main className="mx-auto w-full min-w-0 max-w-[1600px] p-3 sm:p-4 md:p-6">
-            <div key={local.pathname.split('/')[1]} className="entrar"><Outlet /></div>
+            <div key={local.pathname.split('/')[1]} className="entrar">
+              {BLOQUEADOS.has(`/${local.pathname.split('/')[1]}`) ? <ModuloBloqueado /> : <Outlet />}
+            </div>
           </main>
         </div>
       </div>
@@ -108,7 +113,12 @@ function ListaModulos({ menu, grande = false }: { menu: typeof modulos; grande?:
         return (
           <div key={grupo} className="mb-4 space-y-0.5">
             <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-suave">{titulo}</div>
-            {itens.map((m) => (
+            {itens.map((m) => BLOQUEADOS.has(m.to) ? (
+              <div key={m.to} title="Módulo bloqueado" aria-disabled="true"
+                className={`flex cursor-not-allowed items-center gap-3 rounded-lg px-3 ${grande ? 'py-3 text-[15px]' : 'py-2 text-sm'} text-suave opacity-60`}>
+                <m.icone size={grande ? 20 : 18} /> <span className="flex-1">{m.rotulo}</span> <Lock size={14} />
+              </div>
+            ) : (
               <NavLink
                 key={m.to}
                 to={m.to}
@@ -123,6 +133,16 @@ function ListaModulos({ menu, grande = false }: { menu: typeof modulos; grande?:
         );
       })}
     </nav>
+  );
+}
+
+function ModuloBloqueado() {
+  return (
+    <div className="flex flex-col items-center gap-3 py-24 text-center">
+      <span className="rounded-full bg-slate-100 p-4 text-suave dark:bg-marinho-700"><Lock size={28} /></span>
+      <div className="text-base font-semibold text-texto">Módulo bloqueado</div>
+      <p className="max-w-md text-sm text-suave">Este módulo ainda não foi liberado. Ele abre assim que o planejamento for aprovado.</p>
+    </div>
   );
 }
 
