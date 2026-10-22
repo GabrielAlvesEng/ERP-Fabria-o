@@ -27,7 +27,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |
 | 6 | Fabricação e Qualidade | Não iniciado |
 | 7 | Expedição, campo e Financeiro (faturamento e recebimento) | Não iniciado |
-| 8 | RH, Agenda, Tarefas e Frota | **RH em planejamento, aguardando aprovação** (o Gabriel decidiu em 22/10/2026 fazer o RH antes de seguir com a Engenharia; `docs/PLANEJAMENTO_RH.md`). Frota feita (decisão 55). Agenda e Tarefas não iniciadas |
+| 8 | RH, Agenda, Tarefas e Frota | **RH aprovado e em implementação** (decisão 69: o Gabriel decidiu em 22/10/2026 fazer o RH antes de seguir com a Engenharia; `docs/PLANEJAMENTO_RH.md`). Frota feita (decisão 55). Agenda e Tarefas não iniciadas |
 | 9 | Administração (usuários, permissões, senhas, auditoria) | Parte entra já em Vendas (permissões, senhas) |
 
 A ordem dos módulos 2 a 8 será revista quando o fluxograma completo da empresa estiver validado.
