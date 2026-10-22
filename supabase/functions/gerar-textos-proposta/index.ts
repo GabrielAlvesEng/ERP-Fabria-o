@@ -1,4 +1,4 @@
-// Gerador de propostas, entrega 3 (decisão 61): escreve os textos da proposta técnica ou comercial com a OpenAI.
+// Gerador de propostas, entrega 3 (decisão 61; comercial sem objetivo e abertura desde a decisão 67): escreve os textos da proposta técnica ou comercial com a OpenAI.
 // A chave fica só aqui, como segredo do Supabase (IA_API_KEY, ou OPENAI_API_KEY), nunca no site.
 // Só usuário logado com permissão de editar Vendas usa. Preços nunca são escritos pela IA (vêm dos Custos).
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
@@ -49,10 +49,9 @@ const ESQUEMA = {
     },
   },
   comercial: {
-    type: 'object', additionalProperties: false, required: ['capa', 'abertura', 'objetivo', 'descricoes'],
+    type: 'object', additionalProperties: false, required: ['capa', 'descricoes'],
     properties: {
       capa: { type: 'object', additionalProperties: false, required: ['linha1', 'linha2', 'subtitulo'], properties: { linha1: texto, linha2: texto, subtitulo: texto } },
-      abertura: texto, objetivo: texto,
       descricoes: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['letra', 'texto'], properties: { letra: texto, texto } } },
     },
   },
@@ -69,8 +68,6 @@ const PEDIDO = {
 - fora_escopo: frase "A presente proposta contempla exclusivamente os fornecimentos e serviços descritos na proposta técnica, não estando inclusos os seguintes itens:" e 5 a 8 itens no formato "- **Rótulo:** explicação", adequados a este serviço.`,
   comercial: `Escreva a PROPOSTA COMERCIAL:
 - capa.linha1: o assunto, curto; capa.linha2: o equipamento ou local; capa.subtitulo: uma frase do fornecimento.
-- abertura: 2 frases apresentando as condições comerciais e citando que o detalhamento técnico está na proposta técnica.
-- objetivo: 3 a 4 parágrafos sobre o fornecimento (sem valores).
 - descricoes: para CADA item informado (pela letra), uma descrição do fornecimento em 1 a 2 frases, sem valores.`,
 };
 

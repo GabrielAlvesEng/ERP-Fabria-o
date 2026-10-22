@@ -19,7 +19,10 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
   const { data: minhaAssinatura } = useMinhaAssinatura();
   const contato = contatos.find((c) => c.id === proposta.contato_id);
   const [para, setPara] = useState<string | null>(null);
-  const [cc, setCc] = useState<string[]>([]);
+  // O contato técnico da proposta (decisão 67) já entra em C/C; dá para tirar.
+  const tecnico = contatos.find((c) => c.id === proposta.contato_tecnico_id);
+  const [ccEscolhido, setCc] = useState<string[] | null>(null);
+  const cc = ccEscolhido ?? (tecnico?.email && tecnico.id !== proposta.contato_id ? [tecnico.email] : []);
   const [ccLivre, setCcLivre] = useState('');
   const [assunto, setAssunto] = useState(assuntoProposta(proposta.codigo, proposta.revisao_atual, proposta.titulo));
   const [corpo, setCorpo] = useState<string | null>(null);

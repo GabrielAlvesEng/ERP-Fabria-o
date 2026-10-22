@@ -6,7 +6,7 @@ import { dataBR, dataHoraBR, mensagemErro, moeda, numeroBR } from '@/shared/lib/
 import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
 import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, EntradaMoeda, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
-  abrirArquivo, atualizarRascunho, enviarArquivoRevisao, listarArquivos, listarEventos, listarReprovacoes, listarRevisoes,
+  abrirArquivo, atualizarRascunho, enviarArquivoRevisao, listarArquivos, listarContatos, listarEventos, listarReprovacoes, listarRevisoes,
   moverProposta, obterAprovacao, obterProposta, removerArquivo,
 } from '../api';
 import type { Arquivo, Proposta, StatusProposta } from '../types';
@@ -129,6 +129,9 @@ function AbaDados({ p }: { p: Proposta }) {
   const editavel = p.status === 'À enviar' && pode('vendas', 'editar');
   const [f, setF] = useState(p);
   const [msg, setMsg] = useState('');
+  const { data: contatos = [] } = useQuery({ queryKey: ['contatos'], queryFn: listarContatos });
+  const comprador = contatos.find((c) => c.id === p.contato_id);
+  const daEmpresa = contatos.filter((c) => c.empresa_id === p.empresa_id && c.id !== p.contato_id).sort((a, b) => a.nome.localeCompare(b.nome));
   useEffect(() => setF(p), [p]);
   const set = (k: keyof Proposta) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
@@ -137,6 +140,7 @@ function AbaDados({ p }: { p: Proposta }) {
       atualizarRascunho(p.id, {
         titulo: f.titulo, responsavel_id: f.responsavel_id, descricao: f.descricao, valor: Number(numeroBR(String(f.valor)) || 0), prazo_previsto: f.prazo_previsto,
         validade_dias: f.validade_dias || null, condicoes_comerciais: f.condicoes_comerciais, observacoes: f.observacoes, data_emissao: f.data_emissao,
+        contato_tecnico_id: f.contato_tecnico_id || null,
       }),
     onSuccess: () => {
       setMsg('Salvo. Edição em À enviar não gera revisão.');
@@ -155,6 +159,13 @@ function AbaDados({ p }: { p: Proposta }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo rotulo="Título do fornecimento" className="sm:col-span-2"><Entrada value={f.titulo} onChange={set('titulo')} disabled={!editavel} /></Campo>
         <Campo rotulo="Vendedor" className="sm:col-span-2"><CampoVendedor valor={f.responsavel_id} onChange={(id) => setF({ ...f, responsavel_id: id })} disabled={!editavel} /></Campo>
+        <Campo rotulo="Contato da proposta (recebe a comercial)"><Entrada value={comprador ? `${comprador.nome}${comprador.cargo ? ` · ${comprador.cargo}` : ''}` : '—'} disabled /></Campo>
+        <Campo rotulo="Contato técnico (recebe a técnica e vai em C/C)">
+          <Selecao value={f.contato_tecnico_id ?? ''} onChange={(e) => setF({ ...f, contato_tecnico_id: e.target.value || null })} disabled={!editavel}>
+            <option value="">O mesmo contato da proposta</option>
+            {daEmpresa.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.cargo ? ` · ${c.cargo}` : ''}</option>)}
+          </Selecao>
+        </Campo>
         <Campo rotulo="Descrição" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} disabled={!editavel} /></Campo>
         <Campo rotulo="Valor (R$)"><EntradaMoeda value={String(f.valor)} onChange={(v) => set('valor')({ target: { value: v } })} disabled={!editavel} /></Campo>
         <Campo rotulo="Data de emissão"><CampoData value={f.data_emissao} onChange={(v) => setF({ ...f, data_emissao: v })} disabled={!editavel} /></Campo>

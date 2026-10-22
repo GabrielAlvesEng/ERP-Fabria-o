@@ -1,7 +1,6 @@
-// Gerador de propostas (decisão 61): estrutura dos documentos técnico e comercial e textos padrão,
-// tirados dos modelos "Novo Modelo de Proposta Técnica/Comercial" (26-01-019, Symrise).
+// Gerador de propostas (decisão 61; novo design na decisão 67): estrutura dos documentos técnico e comercial e textos padrão.
 // Nos textos: parágrafos separados por linha em branco, linhas com "- " viram lista e **assim** fica em negrito.
-// {cliente}, {local} e {validade_dias} são trocados pelos dados da proposta.
+// {cliente}, {local}, {validade_dias} e {codigo} são trocados pelos dados da proposta.
 
 export type TipoDocumento = 'tecnica' | 'comercial';
 export type Marca3 = 'Sim' | 'Não' | 'N/A';
@@ -10,38 +9,74 @@ export interface Cartao { titulo: string; texto: string; imagens?: Figura[] } //
 export interface Figura { caminho: string; legenda: string }
 export const MAX_IMAGENS_ITEM = 5; // imagens por item: mais que isso não cabe ao lado do card numa página
 export interface LinhaMatriz { texto: string; cliente: boolean; fabriaco: boolean }
+export interface GrupoResponsabilidade { area: string; itens: LinhaMatriz[] }
+export interface Etapa { nome: string; dias: number }
 
 export type Secao = { id: string; titulo: string; ativo: boolean } & (
   | { tipo: 'texto'; texto: string; dica?: string }
   | { tipo: 'cartoes'; intro: string; cartoes: Cartao[]; fecho: string; marcador: 'numero' | 'letra'; destaque?: string; dica?: string; figuras?: Figura[] }
   | { tipo: 'dados_empresas' }
   | { tipo: 'competencias'; itens: { nome: string; valor: Marca3 }[] }
-  | { tipo: 'matriz'; itens: LinhaMatriz[] }
+  | { tipo: 'matriz'; itens: LinhaMatriz[] } // versão 3 (Responsabilidades e Documentações separadas)
   | { tipo: 'impostos'; intro: string; ncm: string; linhas: { tributo: string; valor: string }[] }
   | { tipo: 'valores'; intro: string; descricoes: Record<string, string> }
   | { tipo: 'pagamento'; condicao: string; marco: string; forma: string; texto: string }
+  // Versão 4 (decisão 67)
+  | { tipo: 'sobre' } // "Conheça a Fabriaço": conteúdo nos dados da empresa (Modelos de proposta)
+  | { tipo: 'responsabilidades'; grupos: GrupoResponsabilidade[] }
+  | { tipo: 'garantia'; meses: number } // só os meses mudam; o resto é fixo
+  | { tipo: 'cronograma'; etapas: Etapa[] } // dias após a aprovação da proposta
+  | { tipo: 'validade' } // dias vêm da proposta
+  | { tipo: 'confidencialidade' } // texto fixo, sem o nome do cliente
+  | { tipo: 'visao_comercial'; frete: string; frete_detalhe: string }
 );
 export type TipoSecao = Secao['tipo'];
 
+export const VERSAO_DOCUMENTO = 4;
+
 export interface Documento {
+  versao?: number;
   tipo: TipoDocumento;
   capa: { linha1: string; linha2: string; subtitulo: string; imagem?: string; fundo?: 'escuro' | 'claro' };
   visao: { objeto: string; solucao: string; unidade: string }; // técnica: cartões do "Visão do documento"
-  abertura: string; // comercial: parágrafo do "Olá, {contato}"
+  abertura: string; // versão 3 da comercial; não sai mais no PDF
   explicacao?: string; // o que o vendedor escreveu para a IA (não sai no PDF)
   secoes: Secao[];
+}
+
+export interface SobreNos {
+  titulo: string; subtitulo: string; texto: string; materiais: string;
+  servicos: { titulo: string; texto: string }[]; maquinas: string; setores: string; lema: string;
 }
 
 export interface DadosEmpresaFabriaco {
   razao_social: string; cnpj: string; ie: string; endereco: string; bairro: string; cep_cidade: string;
   responsavel: string; telefone: string; email: string; site: string; cidade: string;
+  sobre: SobreNos;
 }
+
+export const SOBRE_PADRAO: SobreNos = {
+  titulo: 'Conheça a Fabriaço',
+  subtitulo: 'Montagens industriais e caldeiraria',
+  texto: 'A **Fabriaço Montagens Industriais e Caldeiraria**, em **Mococa - SP**, é especializada em projetos, fabricação e montagem de equipamentos e estruturas metálicas industriais.\n\nCom estrutura fabril completa e equipe técnica qualificada, integramos **engenharia, fabricação e montagem**, oferecendo soluções personalizadas, seguras e eficientes.',
+  materiais: 'Aço inox e aço carbono',
+  servicos: [
+    { titulo: 'Tanques e vasos', texto: 'Projetos e fabricação de tanques industriais e vasos de pressão.' },
+    { titulo: 'Estruturas e tubos', texto: 'Montagem de estruturas metálicas e tubulações industriais.' },
+    { titulo: 'Caldeiraria', texto: 'Caldeiraria leve e pesada, desenvolvida sob medida.' },
+    { titulo: 'Instalação', texto: 'Instalação de equipamentos e sistemas industriais.' },
+    { titulo: 'Documentação', texto: 'Memoriais, ARTs e documentação técnica.' },
+  ],
+  maquinas: 'Laser • Dobra • Calandra • Guilhotina • Solda • Montagem • Acabamento',
+  setores: 'Alimentício • Químico • Farmacêutico • Papel e celulose • Outros segmentos',
+  lema: 'Qualidade / Segurança / Confiabilidade',
+};
 
 export const EMPRESA_PADRAO: DadosEmpresaFabriaco = {
   razao_social: 'Fabriaço Montagem Industrial LTDA', cnpj: '39.433.848/0001-40', ie: '453.114.885.111',
   endereco: 'R. Paraná, 731', bairro: 'Vila Santa Rosa', cep_cidade: '13731-160 / Mococa-SP',
   responsavel: 'Gabriel Alves', telefone: '+55 (19) 98901-0359', email: 'gabriel.alves@fabriacobrasil.com.br',
-  site: 'www.fabriacobrasil.com.br', cidade: 'Mococa · São Paulo',
+  site: 'www.fabriacobrasil.com.br', cidade: 'Mococa · São Paulo', sobre: SOBRE_PADRAO,
 };
 
 const FORA_DO_ESCOPO = `A presente proposta contempla exclusivamente os fornecimentos e serviços descritos na proposta técnica, não estando inclusos os seguintes itens:
@@ -55,52 +90,36 @@ const FORA_DO_ESCOPO = `A presente proposta contempla exclusivamente os fornecim
 - **Descarte e Limpeza Industrial:** Transporte e destinação final dos componentes removidos, resíduos industriais e serviços de limpeza fina ou higienização especializada do equipamento.
 - **Serviços e Fornecimentos Adicionais:** Alterações de projeto após aprovação, modificações não previstas, fornecimento de materiais complementares e quaisquer atividades não expressamente descritas no escopo contratado.`;
 
-const GARANTIA = `A Fabriaço oferece garantia de **18 meses (1 ano e meio)** contados a partir da data de emissão da Nota Fiscal de entrega dos equipamentos, cobrindo defeitos de fabricação, materiais e mão de obra empregada na execução dos serviços contratados.
+// Textos fixos da versão 4 (decisão 67): não se editam na proposta, para ficarem sempre iguais.
+export const GARANTIA_COBRE = 'Defeitos de fabricação, dos materiais empregados e da mão de obra dos serviços executados pela Fabriaço.';
+export const GARANTIA_NAO_SE_APLICA = [
+  'Mau uso ou operação fora das condições de projeto',
+  'Alterações não autorizadas no equipamento',
+  'Armazenamento ou instalação inadequados por terceiros',
+  'Desgaste natural, negligência ou imperícia na operação',
+];
+export const GARANTIA_ATENDIMENTO = 'Constatado o defeito coberto em avaliação técnica, a Fabriaço faz o reparo ou a substituição sem custo adicional.';
+export const VALIDADE_CONDICOES = [
+  'Após o prazo, valores e prazos podem ser revistos conforme custos de matéria-prima e condições de mercado.',
+  'A confirmação do pedido é feita por ordem de compra, junto da aprovação técnica do projeto para início das atividades.',
+];
+export const CONFIDENCIALIDADE_TECNICA = `Este documento e todo o seu conteúdo (informações técnicas, desenhos, modelos, especificações, cálculos, imagens, metodologias e soluções construtivas) são de propriedade da Fabriaço Montagens Industriais e Caldeiraria e constituem informação confidencial.
 
-A garantia é válida exclusivamente para os equipamentos fornecidos e instalados conforme especificações do projeto e condições normais de operação. Não se aplica a falhas decorrentes de:
+O material foi preparado exclusivamente para a avaliação técnica do destinatário desta proposta. Não pode ser copiado, reproduzido, divulgado ou repassado a terceiros, nem utilizado para outros fins, sem autorização prévia e por escrito da Fabriaço.
 
-- Mau uso ou operação incorreta;
-- Alterações não autorizadas nas especificações ou estruturas;
-- Armazenamento ou instalação em condições inadequadas;
-- Desgaste natural, negligência, imprudência ou imperícia durante a operação.
+As soluções e os detalhamentos aqui apresentados são propriedade intelectual da Fabriaço e estão protegidos pela legislação de direitos autorais e de propriedade industrial. O uso indevido sujeita o responsável às medidas legais cabíveis.`;
+export const CONFIDENCIALIDADE_COMERCIAL = `Os valores, condições comerciais e prazos desta proposta foram elaborados exclusivamente para o destinatário e são **estritamente confidenciais**.
 
-A assistência técnica em garantia será prestada mediante avaliação técnica e, se constatado defeito coberto, a Fabriaço realizará os reparos ou substituições necessárias sem custos adicionais, respeitando os prazos e condições acordadas.`;
+Este documento destina-se ao uso interno da empresa destinatária, pelas áreas envolvidas na análise e na aprovação da compra. Não deve ser compartilhado com outros fornecedores, prestadores de serviço ou terceiros, nem utilizado como referência em outras cotações.
 
-const PRAZO = `O prazo para fabricação, fornecimento e instalação será definido em comum acordo com a {cliente} – {local}, considerando as necessidades operacionais da unidade industrial e a disponibilidade do equipamento para intervenção.
-
-O cronograma de execução será estabelecido após a aprovação formal da proposta comercial e liberação para início dos serviços, contemplando as etapas de engenharia, aquisição de materiais, fabricação, montagem, instalação e testes funcionais.
-
-A Fabriaço Brasil – Montagens Industriais e Caldeiraria realizará o planejamento das atividades de forma a atender aos prazos acordados, buscando minimizar as interferências no processo produtivo da contratante e garantir a qualidade dos serviços executados.`;
-
-const VALIDADE = `Esta proposta técnica e comercial tem validade de **{validade_dias} dias corridos** a contar da data de sua emissão.
-
-Após este prazo, os valores e prazos apresentados poderão ser revistos, considerando possíveis variações nos custos de matéria-prima, disponibilidade de materiais e condições de mercado.
-
-A confirmação do pedido deverá ser feita por meio de emissão de ordem de compra, acompanhada da aprovação técnica do projeto executivo para início das atividades.`;
-
-const CONFIDENCIALIDADE = `Todas as informações técnicas, comerciais, desenhos, modelos, especificações, cálculos, imagens, documentos e demais dados contidos nesta proposta são de propriedade exclusiva da FABRIAÇO Montagens Industriais e Caldeiraria, sendo consideradas informações confidenciais e de uso restrito às partes envolvidas neste processo de fornecimento.
-
-Este documento foi elaborado exclusivamente para fins de análise técnica e comercial por parte da {cliente}, não podendo ser reproduzido, compartilhado, divulgado ou utilizado para quaisquer outros fins sem a prévia autorização formal e por escrito da FABRIAÇO.
-
-Os conceitos, soluções construtivas, detalhamentos técnicos, metodologias de fabricação e demais informações apresentadas nesta proposta constituem propriedade intelectual da FABRIAÇO, permanecendo protegidos pelas legislações aplicáveis de direitos autorais, sigilo comercial e propriedade intelectual.
-
-O descumprimento destas condições poderá acarretar as medidas administrativas e legais cabíveis, conforme previsto na legislação vigente.`;
-
-const SOBRE_NOS = `A Fabriaço Montagens Industriais e Caldeiraria é uma empresa especializada em projetos, fabricação e montagem de equipamentos e estruturas metálicas voltados para o setor industrial, com foco em soluções técnicas personalizadas, seguras e eficientes.
-
-Localizada em Mococa – SP, a Fabriaço conta com uma estrutura fabril completa, equipe técnica qualificada e experiência consolidada em atender indústrias dos segmentos alimentício, químico, farmacêutico, papel e celulose, entre outros.
-
-Nosso diferencial está na capacidade de entregar soluções integradas, unindo engenharia, fabricação, montagem e documentação técnica em um único fluxo coordenado de trabalho. Atuamos com responsabilidade, agilidade e foco no resultado, sempre alinhados às normas técnicas e às necessidades específicas de cada cliente.
-
-Nossos principais serviços incluem:
-
-- Projetos e fabricação de tanques industriais e vasos de pressão;
-- Montagem de estruturas metálicas e tubulações industriais;
-- Caldeiraria leve e pesada sob medida;
-- Instalação de sistemas e equipamentos em plantas industriais;
-- Elaboração de memoriais, ARTs, cronogramas e documentações.
-
-Com compromisso com a qualidade e a segurança, a Fabriaço é reconhecida por sua seriedade, capacidade técnica e confiabilidade na execução de projetos industriais de pequeno, médio e grande porte.`;
+Ao receber esta proposta, o destinatário concorda em preservar o sigilo das informações aqui contidas.`;
+export const GARANTIA_MESES_PADRAO = 18;
+export const CRONOGRAMA_PADRAO: Etapa[] = [
+  { nome: 'Engenharia e aprovação do projeto', dias: 10 },
+  { nome: 'Compra de materiais', dias: 15 },
+  { nome: 'Fabricação', dias: 30 },
+  { nome: 'Entrega e instalação', dias: 10 },
+];
 
 const NORMAS = `Para a execução dos serviços de fabricação e instalação, serão consideradas as seguintes normas e referências técnicas, conforme aplicabilidade:
 
@@ -117,44 +136,28 @@ Procedimentos Internos da {cliente}: Atendimento às exigências de segurança, 
 const COMPETENCIAS: { nome: string; valor: Marca3 }[] = ['Mecânica', 'Civil', 'Automação', 'Elétrica', 'Pneumática', 'Instalação', 'Adequação']
   .map((nome) => ({ nome, valor: 'N/A' as Marca3 }));
 
-const RESP_FABRIACO = ['Materiais', 'Consumíveis', 'Mão de obra qualificada',
-  'Equipamentos e ferramentas para transformação dos materiais (Laser, Plasma, Dobradeira, Calandra, Furadeira, Lixadeira, Torno etc.)',
-  'Equipamentos de segurança dos profissionais', 'Despesas de refeições, hospedagem e transporte dos profissionais',
-  'Limpeza da área após execução dos serviços', 'Responsável pela sinalização de segurança da área de trabalho',
-  'Responsável por análise de riscos e elaboração de APRs', 'Carregamento para transporte', 'Descarregamento do transporte', 'Transporte / Seguro'];
-const RESP_CLIENTE = ['Equipamentos de aluguel (Gerador de energia, Andaime Industrial, Guindaste, PTA etc.)',
-  'Emissão e controle de documentos de acesso à planta (credenciamento, crachás etc.)', 'Permissões e licenças p/ execução dos trabalhos, se necessário',
-  'Liberações e agendamentos de parada de setores, se necessário', 'Aberturas das PT e verificação de todas as assinaturas dos responsáveis, se necessário',
-  'Ponto de energia (necessita na instalação)', 'Água potável (necessita na instalação)', 'Banheiro (necessita na instalação)'];
-const RESPONSABILIDADES: LinhaMatriz[] = [
-  ...RESP_FABRIACO.map((texto) => ({ texto, cliente: false, fabriaco: true })),
-  ...RESP_CLIENTE.map((texto) => ({ texto, cliente: true, fabriaco: false })),
-];
-const DOCUMENTACOES: LinhaMatriz[] = [
-  { texto: 'Pedido de compras', cliente: true, fabriaco: false },
-  ...['Cronograma detalhado de fabricação e instalação', 'Projeto Técnico', 'Lista de Materiais', 'Memorial de cálculo', 'Laudo Técnico',
-    'ART (Anotação de Responsabilidade Técnica)', 'Databook', 'As built', 'Manual de Operação', 'Plano de rigging',
-    'Treinamentos obrigatórios (NR-10, NR-12, NR-35 etc.)', 'APRs (Análise Preliminar de Riscos)', 'PCMSO e ASO atualizados dos colaboradores',
-    'PT (Permissão de Trabalho) preenchida e assinada', 'PIT – Plano de Inspeção e Testes de Fabricação conforme normas vigentes.',
-    'PP – Plano Detalhado de Pintura.', 'Histograma de instalação', 'Procedimento de Soldagem, EPS, RQPS, CQP',
-    'Certificados dos Materiais Utilizados na Fabricação', 'Relatório de Controle de Qualidade durante toda a fabricação',
-    'Toda a documentação conforme requisitos NR13', 'Ficha de EPI', 'Relatório Diário das atividades', 'Nota Fiscal',
-  ].map((texto) => ({ texto, cliente: false, fabriaco: true })),
-];
-
-const GESTAO: Cartao[] = [
-  { titulo: 'Engenharia e planejamento', texto: 'Responsável pela análise técnica do equipamento existente, desenvolvimento dos desenhos de fabricação, definição dos materiais e componentes, além do planejamento das etapas de execução.' },
-  { titulo: 'PCP – Planejamento e controle da produção', texto: 'Responsável pela programação das atividades de fabricação, aquisição e controle dos materiais, acompanhamento dos processos produtivos e cumprimento dos prazos estabelecidos, garantindo a integração entre as etapas do projeto.' },
-  { titulo: 'Fabricação e controle de qualidade', texto: 'Responsável pela execução dos processos de corte, usinagem, soldagem, montagem e acabamento dos componentes, incluindo inspeções dimensionais e verificações de qualidade, conforme os desenhos técnicos e especificações do projeto.' },
-  { titulo: 'Instalação e acompanhamento técnico', texto: 'Responsável pela coordenação das atividades de desmontagem e instalação, integração dos componentes e realização dos ajustes necessários, respeitando os procedimentos de segurança e as condições operacionais da unidade industrial.' },
-  { titulo: 'Inspeção final e entrega técnica', texto: 'Responsável pela verificação das condições de montagem, realização dos testes funcionais previstos e acompanhamento da entrega técnica do conjunto, assegurando que os serviços executados estejam em conformidade com o escopo contratado.' },
-];
-
-const FRETE: Cartao[] = [
-  { titulo: 'Transporte e entrega dos materiais', texto: 'O transporte dos materiais, componentes e do conjunto fabricado será realizado sob responsabilidade da Fabriaço Brasil, com entrega diretamente na unidade da contratante, na modalidade CIF (frete incluso).' },
-  { titulo: 'Mobilização de equipe e ferramentas', texto: 'Estão inclusos os deslocamentos da equipe técnica, ferramentas e equipamentos convencionais necessários à execução dos serviços.' },
-  { titulo: 'Programação e acesso à unidade', texto: 'As atividades de entrega e instalação serão previamente alinhadas com a {cliente}, respeitando os horários disponíveis, procedimentos internos de segurança e condições de acesso às instalações industriais.' },
-  { titulo: 'Movimentação e instalação', texto: 'A movimentação e o posicionamento dos componentes serão realizados conforme as condições de acesso e montagem existentes, utilizando os recursos previstos no escopo contratado.' },
+const F = (texto: string): LinhaMatriz => ({ texto, cliente: false, fabriaco: true });
+const CL = (texto: string): LinhaMatriz => ({ texto, cliente: true, fabriaco: false });
+// Responsabilidades e documentações juntas, por área (anexo A do docs/PLANEJAMENTO_PROPOSTA_PDF_V4.md).
+export const RESPONSABILIDADES_PADRAO: GrupoResponsabilidade[] = [
+  { area: 'Engenharia', itens: ['Cronograma detalhado de fabricação e instalação', 'Projeto técnico', 'Lista de materiais', 'Memorial de cálculo', 'Laudo técnico',
+    'ART (Anotação de Responsabilidade Técnica)', 'Databook', 'As built', 'Manual de operação'].map(F) },
+  { area: 'Compras', itens: ['Materiais', 'Consumíveis', 'Certificados dos materiais utilizados na fabricação'].map(F) },
+  { area: 'Fabricação', itens: ['Mão de obra qualificada', 'Equipamentos e ferramentas de transformação (laser, plasma, dobradeira, calandra, furadeira, torno etc.)',
+    'PIT – Plano de inspeção e testes de fabricação', 'PP – Plano detalhado de pintura', 'Procedimento de soldagem (EPS, RQPS, CQP)',
+    'Relatório de controle de qualidade durante a fabricação', 'Documentação conforme requisitos da NR-13'].map(F) },
+  { area: 'Instalação', itens: [
+    ...['Plano de rigging', 'Histograma de instalação', 'Relatório diário das atividades', 'Limpeza da área após a execução dos serviços'].map(F),
+    ...['Equipamentos de aluguel (gerador, andaime industrial, guindaste, PTA etc.)', 'Liberações e agendamento de parada de setores, se necessário',
+      'Ponto de energia', 'Água potável', 'Banheiro'].map(CL)] },
+  { area: 'Frete', itens: ['Carregamento para transporte', 'Descarregamento do transporte', 'Transporte / seguro',
+    'Refeições, hospedagem e transporte dos profissionais'].map(F) },
+  { area: 'Segurança', itens: [
+    ...['Equipamentos de segurança (EPIs) e ficha de EPI', 'Sinalização de segurança da área de trabalho', 'Análise de riscos e APRs',
+      'Treinamentos obrigatórios (NR-10, NR-12, NR-35 etc.)', 'PCMSO e ASO atualizados dos colaboradores', 'PT (Permissão de Trabalho) preenchida e assinada'].map(F),
+    ...['Documentos de acesso à planta (credenciamento, crachás etc.)', 'Permissões e licenças para execução dos trabalhos, se necessário',
+      'Abertura das PT e assinaturas dos responsáveis, se necessário'].map(CL)] },
+  { area: 'Financeiro', itens: [CL('Pedido de compras'), F('Nota fiscal')] },
 ];
 
 const IMPOSTOS = [
@@ -174,58 +177,63 @@ export function documentoPadrao(tipo: TipoDocumento): Documento {
   const capa = { linha1: '', linha2: '', subtitulo: '' };
   if (tipo === 'tecnica') {
     return {
-      tipo, capa, visao: { objeto: '', solucao: '', unidade: '' }, abertura: '',
+      versao: VERSAO_DOCUMENTO, tipo, capa, visao: { objeto: '', solucao: '', unidade: '' }, abertura: '',
       secoes: [
-        texto('sobre', 'Sobre nós', SOBRE_NOS),
+        { id: 'sobre', titulo: 'Sobre nós', ativo: true, tipo: 'sobre' },
         { id: 'dados', titulo: 'Dados da Empresa', ativo: true, tipo: 'dados_empresas' },
         texto('objetivo', 'Objetivo', '', 'O que será fornecido, para quem e com qual finalidade.'),
         texto('aplicacao', 'Aplicação', '', 'Onde e como a solução será aplicada, com a lista de benefícios.'),
         texto('normas', 'Referência e Normas', NORMAS),
         { id: 'competencias', titulo: 'Competências', ativo: true, tipo: 'competencias', itens: COMPETENCIAS },
-        { id: 'responsabilidades', titulo: 'Responsabilidades', ativo: true, tipo: 'matriz', itens: RESPONSABILIDADES },
-        { id: 'documentacoes', titulo: 'Documentações', ativo: true, tipo: 'matriz', itens: DOCUMENTACOES },
+        { id: 'responsabilidades', titulo: 'Responsabilidades', ativo: true, tipo: 'responsabilidades', grupos: RESPONSABILIDADES_PADRAO },
         { id: 'escopo', titulo: 'Escopo', ativo: true, tipo: 'cartoes', marcador: 'letra', cartoes: [], fecho: '',
           intro: 'A presente proposta contempla o fornecimento de materiais, fabricação e instalação, conforme descrito a seguir:', dica: 'Etapas do serviço, uma por item, cada uma com as imagens que precisar.' },
         texto('fora', 'Fora do Escopo', FORA_DO_ESCOPO),
-        { id: 'gestao', titulo: 'Gestão do Projeto', ativo: true, tipo: 'cartoes', marcador: 'letra', cartoes: GESTAO,
-          intro: 'A gestão do projeto será realizada pela Fabriaço Brasil – Montagens Industriais e Caldeiraria, contemplando o planejamento, acompanhamento e controle das atividades necessárias, garantindo o atendimento aos requisitos técnicos, de qualidade e segurança estabelecidos pela {cliente}.',
-          fecho: 'Todas as etapas serão acompanhadas pela equipe técnica da Fabriaço Brasil, mantendo comunicação com os responsáveis da {cliente} para alinhamento das atividades, programação das intervenções e atendimento às necessidades operacionais da unidade.' },
-        texto('garantia', 'Garantia', GARANTIA),
-        texto('prazo', 'Prazo de Entrega', PRAZO),
-        texto('validade', 'Validade da Proposta', VALIDADE),
-        texto('confidencialidade', 'Termo de Confidencialidade', CONFIDENCIALIDADE),
+        { id: 'garantia', titulo: 'Garantia', ativo: true, tipo: 'garantia', meses: GARANTIA_MESES_PADRAO },
+        { id: 'prazo', titulo: 'Prazo de Entrega', ativo: true, tipo: 'cronograma', etapas: CRONOGRAMA_PADRAO },
+        { id: 'validade', titulo: 'Validade da Proposta', ativo: true, tipo: 'validade' },
+        { id: 'confidencialidade', titulo: 'Termo de Confidencialidade', ativo: true, tipo: 'confidencialidade' },
         texto('anexo', 'Anexo', 'Não contém.'),
       ],
     };
   }
+  // Comercial em 4 páginas: capa, visão geral (frete, impostos, pagamento), valores e a última (anexos, sigilo e vendedor).
   return {
-    tipo, capa, visao: { objeto: '', solucao: '', unidade: '' },
-    abertura: 'Apresentamos as condições comerciais para o fornecimento descrito nesta proposta. O detalhamento técnico da solução consta na proposta técnica correspondente.',
+    versao: VERSAO_DOCUMENTO, tipo, capa, visao: { objeto: '', solucao: '', unidade: '' }, abertura: '',
     secoes: [
-      texto('objetivo', 'Objetivo', '', 'O que será fornecido, para quem e com qual finalidade.'),
-      texto('fora', 'Fora do Escopo', FORA_DO_ESCOPO),
-      { id: 'frete', titulo: 'Frete e Logística', ativo: true, tipo: 'cartoes', marcador: 'letra', cartoes: FRETE, intro: '', fecho: '',
-        destaque: '**Destino: {cliente} — {local}.** A Fabriaço será responsável pela organização e execução da logística necessária ao fornecimento e à instalação.' },
-      texto('garantia', 'Garantia', GARANTIA),
-      { id: 'impostos', titulo: 'Impostos (Inclusos)', ativo: true, tipo: 'impostos', ncm: '', linhas: IMPOSTOS,
-        intro: 'Nota fiscal de venda. As alíquotas abaixo deverão ser confirmadas antes da emissão definitiva.' },
-      texto('prazo', 'Prazo de Entrega', PRAZO),
+      { id: 'visao', titulo: 'Visão geral', ativo: true, tipo: 'visao_comercial', frete: 'CIF — incluso', frete_detalhe: 'Entrega na unidade {cliente} — {local}' },
+      { id: 'impostos', titulo: 'Impostos (inclusos)', ativo: true, tipo: 'impostos', ncm: '', linhas: IMPOSTOS,
+        intro: 'Nota fiscal de venda. As alíquotas deverão ser confirmadas antes da emissão definitiva.' },
+      { id: 'pagamento', titulo: 'Forma de pagamento', ativo: true, tipo: 'pagamento', condicao: '21 dias (21 DDL)', marco: 'Emissão da Nota Fiscal', forma: 'Depósito / transferência',
+        texto: 'Pagamento em 21 (vinte e um) dias após a emissão da Nota Fiscal, via depósito bancário ou transferência eletrônica.' },
       { id: 'valores', titulo: 'Valores', ativo: true, tipo: 'valores', intro: VALORES_INTRO, descricoes: {} },
-      { id: 'pagamento', titulo: 'Forma de Pagamento', ativo: true, tipo: 'pagamento', condicao: '21 dias (21 DDL)', marco: 'Emissão da Nota Fiscal', forma: 'Depósito / transferência',
-        texto: '- Pagamento em 21 (vinte e um) dias após a emissão da Nota Fiscal, contados a partir da data de faturamento do fornecimento ou da etapa concluída (quando aplicável).\n\nTodos os valores deverão ser pagos via depósito bancário ou transferência eletrônica, mediante apresentação de nota fiscal e documentação de entrega assinada pelo responsável técnico da {cliente}.' },
-      texto('validade', 'Validade da Proposta', VALIDADE),
-      texto('confidencialidade', 'Termo de Confidencialidade', CONFIDENCIALIDADE),
-      texto('anexo', 'Anexo', 'Não contém.'),
+      texto('anexo', 'Anexos', '- Proposta técnica {codigo}', 'Um anexo por linha, começando com "- ".'),
+      { id: 'confidencialidade', titulo: 'Termo de Confidencialidade', ativo: true, tipo: 'confidencialidade' },
     ],
   };
 }
 
-// Documento salvo pode ser de uma versão anterior do modelo: completa campos e seções que faltam, sem mexer no que existe.
-export function completarDocumento(doc: Partial<Documento> | null | undefined, tipo: TipoDocumento): Documento {
-  const base = documentoPadrao(tipo);
+// Documento salvo pode ser de uma versão anterior do modelo. Na conversão para a versão 4, as seções que mantêm o
+// mesmo formato (textos, escopo com imagens, competências, impostos, pagamento, valores) continuam como estavam;
+// as que mudaram de formato vêm do padrão ("base": Modelos de proposta, ou o padrão do sistema).
+export function completarDocumento(doc: Partial<Documento> | null | undefined, tipo: TipoDocumento, base: Documento = documentoPadrao(tipo)): Documento {
   if (!doc) return base;
-  const secoes = Array.isArray(doc.secoes) && doc.secoes.length ? doc.secoes : base.secoes;
-  return { ...base, ...doc, tipo, capa: { ...base.capa, ...doc.capa }, visao: { ...base.visao, ...doc.visao }, secoes };
+  const junto = { ...base, ...doc, tipo, capa: { ...base.capa, ...doc.capa }, visao: { ...base.visao, ...doc.visao } };
+  if (doc.versao === VERSAO_DOCUMENTO) return { ...junto, secoes: Array.isArray(doc.secoes) && doc.secoes.length ? doc.secoes : base.secoes };
+  const antigas = Array.isArray(doc.secoes) ? doc.secoes : [];
+  const secoes = base.secoes.map((b) => {
+    const a = antigas.find((x) => x.id === b.id);
+    return a && a.tipo === b.tipo ? { ...a, titulo: b.titulo } : b;
+  });
+  return { ...junto, versao: VERSAO_DOCUMENTO, secoes };
+}
+
+// Comercial: garantia e prazo vêm da proposta técnica da mesma revisão (decisão 67).
+export function resumoTecnica(tecnica?: Documento | null): { meses: number; dias: number; etapas: Etapa[] } {
+  const g = tecnica?.secoes.find((s) => s.tipo === 'garantia');
+  const c = tecnica?.secoes.find((s) => s.tipo === 'cronograma');
+  const etapas = c?.tipo === 'cronograma' ? c.etapas : CRONOGRAMA_PADRAO;
+  return { meses: g?.tipo === 'garantia' ? g.meses : GARANTIA_MESES_PADRAO, dias: etapas.reduce((t, e) => t + (Number(e.dias) || 0), 0), etapas };
 }
 
 // Texto simples → blocos para a prévia e o PDF.
@@ -254,12 +262,12 @@ export function blocos(texto: string): Bloco[] {
   return saida;
 }
 
-export interface Variaveis { cliente: string; local: string; validade_dias: string }
+export interface Variaveis { cliente: string; local: string; validade_dias: string; codigo?: string }
 export const substituir = (t: string, v: Variaveis) =>
-  t.replace(/\{(cliente|local|validade_dias)\}/g, (_, k: keyof Variaveis) => v[k] || `{${k}}`);
+  t.replace(/\{(cliente|local|validade_dias|codigo)\}/g, (_, k: keyof Variaveis) => v[k] || `{${k}}`);
 
-// Numeração das seções ativas: 01, 02… (como nos modelos).
-export const numerar = (secoes: Secao[]) => secoes.filter((s) => s.ativo).map((s, i) => ({ secao: s, numero: String(i + 1).padStart(2, '0') }));
+// Numeração das seções ativas: 01, 02… (como nos modelos). "Sobre nós" tem título próprio e não leva número.
+export const numerar = (secoes: Secao[]) => secoes.filter((s) => s.ativo && s.tipo !== 'sobre').map((s, i) => ({ secao: s, numero: String(i + 1).padStart(2, '0') }));
 export const marcadorCartao = (marcador: 'numero' | 'letra', i: number) => (marcador === 'letra' ? String.fromCharCode(65 + i) : String(i + 1).padStart(2, '0'));
 
 // Nome do arquivo gerado: "Proposta 26-01-019-R0 FABRIAÇO - Título - Técnica.pdf".

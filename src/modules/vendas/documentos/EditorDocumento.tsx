@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { AreaTexto, Botao, Caixa, Campo, Entrada, Selecao } from '@/shared/ui';
-import { MAX_IMAGENS_ITEM, marcadorCartao, numerar, type Cartao, type Documento, type Figura, type Marca3, type Secao } from './modelo';
+import { MAX_IMAGENS_ITEM, marcadorCartao, numerar, type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type Marca3, type Secao } from './modelo';
 
 export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<string, string> }
 
@@ -50,20 +50,22 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens }
               <Campo rotulo="Unidade (vazio = cliente · cidade)" className="sm:col-span-2"><Entrada value={doc.visao.unidade} onChange={(e) => onChange({ ...doc, visao: { ...doc.visao, unidade: e.target.value } })} /></Campo>
             </>
           ) : (
-            <Campo rotulo="Abertura (abaixo de “Olá, contato”)" className="sm:col-span-2"><AreaTexto rows={3} value={doc.abertura} onChange={(e) => onChange({ ...doc, abertura: e.target.value })} /></Campo>
+            <p className="text-xs text-suave sm:col-span-2">A comercial tem 4 páginas fixas: capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (da aba Custos) e encerramento (anexos, sigilo e o vendedor). Garantia e prazo vêm da proposta técnica.</p>
           )}
         </div>
       </div>
-      <p className="text-xs text-suave">Nos textos: linha em branco separa parágrafos, “- ” no começo da linha faz lista, **texto** fica em negrito. {'{cliente}'}, {'{local}'} e {'{validade_dias}'} viram os dados da proposta.</p>
+      <p className="text-xs text-suave">Nos textos: linha em branco separa parágrafos, “- ” no começo da linha faz lista, **texto** fica em negrito. {'{cliente}'}, {'{local}'}, {'{validade_dias}'} e {'{codigo}'} viram os dados da proposta.</p>
       {doc.secoes.map((s, i) => (
         <div key={s.id} className={`rounded-xl ring-1 ring-borda ${s.ativo ? 'bg-superficie' : 'bg-pagina opacity-70'}`}>
           <div className="flex items-center gap-2 px-3 py-2">
             <Caixa marcado={s.ativo} onChange={(ativo) => setSecao(i, { ...s, ativo })} />
-            <span className="w-6 text-xs font-semibold text-roxo-600 dark:text-roxo-100">{numeros[s.id] ?? '—'}</span>
+            <span className="w-6 text-xs font-semibold text-roxo-600 dark:text-roxo-100">{doc.tipo === 'tecnica' ? numeros[s.id] ?? '—' : ''}</span>
             <input value={s.titulo} onChange={(e) => setSecao(i, { ...s, titulo: e.target.value })}
               className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none hover:border-borda focus:border-roxo-500" />
-            <button type="button" onClick={() => mover(i, -1)} className="rounded p-1 text-suave hover:text-texto" title="Subir"><ChevronUp size={15} /></button>
-            <button type="button" onClick={() => mover(i, 1)} className="rounded p-1 text-suave hover:text-texto" title="Descer"><ChevronDown size={15} /></button>
+            {doc.tipo === 'tecnica' && <>
+              <button type="button" onClick={() => mover(i, -1)} className="rounded p-1 text-suave hover:text-texto" title="Subir"><ChevronUp size={15} /></button>
+              <button type="button" onClick={() => mover(i, 1)} className="rounded p-1 text-suave hover:text-texto" title="Descer"><ChevronDown size={15} /></button>
+            </>}
             <button type="button" onClick={() => setAberta(aberta === s.id ? null : s.id)} className="rounded px-2 py-0.5 text-xs text-roxo-600 hover:bg-roxo-50 dark:text-roxo-100 dark:hover:bg-marinho-700">
               {aberta === s.id ? 'Fechar' : 'Editar'}
             </button>
@@ -153,6 +155,77 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
               </Selecao>
             </div>
           ))}
+        </div>
+      );
+    case 'sobre':
+      return <p className="text-sm text-suave">Página “Conheça a Fabriaço”, com o mapa de São Paulo. Os textos ficam em Administração → Modelos de proposta → Dados da Fabriaço e valem para todas as propostas.</p>;
+    case 'responsabilidades': {
+      const setGrupo = (g: number, novo: GrupoResponsabilidade) => onChange({ ...s, grupos: s.grupos.map((x, j) => (j === g ? novo : x)) });
+      return (
+        <div className="space-y-3">
+          <div className="flex gap-2 text-[11px] font-semibold uppercase text-suave"><span className="flex-1">Item</span><span className="w-14 text-center">Cliente</span><span className="w-14 text-center">Fabriaço</span><span className="w-6" /></div>
+          {s.grupos.map((g, gi) => (
+            <div key={gi} className="rounded-lg bg-pagina p-2 ring-1 ring-borda">
+              <div className="mb-1 flex items-center gap-2">
+                <input value={g.area} onChange={(e) => setGrupo(gi, { ...g, area: e.target.value })} placeholder="Área"
+                  className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs font-bold uppercase tracking-wide text-roxo-600 outline-none hover:border-borda focus:border-roxo-500 dark:text-roxo-100" />
+                <button type="button" onClick={() => confirm(`Tirar a área “${g.area}” e os itens dela?`) && onChange({ ...s, grupos: s.grupos.filter((_, j) => j !== gi) })} className="w-6 rounded p-1 text-suave hover:text-red-600" title="Tirar a área"><Trash2 size={13} /></button>
+              </div>
+              {g.itens.map((it, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input value={it.texto} onChange={(e) => setGrupo(gi, { ...g, itens: g.itens.map((x, j) => (j === i ? { ...x, texto: e.target.value } : x)) })}
+                    className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm outline-none hover:border-borda focus:border-roxo-500" />
+                  <span className="flex w-14 justify-center"><Caixa marcado={it.cliente} onChange={(v) => setGrupo(gi, { ...g, itens: g.itens.map((x, j) => (j === i ? { ...x, cliente: v } : x)) })} /></span>
+                  <span className="flex w-14 justify-center"><Caixa marcado={it.fabriaco} onChange={(v) => setGrupo(gi, { ...g, itens: g.itens.map((x, j) => (j === i ? { ...x, fabriaco: v } : x)) })} /></span>
+                  <button type="button" onClick={() => setGrupo(gi, { ...g, itens: g.itens.filter((_, j) => j !== i) })} className="w-6 rounded p-1 text-suave hover:text-red-600" title="Remover"><Trash2 size={13} /></button>
+                </div>
+              ))}
+              <button type="button" onClick={() => setGrupo(gi, { ...g, itens: [...g.itens, { texto: '', cliente: false, fabriaco: true }] })} className="mt-1 text-xs font-medium text-roxo-600 hover:underline dark:text-roxo-100">+ Adicionar item em {g.area || 'esta área'}</button>
+            </div>
+          ))}
+          <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, grupos: [...s.grupos, { area: 'Nova área', itens: [] }] })}><Plus size={14} /> Adicionar área</Botao>
+        </div>
+      );
+    }
+    case 'garantia':
+      return (
+        <div className="space-y-2">
+          <Campo rotulo="Tempo de garantia (meses, após a emissão da NF)" className="max-w-xs">
+            <Entrada type="number" min={1} max={120} value={s.meses} onChange={(e) => onChange({ ...s, meses: Math.max(1, Math.round(Number(e.target.value) || 1)) })} />
+          </Campo>
+          <p className="text-xs text-suave">O resto da garantia (o que cobre e onde não se aplica) é texto fixo, igual em todas as propostas. A proposta comercial mostra este mesmo prazo.</p>
+        </div>
+      );
+    case 'cronograma': {
+      const total = s.etapas.reduce((t, e) => t + (Number(e.dias) || 0), 0);
+      return (
+        <div className="space-y-2">
+          <div className="flex gap-2 text-[11px] font-semibold uppercase text-suave"><span className="flex-1">Etapa</span><span className="w-20 text-right">Dias</span><span className="w-6" /></div>
+          {s.etapas.map((e, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Entrada value={e.nome} onChange={(ev) => onChange({ ...s, etapas: s.etapas.map((x, j) => (j === i ? { ...x, nome: ev.target.value } : x)) })} placeholder="Etapa" />
+              <Entrada type="number" min={0} className="w-20 text-right" value={e.dias} onChange={(ev) => onChange({ ...s, etapas: s.etapas.map((x, j) => (j === i ? { ...x, dias: Math.max(0, Math.round(Number(ev.target.value) || 0)) } : x)) })} />
+              <button type="button" onClick={() => onChange({ ...s, etapas: s.etapas.filter((_, j) => j !== i) })} className="w-6 rounded p-1 text-suave hover:text-red-600" title="Remover"><Trash2 size={13} /></button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between gap-2">
+            <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, etapas: [...s.etapas, { nome: '', dias: 5 }] })}><Plus size={14} /> Adicionar etapa</Botao>
+            <span className="text-sm">Total: <b>{total} dias</b> após a aprovação</span>
+          </div>
+          <p className="text-xs text-suave">Cada etapa começa quando a anterior termina. A proposta comercial mostra este total.</p>
+        </div>
+      );
+    }
+    case 'validade':
+      return <p className="text-sm text-suave">Cartão com a validade da proposta (campo “Validade (dias)” na aba Dados) e a data limite. As condições são texto fixo.</p>;
+    case 'confidencialidade':
+      return <p className="text-sm text-suave">Texto fixo, sem o nome do cliente, igual em todas as propostas.</p>;
+    case 'visao_comercial':
+      return (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Campo rotulo="Frete"><Entrada value={s.frete} onChange={(e) => onChange({ ...s, frete: e.target.value })} placeholder="Ex.: CIF — incluso" /></Campo>
+          <Campo rotulo="Detalhe do frete"><Entrada value={s.frete_detalhe} onChange={(e) => onChange({ ...s, frete_detalhe: e.target.value })} /></Campo>
+          <p className="text-xs text-suave sm:col-span-2">Revisões, validade, garantia e prazo entram sozinhos (da proposta e da proposta técnica).</p>
         </div>
       );
     case 'matriz':

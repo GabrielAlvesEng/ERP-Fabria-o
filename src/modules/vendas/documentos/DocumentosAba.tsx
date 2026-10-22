@@ -9,7 +9,7 @@ import { enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
 import type { Proposta } from '@/modules/vendas/types';
 import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadroes, salvarDocumento } from './api';
 import { EditorDocumento } from './EditorDocumento';
-import { aplicarTextosIA, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
+import { aplicarTextosIA, completarDocumento, imagensDoDocumento, nomeArquivo, type Documento, type TextosIA, type TipoDocumento } from './modelo';
 
 const Previa = lazy(() => import('./Previa'));
 const SEM_IMAGENS: Record<string, string> = {};
@@ -28,7 +28,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   const { data: salvos, isLoading } = useQuery({ queryKey: ['proposta_documentos', rev?.id], queryFn: () => lerDocumentos(rev!.id), enabled: Boolean(rev) });
   const preparadoPor = padroes?.empresa.responsavel ?? '';
   const { data: dados } = useQuery({
-    queryKey: ['proposta_documentos_dados', p.id, rev?.id, p.titulo, p.data_emissao, p.validade_dias, preparadoPor],
+    queryKey: ['proposta_documentos_dados', p.id, rev?.id, p.titulo, p.data_emissao, p.validade_dias, p.contato_id, p.contato_tecnico_id, p.responsavel_id, preparadoPor],
     queryFn: () => dadosDaProposta(p, rev!.id, preparadoPor), enabled: Boolean(rev && padroes),
   });
   const editavel = Boolean(rev?.status === 'rascunho' && pode('vendas', 'editar'));
@@ -37,7 +37,8 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   const [docs, setDocs] = useState<Partial<Record<TipoDocumento, Documento>>>({});
   useEffect(() => {
     if (!salvos || !padroes) return;
-    setDocs({ tecnica: salvos.tecnica ?? padroes.tecnica, comercial: salvos.comercial ?? padroes.comercial });
+    // Documento salvo numa versão antiga do modelo é convertido com os padrões atuais (decisão 67).
+    setDocs({ tecnica: completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), comercial: completarDocumento(salvos.comercial, 'comercial', padroes.comercial) });
   }, [salvos, padroes]);
   const doc = docs[tipo];
 
@@ -71,7 +72,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
     setMsg(null); setGerando(true);
     try {
       const { gerarBlob } = await import('./Previa');
-      const blob = await gerarBlob(doc, dados, padroes.empresa, urls);
+      const blob = await gerarBlob(doc, dados, padroes.empresa, urls, docs.tecnica);
       const nome = nomeArquivo(p.codigo, p.revisao_atual, p.titulo, tipo);
       if (anexar) {
         await enviarArquivoRevisao(p.id, rev.id, tipo, new File([blob], nome, { type: 'application/pdf' }));
@@ -153,7 +154,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
           <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} />
         </div>
         <div className={`lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:block'}`}>
-          {dados ? <Suspense fallback={<EsqueletoPagina />}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} /></Suspense> : <EsqueletoPagina />}
+          {dados ? <Suspense fallback={<EsqueletoPagina />}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} tecnica={tipo === 'comercial' ? docs.tecnica : null} /></Suspense> : <EsqueletoPagina />}
         </div>
       </div>
     </div>

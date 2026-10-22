@@ -1,32 +1,38 @@
 import type { ReactNode } from 'react';
-import { Document, Font, Image, Page, Path, Polygon, Circle, StyleSheet, Svg, Text, View, type Styles } from '@react-pdf/renderer';
+import { Circle, Document, Font, Image, Page, Path, Polygon, StyleSheet, Svg, Text, View, type Styles } from '@react-pdf/renderer';
 import geist400 from '@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff?url';
 import geist500 from '@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff?url';
 import geist600 from '@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff?url';
 import geist700 from '@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff?url';
 import { moeda } from '@/shared/lib/formato';
 import {
-  blocos, marcadorCartao, numerar, substituir, type Cartao, type DadosEmpresaFabriaco, type Documento, type Secao, type Trecho, type Variaveis,
+  blocos, CONFIDENCIALIDADE_COMERCIAL, CONFIDENCIALIDADE_TECNICA, GARANTIA_ATENDIMENTO, GARANTIA_COBRE, GARANTIA_NAO_SE_APLICA, marcadorCartao, numerar,
+  resumoTecnica, substituir, VALIDADE_CONDICOES, type Cartao, type DadosEmpresaFabriaco, type Documento, type Etapa, type Secao, type Trecho, type Variaveis,
 } from './modelo';
+import { MAPA_SP } from './mapaSP';
 
-// PDF da proposta (decisão 61), no visual dos modelos técnico e comercial enviados pelo Gabriel.
-// A prévia na tela e o arquivo gerado saem deste mesmo componente.
+// PDF da proposta (decisão 61; novo design na decisão 67). A prévia na tela e o arquivo gerado saem deste mesmo componente.
+// Técnica: capa + páginas com as seções numeradas. Comercial: 4 páginas (capa, visão geral, valores e encerramento).
 
 Font.register({ family: 'Geist', fonts: [
   { src: geist400, fontWeight: 400 }, { src: geist500, fontWeight: 500 }, { src: geist600, fontWeight: 600 }, { src: geist700, fontWeight: 700 },
 ] });
 Font.registerHyphenationCallback((palavra) => [palavra]);
 
+export interface PessoaContato { nome: string; telefone: string; email: string }
 export interface DadosProposta {
   codigo: string; revisao: number; titulo: string; emissao: string; validadeDias: number;
   cliente: { nome: string; razao_social: string; cnpj: string; ie: string; endereco: string; bairro: string; cep_cidade: string; local: string };
-  contato: { nome: string; telefone: string; email: string };
+  contato: PessoaContato;
+  contatoTecnico?: PessoaContato | null; // a técnica vai A/C dele (decisão 67); sem ele, A/C do contato da proposta
   preparadoPor: string;
-  itens: { letra: string; descricao: string; valor: number }[];
+  vendedor?: (PessoaContato & { cargo: string }) | null;
+  revisoes?: { numero: number; descricao: string; emissao: string }[];
+  itens: { letra: string; descricao: string; quantidade?: number; valor: number }[];
 }
 
 const C = {
-  navy: '#141a2e', navy2: '#1f2640', navy3: '#262d4d', teal: '#15303a', roxo: '#6e48d0', roxoClaro: '#9a78ea', lavanda: '#ece8fb',
+  navy: '#141a2e', navy2: '#1f2640', navy3: '#262d4d', teal: '#15303a', roxo: '#6e48d0', roxoMarca: '#410FA0', roxoClaro: '#9a78ea', lavanda: '#ece8fb', lavanda2: '#f5f2fd',
   texto: '#1f2433', suave: '#6b7280', borda: '#e5e7eb', fundo: '#f6f7fb', verde: '#0f766e', verdeFundo: '#d9f2ee', vermelho: '#b42318', vermelhoFundo: '#fde2e1',
 };
 const MARCA = `${import.meta.env.BASE_URL}marca/pdf/`;
@@ -34,8 +40,9 @@ const MARCA = `${import.meta.env.BASE_URL}marca/pdf/`;
 const IMG = { largura: 178, altura: 104, espaco: 8, ligacao: 26, saida: 16 };
 
 const s = StyleSheet.create({
-  pagina: { fontFamily: 'Geist', fontSize: 9.5, color: C.texto, paddingTop: 54, paddingBottom: 56, paddingHorizontal: 46, lineHeight: 1.45 },
-  topo: { position: 'absolute', top: 24, left: 46, right: 46, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, letterSpacing: 1 },
+  pagina: { fontFamily: 'Geist', fontSize: 9.5, color: C.texto, paddingTop: 62, paddingBottom: 56, paddingHorizontal: 46, lineHeight: 1.45 },
+  topo: { position: 'absolute', top: 22, left: 46, right: 46, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: 7, letterSpacing: 1,
+    borderBottomWidth: 0.5, borderBottomColor: C.borda, paddingBottom: 7 },
   rodape: { position: 'absolute', bottom: 24, left: 46, right: 46, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, color: C.suave, borderTopWidth: 0.5, borderTopColor: C.borda, paddingTop: 6 },
   kicker: { fontSize: 7.5, fontWeight: 600, color: C.roxo, letterSpacing: 1.6, lineHeight: 1.3, marginBottom: 6 },
   h1: { fontSize: 22, fontWeight: 700, letterSpacing: -0.4, lineHeight: 1.25, marginBottom: 6 },
@@ -47,21 +54,35 @@ const s = StyleSheet.create({
   cartaoValor: { fontSize: 10, fontWeight: 600 },
   th: { fontSize: 7, fontWeight: 600, color: '#ffffff', letterSpacing: 0.6 },
   td: { fontSize: 8.5 },
+  cartao: { borderWidth: 0.5, borderColor: C.borda, borderRadius: 8, backgroundColor: C.fundo, padding: 12 },
 });
+
+const dataExtenso = (iso: string) => {
+  const d = iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : new Date();
+  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+const dataCurta = (iso: string) => (iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : new Date()).toLocaleDateString('pt-BR');
+const somarDias = (iso: string, dias: number) => {
+  const d = iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : new Date();
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+};
+const qtd = (n: number) => (Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 3 }));
 
 function Rico({ trechos, estilo }: { trechos: Trecho[]; estilo?: Styles[string] }) {
   return <Text style={estilo}>{trechos.map((t, i) => <Text key={i} style={t.negrito ? { fontWeight: 600 } : undefined}>{t.texto}</Text>)}</Text>;
 }
 
 // "topo" (título da seção) fica colado ao primeiro parágrafo ou item, para nunca sobrar sozinho no pé da página.
-function TextoRico({ texto, v, topo }: { texto: string; v: Variaveis; topo?: ReactNode }) {
-  const item = (it: Trecho[], j: number) => <View key={j} style={s.item} wrap={false}><Text style={s.bolinha}>•</Text><Rico trechos={it} estilo={{ flex: 1 }} /></View>;
+function TextoRico({ texto, v, topo, estilo }: { texto: string; v: Variaveis; topo?: ReactNode; estilo?: Styles[string] }) {
+  const p = estilo ? [s.p, estilo] : s.p;
+  const item = (it: Trecho[], j: number) => <View key={j} style={s.item} wrap={false}><Text style={s.bolinha}>•</Text><Rico trechos={it} estilo={{ flex: 1, ...(estilo ?? {}) }} /></View>;
   const lista = blocos(substituir(texto, v));
   if (!lista.length) return topo ? <View wrap={false}>{topo}</View> : null;
   return (
     <View>
       {lista.map((b, i) => {
-        if (b.tipo === 'p') return i === 0 && topo ? <View key={i} wrap={false}>{topo}<Rico trechos={b.trechos} estilo={s.p} /></View> : <Rico key={i} trechos={b.trechos} estilo={s.p} />;
+        if (b.tipo === 'p') return i === 0 && topo ? <View key={i} wrap={false}>{topo}<Rico trechos={b.trechos} estilo={p as Styles[string]} /></View> : <Rico key={i} trechos={b.trechos} estilo={p as Styles[string]} />;
         return (
           <View key={i} style={{ marginBottom: 6 }}>
             {i === 0 && topo ? <View wrap={false}>{topo}{item(b.itens[0], 0)}</View> : item(b.itens[0], 0)}
@@ -73,27 +94,49 @@ function TextoRico({ texto, v, topo }: { texto: string; v: Variaveis; topo?: Rea
   );
 }
 
-function Check() {
-  return <Svg width={9} height={9} viewBox="0 0 24 24"><Path d="M4 12.5l5 5L20 6.5" stroke={C.verde} strokeWidth={3} fill="none" /></Svg>;
+function Check({ cor = C.verde }: { cor?: string }) {
+  return <Svg width={9} height={9} viewBox="0 0 24 24"><Path d="M4 12.5l5 5L20 6.5" stroke={cor} strokeWidth={3} fill="none" /></Svg>;
+}
+function Xis() {
+  return <Svg width={8} height={8} viewBox="0 0 24 24"><Path d="M6 6l12 12M18 6L6 18" stroke={C.vermelho} strokeWidth={3} fill="none" /></Svg>;
 }
 
-function TituloSecao({ numero, titulo, comercial }: { numero: string; titulo: string; comercial: boolean }) {
+function TituloSecao({ numero, titulo }: { numero: string; titulo: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, marginBottom: 10, paddingBottom: comercial ? 8 : 0, borderBottomWidth: comercial ? 0.5 : 0, borderBottomColor: C.borda }}>
-      <View style={{ width: 40, height: 20, borderRadius: 4, backgroundColor: comercial ? C.roxo : C.lavanda, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-        <Text style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: comercial ? '#ffffff' : C.roxo }}>{numero}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, marginBottom: 10 }}>
+      <View style={{ width: 40, height: 20, borderRadius: 4, backgroundColor: C.lavanda, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+        <Text style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: C.roxo }}>{numero}</Text>
       </View>
       <Text style={{ fontSize: 15, fontWeight: 700, letterSpacing: -0.3, lineHeight: 1.2, flex: 1 }}>{titulo}</Text>
-      {comercial && <View style={{ width: 22, height: 2.5, borderRadius: 2, backgroundColor: C.roxo }} />}
     </View>
   );
 }
 
-function Tabela({ cabecalho, linhas, larguras, topo }: { cabecalho: string[]; linhas: (string | JSX.Element)[][]; larguras: number[]; topo?: ReactNode }) {
+// Título das páginas fixas da comercial (sem número): traço roxo, rótulo e título grande.
+function TituloPagina({ rotulo, titulo, sub }: { rotulo: string; titulo: string; sub?: string }) {
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        <View style={{ width: 22, height: 2.5, borderRadius: 2, backgroundColor: C.roxo, marginRight: 8 }} />
+        <Text style={[s.kicker, { marginBottom: 0 }]}>{rotulo.toUpperCase()}</Text>
+      </View>
+      <Text style={s.h1}>{titulo}</Text>
+      {sub ? <Text style={[s.sub, { marginBottom: 0 }]}>{sub}</Text> : null}
+    </View>
+  );
+}
+
+type Alinhar = 'left' | 'center' | 'right';
+function Tabela({ cabecalho, linhas, larguras, topo, alinhar = [] }: { cabecalho: string[]; linhas: (string | JSX.Element)[][]; larguras: number[]; topo?: ReactNode; alinhar?: Alinhar[] }) {
+  const flexo = (a?: Alinhar) => (a === 'right' ? 'flex-end' : a === 'center' ? 'center' : 'flex-start');
   const linha = (l: (string | JSX.Element)[], i: number) => (
-    <View key={i} wrap={false} style={{ flexDirection: 'row', flexShrink: 0, paddingVertical: 6, paddingHorizontal: 8, backgroundColor: i % 2 ? C.fundo : '#ffffff',
+    <View key={i} wrap={false} style={{ flexDirection: 'row', flexShrink: 0, alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, backgroundColor: i % 2 ? C.fundo : '#ffffff',
       borderWidth: 0.5, borderTopWidth: i ? 0 : 0.5, borderColor: C.borda, ...(i === linhas.length - 1 ? { borderBottomLeftRadius: 6, borderBottomRightRadius: 6 } : {}) }}>
-      {l.map((c, j) => <View key={j} style={{ flex: larguras[j] }}>{typeof c === 'string' ? <Text style={s.td}>{c}</Text> : c}</View>)}
+      {l.map((c, j) => (
+        <View key={j} style={{ flex: larguras[j], alignItems: flexo(alinhar[j]) }}>
+          {typeof c === 'string' ? <Text style={[s.td, { textAlign: alinhar[j] ?? 'left' }]}>{c}</Text> : c}
+        </View>
+      ))}
     </View>
   );
   return (
@@ -101,7 +144,7 @@ function Tabela({ cabecalho, linhas, larguras, topo }: { cabecalho: string[]; li
       <View wrap={false}>
         {topo}
         <View style={{ flexDirection: 'row', flexShrink: 0, backgroundColor: C.navy, paddingVertical: 7, paddingHorizontal: 8, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
-          {cabecalho.map((c, i) => <Text key={i} style={[s.th, { flex: larguras[i] }]}>{c.toUpperCase()}</Text>)}
+          {cabecalho.map((c, i) => <Text key={i} style={[s.th, { flex: larguras[i], textAlign: alinhar[i] ?? 'left' }]}>{c.toUpperCase()}</Text>)}
         </View>
         {linhas.length > 0 && linha(linhas[0], 0)}
       </View>
@@ -112,17 +155,182 @@ function Tabela({ cabecalho, linhas, larguras, topo }: { cabecalho: string[]; li
 
 function Selo({ valor }: { valor: string }) {
   const cor = valor === 'Sim' ? [C.verdeFundo, C.verde] : valor === 'Não' ? [C.vermelhoFundo, C.vermelho] : ['#eef0f3', C.suave];
-  return <View style={{ alignSelf: 'flex-start', backgroundColor: cor[0], borderRadius: 8, paddingVertical: 2, paddingHorizontal: 7 }}><Text style={{ fontSize: 7, fontWeight: 600, color: cor[1] }}>{valor}</Text></View>;
+  return <View style={{ backgroundColor: cor[0], borderRadius: 8, paddingVertical: 2, paddingHorizontal: 7 }}><Text style={{ fontSize: 7, fontWeight: 600, color: cor[1] }}>{valor}</Text></View>;
 }
 
-function ConteudoSecao({ secao, v, d, empresa, comercial, topo, imagens }: { secao: Secao; v: Variaveis; d: DadosProposta; empresa: DadosEmpresaFabriaco; comercial: boolean; topo: ReactNode; imagens: Record<string, string> }) {
+// Ícones simples (traço roxo) dos serviços em "Conheça a Fabriaço".
+const ICONES_SERVICO = [
+  'M7 5c0-1.5 2.2-2.5 5-2.5s5 1 5 2.5v12c0 1.5-2.2 2.5-5 2.5s-5-1-5-2.5zM7 5c0 1.5 2.2 2.5 5 2.5s5-1 5-2.5M8 19.5V22M16 19.5V22', // tanque
+  'M3 4h18v16H3zM3 4l18 16M21 4L3 20', // estrutura
+  'M4 8h14a3 3 0 0 1-3 3h-3v4h4v3H6v-3h4v-4H7a3 3 0 0 1-3-3z', // caldeiraria (bigorna)
+  'M14.5 6.5a4 4 0 0 0 5 5l-9.5 9.5a2.1 2.1 0 0 1-3-3zM14.5 6.5l3-3', // instalação (chave)
+  'M6 2.5h9l4 4V21.5H6zM15 2.5v4h4M9 11h7M9 14.5h7M9 18h5', // documentação
+];
+
+function SobreNos({ empresa, v }: { empresa: DadosEmpresaFabriaco; v: Variaveis }) {
+  const sb = empresa.sobre;
+  const m = MAPA_SP;
+  const W = 190; const esc = W / m.largura; const H = m.altura * esc;
+  return (
+    <View style={{ marginBottom: 6 }}>
+      <View wrap={false}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22, marginTop: 10 }}>
+          <View style={{ flex: 1, paddingRight: 12, paddingTop: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ width: 24, height: 3, borderRadius: 2, backgroundColor: C.roxo, marginRight: 8 }} />
+              <Text style={{ fontSize: 8, fontWeight: 600, color: C.roxo, letterSpacing: 1.4 }}>SOBRE NÓS</Text>
+            </View>
+            <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.2 }}>{sb.titulo}</Text>
+            <Text style={{ fontSize: 8, fontWeight: 600, color: '#4b5263', letterSpacing: 0.8, marginTop: 6 }}>{sb.subtitulo.toUpperCase()}</Text>
+          </View>
+          <View style={{ width: W + 30, alignItems: 'center' }}>
+            <View style={{ width: W, height: H }}>
+              <Svg width={W} height={H} viewBox={`0 0 ${m.largura} ${m.altura}`}>
+                <Path d={m.caminho} fill={C.lavanda2} stroke={C.roxo} strokeWidth={1.1} />
+                <Path d={`M${m.mococa[0]} ${m.mococa[1]} L${m.mococa[0] + 12} ${m.mococa[1] - 18} L${m.mococa[0] + 22} ${m.mococa[1] - 18}`} stroke={C.roxo} strokeWidth={1} fill="none" />
+                <Circle cx={m.mococa[0]} cy={m.mococa[1]} r={3.6} fill={C.roxo} />
+              </Svg>
+              <Text style={{ position: 'absolute', left: (m.mococa[0] + 23) * esc, top: (m.mococa[1] - 25) * esc, fontSize: 9, fontWeight: 700, color: C.roxo }}>Mococa</Text>
+            </View>
+            <Text style={{ fontSize: 7.5, color: C.suave, marginTop: 4 }}>São Paulo • Brasil</Text>
+          </View>
+        </View>
+        <TextoRico texto={sb.texto} v={v} estilo={{ fontSize: 10.5, color: '#374151', lineHeight: 1.55 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.lavanda2, borderRadius: 6, paddingVertical: 11, paddingHorizontal: 14, marginTop: 10, marginBottom: 22 }}>
+          <Text style={{ width: 90, fontSize: 7, fontWeight: 600, color: C.roxo, letterSpacing: 1 }}>MATERIAIS</Text>
+          <Text style={{ fontSize: 11.5, fontWeight: 600 }}>{sb.materiais}</Text>
+        </View>
+      </View>
+      <View wrap={false}>
+        <View style={{ flexDirection: 'row', marginBottom: 22 }}>
+          {sb.servicos.slice(0, 5).map((sv, i) => (
+            <View key={i} style={{ flex: 1, paddingRight: i < 4 ? 10 : 0 }}>
+              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.lavanda2, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+                <Svg width={19} height={19} viewBox="0 0 24 24"><Path d={ICONES_SERVICO[i] ?? ICONES_SERVICO[4]} stroke={C.roxo} strokeWidth={1.6} fill="none" /></Svg>
+              </View>
+              <Text style={{ fontSize: 9.5, fontWeight: 700, marginBottom: 4 }}>{sv.titulo}</Text>
+              <Text style={{ fontSize: 8.5, color: C.suave, lineHeight: 1.45 }}>{sv.texto}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={{ borderTopWidth: 0.5, borderTopColor: C.borda, paddingTop: 12 }}>
+          {[['Máquinas e processos', sb.maquinas], ['Setores', sb.setores]].map(([r, val]) => (
+            <View key={r} style={{ flexDirection: 'row', marginBottom: 7 }}>
+              <Text style={{ width: 130, fontSize: 7.5, fontWeight: 600, color: C.roxo, letterSpacing: 0.8 }}>{r.toUpperCase()}</Text>
+              <Text style={{ flex: 1, fontSize: 9, color: '#374151' }}>{val}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={{ backgroundColor: C.roxoMarca, borderRadius: 4, paddingVertical: 9, marginTop: 14, alignItems: 'center' }}>
+          <Text style={{ fontSize: 8.5, fontWeight: 700, color: '#ffffff', letterSpacing: 1.4 }}>{sb.lema.toUpperCase()}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function Garantia({ meses, topo }: { meses: number; topo: ReactNode }) {
+  return (
+    <View wrap={false} style={{ marginBottom: 6 }}>
+      {topo}
+      <View style={{ flexDirection: 'row' }}>
+        <View style={{ width: '28%', backgroundColor: C.roxoMarca, borderRadius: 8, padding: 14, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+          <Text style={{ fontSize: 7, fontWeight: 600, color: '#d6cdf7', letterSpacing: 1.2 }}>GARANTIA</Text>
+          <Text style={{ fontSize: 34, fontWeight: 700, color: '#ffffff', lineHeight: 1.15, marginTop: 4 }}>{meses}</Text>
+          <Text style={{ fontSize: 10, fontWeight: 600, color: '#ffffff' }}>{meses === 1 ? 'mês' : 'meses'}</Text>
+          <Text style={{ fontSize: 7.5, color: '#d6cdf7', marginTop: 6, textAlign: 'center' }}>após a emissão da NF</Text>
+        </View>
+        <View style={[s.cartao, { flex: 1, marginRight: 8 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}><Check /><Text style={{ fontSize: 8.5, fontWeight: 700, marginLeft: 5 }}>O que cobre</Text></View>
+          <Text style={{ fontSize: 8, color: '#374151', marginBottom: 6 }}>{GARANTIA_COBRE}</Text>
+          <Text style={{ fontSize: 7.5, color: C.suave }}>{GARANTIA_ATENDIMENTO}</Text>
+        </View>
+        <View style={[s.cartao, { flex: 1, backgroundColor: '#fff7f6', borderColor: '#f6d7d4' }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}><Xis /><Text style={{ fontSize: 8.5, fontWeight: 700, marginLeft: 5 }}>Não se aplica</Text></View>
+          {GARANTIA_NAO_SE_APLICA.map((t) => (
+            <View key={t} style={{ flexDirection: 'row', marginBottom: 3 }}><Text style={{ width: 8, color: C.vermelho, fontSize: 8 }}>•</Text><Text style={{ flex: 1, fontSize: 7.5, color: '#374151' }}>{t}</Text></View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// Cronograma: cada etapa começa quando a anterior termina; dias contados após a aprovação da proposta.
+function Cronograma({ etapas, topo }: { etapas: Etapa[]; topo: ReactNode }) {
+  const lista = etapas.filter((e) => e.nome.trim() || e.dias);
+  const total = lista.reduce((t, e) => t + (Number(e.dias) || 0), 0) || 1;
+  let inicio = 0;
+  return (
+    <View wrap={false} style={{ marginBottom: 6 }}>
+      {topo}
+      <Text style={[s.p, { color: '#374151' }]}>Prazos em dias corridos, contados a partir da aprovação da proposta (pedido de compra) e da liberação técnica do projeto.</Text>
+      <View style={[s.cartao, { backgroundColor: '#ffffff', paddingVertical: 10 }]}>
+        {lista.map((e, i) => {
+          const dias = Number(e.dias) || 0;
+          const de = inicio; inicio += dias;
+          return (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i < lista.length - 1 ? 7 : 0 }}>
+              <View style={{ width: 150, paddingRight: 8 }}>
+                <Text style={{ fontSize: 8.5, fontWeight: 600 }}>{e.nome}</Text>
+                <Text style={{ fontSize: 7, color: C.suave }}>{dias} dia{dias === 1 ? '' : 's'} · dia {de + 1} ao {inicio}</Text>
+              </View>
+              <View style={{ flex: 1, height: 12, backgroundColor: C.fundo, borderRadius: 6 }}>
+                <View style={{ position: 'absolute', left: `${(de / total) * 100}%`, width: `${Math.max((dias / total) * 100, 1.5)}%`, top: 0, bottom: 0, borderRadius: 6, backgroundColor: i % 2 ? C.roxoClaro : C.roxo }} />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.navy, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, marginTop: 8 }}>
+        <Text style={{ fontSize: 7.5, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.2 }}>PRAZO TOTAL DE ENTREGA</Text>
+        <Text style={{ fontSize: 13, fontWeight: 700, color: '#ffffff' }}>{inicio} dias após a aprovação</Text>
+      </View>
+    </View>
+  );
+}
+
+function Validade({ d, topo }: { d: DadosProposta; topo: ReactNode }) {
+  const dias = d.validadeDias || 30;
+  return (
+    <View wrap={false} style={{ marginBottom: 6 }}>
+      {topo}
+      <View style={{ flexDirection: 'row' }}>
+        <View style={[s.cartao, { width: '38%', marginRight: 8, borderLeftWidth: 3, borderLeftColor: C.roxo, backgroundColor: '#ffffff' }]}>
+          <Text style={s.cartaoRotulo}>VALIDADE</Text>
+          <Text style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2, marginBottom: 2 }}>{dias} dias</Text>
+          <Text style={{ fontSize: 8, color: C.suave }}>corridos, a partir da emissão</Text>
+          <Text style={{ fontSize: 8, fontWeight: 600, color: C.roxo, marginTop: 6 }}>Válida até {dataCurta(somarDias(d.emissao, dias))}</Text>
+        </View>
+        <View style={[s.cartao, { flex: 1 }]}>
+          {VALIDADE_CONDICOES.map((t) => (
+            <View key={t} style={{ flexDirection: 'row', marginBottom: 4 }}><Text style={s.bolinha}>•</Text><Text style={{ flex: 1, fontSize: 8, color: '#374151' }}>{t}</Text></View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function Confidencialidade({ texto, v, topo }: { texto: string; v: Variaveis; topo?: ReactNode }) {
+  return (
+    <View wrap={false} style={{ marginBottom: 6 }}>
+      {topo}
+      <View style={[s.cartao, { backgroundColor: C.lavanda2, borderColor: '#ddd5f6' }]}>
+        <TextoRico texto={texto} v={v} estilo={{ fontSize: 8.5, color: '#374151' }} />
+      </View>
+    </View>
+  );
+}
+
+function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; v: Variaveis; d: DadosProposta; empresa: DadosEmpresaFabriaco; topo: ReactNode; imagens: Record<string, string> }) {
   switch (secao.tipo) {
     case 'texto':
       return secao.texto.trim() ? <TextoRico texto={secao.texto} v={v} topo={topo} /> : <View wrap={false}>{topo}<Text style={{ color: C.suave }}>(seção a preencher)</Text></View>;
     case 'cartoes': {
       const comIntro = Boolean(secao.intro.trim());
       const comDestaque = Boolean(secao.destaque?.trim());
-      const caixaCartao = { flexDirection: 'row' as const, borderWidth: 0.5, borderColor: C.borda, borderLeftWidth: comercial ? 3 : 0.5, borderLeftColor: comercial ? C.roxo : C.borda, borderRadius: 6, backgroundColor: comercial ? '#ffffff' : C.fundo, padding: 10 };
+      const caixaCartao = { flexDirection: 'row' as const, borderWidth: 0.5, borderColor: C.borda, borderRadius: 6, backgroundColor: C.fundo, padding: 10 };
       const miolo = (c: Cartao, i: number) => (
         <>
           <View style={{ width: 22, height: 22, borderRadius: 4, backgroundColor: C.lavanda, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
@@ -185,192 +393,295 @@ function ConteudoSecao({ secao, v, d, empresa, comercial, topo, imagens }: { sec
         </View>
       );
     }
-    case 'dados_empresas':
+    case 'dados_empresas': {
+      const ac = d.contatoTecnico?.nome ? d.contatoTecnico : d.contato;
       return (
         <Tabela topo={topo} cabecalho={['Dados', 'Fabriaço', d.cliente.nome || 'Cliente']} larguras={[1, 1.6, 1.6]} linhas={[
           ['Razão social', empresa.razao_social, d.cliente.razao_social], ['CNPJ', empresa.cnpj, d.cliente.cnpj], ['Inscrição estadual', empresa.ie, d.cliente.ie],
           ['Endereço', empresa.endereco, d.cliente.endereco], ['Bairro', empresa.bairro, d.cliente.bairro], ['CEP / Cidade', empresa.cep_cidade, d.cliente.cep_cidade],
-          ['Responsável técnico', d.preparadoPor || empresa.responsavel, d.contato.nome], ['Telefone / WhatsApp', empresa.telefone, d.contato.telefone], ['E-mail', empresa.email, d.contato.email],
+          ['Responsável técnico', d.preparadoPor || empresa.responsavel, ac.nome], ['Telefone / WhatsApp', empresa.telefone, ac.telefone], ['E-mail', empresa.email, ac.email],
         ].map((l) => l.map((c) => c || '-'))} />
       );
+    }
     case 'competencias':
-      return <Tabela topo={topo} cabecalho={['Competência', 'Contemplado']} larguras={[1, 1]} linhas={secao.itens.map((i) => [i.nome, <Selo key={i.nome} valor={i.valor} />])} />;
-    case 'matriz': {
-      const marca = (sim: boolean) => (sim ? <View style={{ alignItems: 'center' }}><Check /></View> : <Text style={[s.td, { textAlign: 'center', color: '#c0c4cc' }]}>—</Text>);
-      return <Tabela topo={topo} cabecalho={['Responsabilidade', (d.cliente.nome || 'Cliente').split(' ')[0], 'Fabriaço']} larguras={[5, 1, 1]}
-        linhas={secao.itens.map((i) => [substituir(i.texto, v), marca(i.cliente), marca(i.fabriaco)])} />;
-    }
-    case 'impostos':
-      return (
-        <View wrap={false}>
-          {topo}
-          {secao.intro.trim() && <TextoRico texto={secao.intro} v={v} />}
-          <View style={{ width: '75%' }}>
-            <Tabela cabecalho={['Tributo / classificação', 'Informação da proposta']} larguras={[1, 1]}
-              linhas={[['NCM', secao.ncm || '-'], ...secao.linhas.map((l) => [l.tributo, l.valor])]} />
-          </View>
+      return <Tabela topo={topo} cabecalho={['Competência', 'Contemplado']} larguras={[4, 1]} alinhar={['left', 'right']}
+        linhas={secao.itens.map((i) => [i.nome, <Selo key={i.nome} valor={i.valor} />])} />;
+    case 'matriz':
+    case 'responsabilidades': {
+      const grupos = secao.tipo === 'responsabilidades' ? secao.grupos : [{ area: '', itens: secao.itens }];
+      const marca = (sim: boolean) => (sim ? <Check /> : <Text style={[s.td, { color: '#c0c4cc' }]}>—</Text>);
+      const cliente = (d.cliente.nome || 'Cliente').split(' ')[0];
+      const linhaItem = (l: { texto: string; cliente: boolean; fabriaco: boolean }, k: number) => (
+        <View key={k} wrap={false} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 8, borderWidth: 0.5, borderTopWidth: 0, borderColor: C.borda, backgroundColor: k % 2 ? C.fundo : '#ffffff' }}>
+          <Text style={[s.td, { flex: 5 }]}>{substituir(l.texto, v)}</Text>
+          <View style={{ flex: 1, alignItems: 'center' }}>{marca(l.cliente)}</View>
+          <View style={{ flex: 1, alignItems: 'center' }}>{marca(l.fabriaco)}</View>
         </View>
       );
-    case 'valores': {
-      const total = d.itens.reduce((a, i) => a + i.valor, 0);
-      return (
-        <View>
-          {secao.intro.trim()
-            ? <TextoRico texto={secao.intro} v={v} topo={<>{topo}<Text style={s.kicker}>{d.titulo.toUpperCase()}</Text></>} />
-            : <View wrap={false}>{topo}<Text style={s.kicker}>{d.titulo.toUpperCase()}</Text></View>}
-          <Tabela cabecalho={['Item', 'Descrição do fornecimento', 'Valor total']} larguras={[1.3, 2.6, 0.9]} linhas={d.itens.map((i) => [
-            <Text key="a" style={[s.td, { fontWeight: 600 }]}>{i.letra} — {i.descricao}</Text>,
-            <Text key="b" style={[s.td, { color: '#374151' }]}>{substituir(secao.descricoes[i.letra] ?? '', v) || '-'}</Text>,
-            <Text key="c" style={[s.td, { fontWeight: 600, textAlign: 'right' }]}>{moeda(i.valor)}</Text>,
-          ])} />
-          <View wrap={false} style={{ backgroundColor: C.navy, borderRadius: 8, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View>
-              <Text style={{ fontSize: 7.5, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.4, marginBottom: 3 }}>INVESTIMENTO GLOBAL</Text>
-              <Text style={{ fontSize: 8.5, color: '#c7cbe0' }}>Total com impostos inclusos</Text>
-            </View>
-            <Text style={{ fontSize: 20, fontWeight: 700, color: '#ffffff' }}>{moeda(total)}</Text>
-          </View>
+      const cabecalhoGrupo = (area: string) => area ? (
+        <View style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 8, backgroundColor: C.lavanda, borderWidth: 0.5, borderTopWidth: 0, borderColor: '#ddd5f6' }}>
+          <Text style={{ fontSize: 7.5, fontWeight: 700, color: C.roxo, letterSpacing: 1 }}>{area.toUpperCase()}</Text>
+        </View>
+      ) : null;
+      const cab = (
+        <View style={{ flexDirection: 'row', backgroundColor: C.navy, paddingVertical: 7, paddingHorizontal: 8, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
+          <Text style={[s.th, { flex: 5 }]}>RESPONSABILIDADE</Text>
+          <Text style={[s.th, { flex: 1, textAlign: 'center' }]}>{cliente.toUpperCase()}</Text>
+          <Text style={[s.th, { flex: 1, textAlign: 'center' }]}>FABRIAÇO</Text>
         </View>
       );
-    }
-    case 'pagamento':
       return (
-        <View>
-          <View wrap={false}>{topo}<Text style={s.p}>{substituir('A forma de pagamento seguirá a política comercial da {cliente}, conforme descrito abaixo:', v)}</Text></View>
-          <View wrap={false} style={{ flexDirection: 'row', borderWidth: 0.5, borderColor: C.borda, borderRadius: 6, marginBottom: 8 }}>
-            {[['Condição', secao.condicao], ['Marco', secao.marco], ['Forma', secao.forma]].map(([r, val], i) => (
-              <View key={r} style={{ flex: 1, padding: 10, borderLeftWidth: i ? 0.5 : 0, borderLeftColor: C.borda }}>
-                <Text style={s.cartaoRotulo}>{r.toUpperCase()}</Text><Text style={[s.cartaoValor, { fontSize: 9 }]}>{val || '-'}</Text>
+        <View style={{ marginBottom: 8 }}>
+          {grupos.map((g, i) => (
+            <View key={i}>
+              <View wrap={false}>
+                {i === 0 && <>{topo}{cab}</>}
+                {cabecalhoGrupo(g.area)}
+                {g.itens[0] && linhaItem(g.itens[0], 0)}
               </View>
-            ))}
-          </View>
-          <TextoRico texto={secao.texto} v={v} />
+              {g.itens.slice(1).map((l, k) => linhaItem(l, k + 1))}
+            </View>
+          ))}
         </View>
       );
+    }
+    case 'garantia':
+      return <Garantia meses={secao.meses} topo={topo} />;
+    case 'cronograma':
+      return <Cronograma etapas={secao.etapas} topo={topo} />;
+    case 'validade':
+      return <Validade d={d} topo={topo} />;
+    case 'confidencialidade':
+      return <Confidencialidade texto={CONFIDENCIALIDADE_TECNICA} v={v} topo={topo} />;
+    default:
+      return null; // "Sobre nós" e as seções da comercial têm páginas próprias
   }
 }
 
-const dataExtenso = (iso: string) => {
-  const d = iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : new Date();
-  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-};
-const dataCurta = (iso: string) => (iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : new Date()).toLocaleDateString('pt-BR');
+// Cabeçalho e rodapé das páginas internas: ícone da marca em todas, menos na capa (decisão 67).
+function Moldura({ d, comercial, empresa }: { d: DadosProposta; comercial: boolean; empresa: DadosEmpresaFabriaco }) {
+  return (
+    <>
+      <View style={s.topo} fixed>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Image src={`${MARCA}icone.png`} style={{ width: 18, height: 18, marginRight: 7 }} />
+          <Text style={{ color: C.suave, fontWeight: 600 }}>FABRIAÇO BRASIL</Text>
+        </View>
+        <Text style={{ color: C.roxo, fontWeight: 600 }}>{comercial ? 'PROPOSTA COMERCIAL' : 'PROPOSTA TÉCNICA'} · {d.codigo} / R{d.revisao}</Text>
+      </View>
+      <View style={s.rodape} fixed>
+        <Text style={{ fontWeight: 600 }}>FABRIAÇO BRASIL · MOCOCA / SP</Text>
+        <Text>{empresa.site}</Text>
+        <Text style={{ color: C.roxo, fontWeight: 600 }} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+      </View>
+    </>
+  );
+}
 
 function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; empresa: DadosEmpresaFabriaco; imagens: Record<string, string> }) {
   const comercial = doc.tipo === 'comercial';
   // Fundo claro: economiza tinta na impressão (pedido do Gabriel); escuro é o visual dos modelos.
   const claro = doc.capa.fundo === 'claro';
   const T = claro
-    ? { fundo: '#ffffff', forma: '#f1eefc', circulo: '#e6f3f1', texto: C.texto, suave: C.suave, linha: C.borda, cartao: C.fundo, cartaoBorda: C.borda, pilula: '#cfc5f2', pilulaTexto: C.roxo, destaque: C.roxo, sub: '#4b5263', simbolo: 'simbolo.png', letreiro: 'letreiro.png', quadro: '#ffffff' }
-    : { fundo: C.navy, forma: C.navy2, circulo: C.teal, texto: '#ffffff', suave: '#aeb3c9', linha: '#2f3757', cartao: C.navy3, cartaoBorda: '#38406a', pilula: '#6c5aa8', pilulaTexto: '#d6cdf7', destaque: C.roxoClaro, sub: '#c7cbe0', simbolo: 'simbolo-escuro.png', letreiro: 'letreiro-escuro.png', quadro: '#ffffff' };
+    ? { fundo: '#ffffff', forma: '#f1eefc', circulo: '#e6f3f1', texto: C.texto, suave: C.suave, linha: C.borda, cartao: C.fundo, cartaoBorda: C.borda, destaque: C.roxo, sub: '#4b5263', logo: 'logo.png', quadro: '#ffffff', traco: C.roxo }
+    : { fundo: C.navy, forma: C.navy2, circulo: C.teal, texto: '#ffffff', suave: '#aeb3c9', linha: '#2f3757', cartao: C.navy3, cartaoBorda: '#38406a', destaque: C.roxoClaro, sub: '#c7cbe0', logo: 'logo-escuro.png', quadro: '#ffffff', traco: C.roxoClaro };
+  const ac = !comercial && d.contatoTecnico?.nome ? d.contatoTecnico.nome : d.contato.nome;
+  const comImagem = Boolean(doc.capa.imagem && imagens[doc.capa.imagem]);
   return (
     <Page size="A4" style={{ fontFamily: 'Geist', backgroundColor: T.fundo, color: T.texto }}>
       <Svg style={{ position: 'absolute', top: 0, left: 0 }} width={595} height={841} viewBox="0 0 595 841">
-        <Polygon points="230,0 595,0 595,235 200,70" fill={T.forma} />
-        <Circle cx={10} cy={690} r={120} fill={T.circulo} />
+        <Polygon points="300,0 595,0 595,200 270,60" fill={T.forma} />
+        <Circle cx={10} cy={720} r={120} fill={T.circulo} />
       </Svg>
-      <View style={{ position: 'absolute', top: 46, left: 46, right: 46, bottom: 46 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Image src={`${MARCA}${T.simbolo}`} style={{ width: 22, height: 24, marginRight: 8 }} />
-            <Image src={`${MARCA}${T.letreiro}`} style={{ width: 96, height: 15 }} />
+      <View style={{ position: 'absolute', top: 40, left: 46, right: 46, bottom: 46 }}>
+        {/* Logo principal, maior e no centro do cabeçalho */}
+        <View style={{ alignItems: 'center' }}>
+          <Image src={`${MARCA}${T.logo}`} style={{ width: 150, height: 82 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+            <View style={{ width: 26, height: 0.8, backgroundColor: T.traco, marginRight: 7 }} />
+            <Text style={{ fontSize: 6.5, fontWeight: 600, color: T.suave, letterSpacing: 1.8 }}>MONTAGENS INDUSTRIAIS E CALDEIRARIA</Text>
+            <View style={{ width: 26, height: 0.8, backgroundColor: T.traco, marginLeft: 7 }} />
           </View>
-          <Text style={{ fontSize: 6.5, color: T.suave, letterSpacing: 1.6, marginTop: 6 }}>MONTAGENS INDUSTRIAIS E CALDEIRARIA</Text>
         </View>
-        <View style={{ borderWidth: 1, borderColor: T.pilula, borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12 }}>
-          <Text style={{ fontSize: 7, fontWeight: 600, letterSpacing: 1.4, color: T.pilulaTexto }}>{comercial ? 'PROPOSTA COMERCIAL' : 'PROPOSTA TÉCNICA'} · R{d.revisao}</Text>
+        <View style={{ height: 0.5, backgroundColor: T.linha, marginTop: 18, marginBottom: comImagem ? 26 : 60 }} />
+        <Text style={{ fontSize: 7.5, fontWeight: 600, color: T.destaque, letterSpacing: 2, marginBottom: 12 }}>
+          {comercial ? 'PROPOSTA COMERCIAL / CONDIÇÕES DE FORNECIMENTO' : 'PROPOSTA TÉCNICA / ENGENHARIA'} · R{d.revisao}
+        </Text>
+        <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15 }}>{doc.capa.linha1 || d.titulo}</Text>
+        {doc.capa.linha2 ? <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15, color: T.destaque }}>{doc.capa.linha2}</Text> : null}
+        {doc.capa.subtitulo ? <Text style={{ fontSize: 10.5, color: T.sub, marginTop: 12, maxWidth: 420, lineHeight: 1.5 }}>{doc.capa.subtitulo}</Text> : null}
+        <View style={{ flexDirection: 'row', marginTop: 20 }}>
+          {[['Cliente', d.cliente.nome], ['A/C', ac], ['Unidade', d.cliente.local], ['Identificação', `${d.codigo} · R${d.revisao}`]].map(([r, val], i) => (
+            <View key={r} style={{ flex: 1, backgroundColor: T.cartao, borderRadius: 8, borderWidth: 0.5, borderColor: T.cartaoBorda, padding: 10, marginLeft: i ? 7 : 0 }}>
+              <Text style={{ fontSize: 6.5, color: T.suave, letterSpacing: 1.2, marginBottom: 5 }}>{r.toUpperCase()}</Text>
+              <Text style={{ fontSize: 9, fontWeight: 600 }}>{val || '-'}</Text>
+            </View>
+          ))}
         </View>
-      </View>
-      <View style={{ height: 0.5, backgroundColor: T.linha, marginTop: 26, marginBottom: 56 }} />
-      <Text style={{ fontSize: 7.5, fontWeight: 600, color: T.destaque, letterSpacing: 2, marginBottom: 14 }}>{comercial ? 'PROPOSTA COMERCIAL / CONDIÇÕES DE FORNECIMENTO' : 'PROPOSTA TÉCNICA / ENGENHARIA'}</Text>
-      <Text style={{ fontSize: 31, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15 }}>{doc.capa.linha1 || d.titulo}</Text>
-      {doc.capa.linha2 ? <Text style={{ fontSize: 31, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15, color: T.destaque }}>{doc.capa.linha2}</Text> : null}
-      {doc.capa.subtitulo ? <Text style={{ fontSize: 10.5, color: T.sub, marginTop: 14, maxWidth: 400, lineHeight: 1.5 }}>{doc.capa.subtitulo}</Text> : null}
-      <View style={{ flexDirection: 'row', marginTop: 24 }}>
-        {[['Cliente', d.cliente.nome], ['Unidade', d.cliente.local], ['Identificação', `${d.codigo} · R${d.revisao}`]].map(([r, val], i) => (
-          <View key={r} style={{ flex: 1, backgroundColor: T.cartao, borderRadius: 8, borderWidth: 0.5, borderColor: T.cartaoBorda, padding: 11, marginLeft: i ? 8 : 0 }}>
-            <Text style={{ fontSize: 6.5, color: T.suave, letterSpacing: 1.2, marginBottom: 5 }}>{r.toUpperCase()}</Text>
-            <Text style={{ fontSize: 9.5, fontWeight: 600 }}>{val || '-'}</Text>
+        {comImagem ? (
+          <View style={{ marginTop: 16, height: 230, backgroundColor: T.quadro, borderRadius: 10, borderWidth: claro ? 0.5 : 0, borderColor: C.borda, padding: 10, alignItems: 'center', justifyContent: 'center' }}>
+            <Image src={imagens[doc.capa.imagem!]} style={{ maxHeight: 210, maxWidth: '100%', objectFit: 'contain' }} />
           </View>
-        ))}
-      </View>
-      {doc.capa.imagem && imagens[doc.capa.imagem] ? (
-        <View style={{ marginTop: 18, height: 250, backgroundColor: T.quadro, borderRadius: 10, borderWidth: claro ? 0.5 : 0, borderColor: C.borda, padding: 10, alignItems: 'center', justifyContent: 'center' }}>
-          <Image src={imagens[doc.capa.imagem]} style={{ maxHeight: 230, maxWidth: '100%', objectFit: 'contain' }} />
+        ) : null}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 0.5, borderTopColor: T.linha, paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View><Text style={{ fontSize: 9, fontWeight: 700 }}>FABRIAÇO BRASIL</Text><Text style={{ fontSize: 7.5, color: T.suave, marginTop: 2 }}>{empresa.cidade}</Text></View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 7.5, color: T.suave }}>{(comercial ? d.vendedor?.nome : '') || d.preparadoPor || empresa.responsavel} · {dataExtenso(d.emissao)}</Text>
+            <Text style={{ fontSize: 7.5, color: T.suave, marginTop: 2 }}>{empresa.site}</Text>
+          </View>
         </View>
-      ) : null}
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 0.5, borderTopColor: T.linha, paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
-        <View><Text style={{ fontSize: 9, fontWeight: 700 }}>FABRIAÇO BRASIL</Text><Text style={{ fontSize: 7.5, color: T.suave, marginTop: 2 }}>{empresa.cidade}</Text></View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 7.5, color: T.suave }}>{d.preparadoPor || empresa.responsavel} · {dataExtenso(d.emissao)}</Text>
-          <Text style={{ fontSize: 7.5, color: T.suave, marginTop: 2 }}>{empresa.site}</Text>
-        </View>
-      </View>
       </View>
     </Page>
   );
 }
 
-export function DocumentoPdf({ doc, dados: d, empresa, imagens = {} }: { doc: Documento; dados: DadosProposta; empresa: DadosEmpresaFabriaco; imagens?: Record<string, string> }) {
-  const comercial = doc.tipo === 'comercial';
-  const v: Variaveis = { cliente: d.cliente.nome, local: d.cliente.local, validade_dias: String(d.validadeDias || 30) };
+function CartaoInfo({ rotulo, valor, detalhe, destaque }: { rotulo: string; valor: string; detalhe?: string; destaque?: boolean }) {
+  return (
+    <View style={[s.cartao, { flex: 1, backgroundColor: '#ffffff', borderLeftWidth: 3, borderLeftColor: destaque ? C.verde : C.roxo, padding: 10 }]}>
+      <Text style={s.cartaoRotulo}>{rotulo.toUpperCase()}</Text>
+      <Text style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.25 }}>{valor || '-'}</Text>
+      {detalhe ? <Text style={{ fontSize: 7.5, color: C.suave, marginTop: 2 }}>{detalhe}</Text> : null}
+    </View>
+  );
+}
+
+// Proposta comercial em 4 páginas (decisão 67): capa, visão geral, valores e a última (anexos, sigilo e vendedor).
+function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d: DadosProposta; empresa: DadosEmpresaFabriaco; v: Variaveis; tecnica?: Documento | null }) {
+  const sec = <T extends Secao['tipo']>(tipo: T) => doc.secoes.find((x) => x.tipo === tipo && x.ativo) as Extract<Secao, { tipo: T }> | undefined;
+  const visao = sec('visao_comercial');
+  const impostos = sec('impostos');
+  const pagamento = sec('pagamento');
+  const valores = sec('valores');
+  const anexo = doc.secoes.find((x) => x.id === 'anexo' && x.ativo && x.tipo === 'texto') as Extract<Secao, { tipo: 'texto' }> | undefined;
+  const sigilo = sec('confidencialidade');
+  const t = resumoTecnica(tecnica);
+  const dias = d.validadeDias || 30;
   const total = d.itens.reduce((a, i) => a + i.valor, 0);
-  const rotuloRev = d.revisao === 0 ? 'R0 · Inicial' : `R${d.revisao}`;
+  const revisoes = d.revisoes?.length ? d.revisoes : [{ numero: d.revisao, descricao: d.revisao ? `Revisão ${d.revisao}` : 'Emissão inicial', emissao: d.emissao }];
+  const vend = d.vendedor;
+  return (
+    <>
+      <Page size="A4" style={s.pagina}>
+        <Moldura d={d} comercial empresa={empresa} />
+        <TituloPagina rotulo="Visão geral" titulo="Proposta comercial" sub={doc.capa.subtitulo || d.titulo} />
+        <Text style={[s.kicker, { marginBottom: 5 }]}>REVISÕES</Text>
+        <Tabela cabecalho={['Revisão', 'Descrição', 'Emissão']} larguras={[0.8, 4, 1.2]} alinhar={['left', 'left', 'right']}
+          linhas={revisoes.map((r) => [`R${r.numero}`, r.descricao || '-', dataCurta(r.emissao)])} />
+        <View style={{ flexDirection: 'row', marginTop: 4, marginBottom: 10 }}>
+          <CartaoInfo rotulo="Validade" valor={`${dias} dias`} detalhe={`Até ${dataCurta(somarDias(d.emissao, dias))}`} />
+          <View style={{ width: 7 }} />
+          {visao ? <><CartaoInfo rotulo="Frete" valor={substituir(visao.frete, v)} detalhe={substituir(visao.frete_detalhe, v)} /><View style={{ width: 7 }} /></> : null}
+          <CartaoInfo rotulo="Garantia" valor={`${t.meses} meses`} detalhe="Após a emissão da NF" />
+          <View style={{ width: 7 }} />
+          <CartaoInfo rotulo="Prazo de entrega" valor={`${t.dias} dias`} detalhe="Após a aprovação da proposta" destaque />
+        </View>
+        <View style={{ flexDirection: 'row' }}>
+          {impostos ? (
+            <View style={{ width: '52%', marginRight: 10 }}>
+              <Text style={[s.kicker, { marginBottom: 5 }]}>IMPOSTOS (INCLUSOS)</Text>
+              <Tabela cabecalho={['Tributo', 'Percentual']} larguras={[1, 1]} alinhar={['left', 'right']}
+                linhas={[['NCM', impostos.ncm || '-'], ...impostos.linhas.map((l) => [l.tributo, l.valor])]} />
+              {impostos.intro.trim() ? <Text style={{ fontSize: 7, color: C.suave }}>{substituir(impostos.intro, v)}</Text> : null}
+            </View>
+          ) : null}
+          {pagamento ? (
+            <View style={{ flex: 1 }}>
+              <Text style={[s.kicker, { marginBottom: 5 }]}>FORMA DE PAGAMENTO</Text>
+              <View style={[s.cartao, { backgroundColor: '#ffffff', padding: 0 }]}>
+                {[['Condição', pagamento.condicao], ['Forma', pagamento.forma], ['Pago no marco', pagamento.marco]].map(([r, val], i) => (
+                  <View key={r} style={{ padding: 10, borderTopWidth: i ? 0.5 : 0, borderTopColor: C.borda }}>
+                    <Text style={s.cartaoRotulo}>{r.toUpperCase()}</Text>
+                    <Text style={{ fontSize: 9.5, fontWeight: 600 }}>{substituir(val, v) || '-'}</Text>
+                  </View>
+                ))}
+              </View>
+              {pagamento.texto.trim() ? <View style={{ marginTop: 6 }}><TextoRico texto={pagamento.texto} v={v} estilo={{ fontSize: 7.5, color: C.suave }} /></View> : null}
+            </View>
+          ) : null}
+        </View>
+      </Page>
+
+      {valores ? (
+        <Page size="A4" style={s.pagina}>
+          <Moldura d={d} comercial empresa={empresa} />
+          <TituloPagina rotulo="Valores" titulo={d.titulo} />
+          {valores.intro.trim() ? <TextoRico texto={valores.intro} v={v} estilo={{ fontSize: 8.5, color: '#374151' }} /> : null}
+          <Tabela cabecalho={['Item', 'Título', 'Qtd', 'Valor unitário', 'Valor total']} larguras={[0.5, 3.2, 0.6, 1.3, 1.3]} alinhar={['left', 'left', 'center', 'right', 'right']}
+            linhas={d.itens.map((i) => {
+              const q = i.quantidade && i.quantidade > 0 ? i.quantidade : 1;
+              const desc = substituir(valores.descricoes[i.letra] ?? '', v);
+              return [
+                <Text key="l" style={[s.td, { fontWeight: 700, color: C.roxo }]}>{i.letra}</Text>,
+                <View key="t"><Text style={[s.td, { fontWeight: 600 }]}>{i.descricao || '-'}</Text>{desc ? <Text style={{ fontSize: 7.5, color: C.suave, marginTop: 2 }}>{desc}</Text> : null}</View>,
+                qtd(q), moeda(i.valor / q),
+                <Text key="v" style={[s.td, { fontWeight: 600 }]}>{moeda(i.valor)}</Text>,
+              ];
+            })} />
+          <View wrap={false} style={{ backgroundColor: C.navy, borderRadius: 8, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            <View>
+              <Text style={{ fontSize: 7.5, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.4, marginBottom: 3 }}>INVESTIMENTO GLOBAL</Text>
+              <Text style={{ fontSize: 8.5, color: '#c7cbe0' }}>Total com impostos inclusos</Text>
+            </View>
+            <Text style={{ fontSize: 20, fontWeight: 700, color: '#ffffff' }}>{moeda(total)}</Text>
+          </View>
+        </Page>
+      ) : null}
+
+      <Page size="A4" style={s.pagina}>
+        <Moldura d={d} comercial empresa={empresa} />
+        <TituloPagina rotulo="Encerramento" titulo="Informações finais" />
+        {anexo ? (
+          <View wrap={false} style={{ marginBottom: 12 }}>
+            <Text style={[s.kicker, { marginBottom: 5 }]}>{anexo.titulo.toUpperCase()}</Text>
+            <View style={[s.cartao, { backgroundColor: '#ffffff' }]}><TextoRico texto={anexo.texto.trim() || 'Não contém.'} v={v} estilo={{ fontSize: 8.5 }} /></View>
+          </View>
+        ) : null}
+        {sigilo ? (
+          <View wrap={false} style={{ marginBottom: 12 }}>
+            <Text style={[s.kicker, { marginBottom: 5 }]}>TERMO DE CONFIDENCIALIDADE</Text>
+            <Confidencialidade texto={CONFIDENCIALIDADE_COMERCIAL} v={v} />
+          </View>
+        ) : null}
+        <View wrap={false} style={{ backgroundColor: C.navy, borderRadius: 10, padding: 18, flexDirection: 'row', alignItems: 'center' }}>
+          <Image src={`${MARCA}icone.png`} style={{ width: 40, height: 40, marginRight: 14 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 7, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.4, marginBottom: 4 }}>NEGOCIAÇÃO · VENDEDOR RESPONSÁVEL</Text>
+            <Text style={{ fontSize: 15, fontWeight: 700, color: '#ffffff' }}>{vend?.nome || d.preparadoPor || empresa.responsavel}</Text>
+            <Text style={{ fontSize: 8, color: '#c7cbe0', marginTop: 2 }}>{vend?.cargo || 'Comercial'} · Fabriaço Brasil</Text>
+          </View>
+          <View style={{ borderLeftWidth: 0.5, borderLeftColor: '#3a4263', paddingLeft: 14 }}>
+            <Text style={{ fontSize: 8, color: '#ffffff', marginBottom: 3 }}>{vend?.telefone || empresa.telefone}</Text>
+            <Text style={{ fontSize: 8, color: '#ffffff', marginBottom: 3 }}>{vend?.email || empresa.email}</Text>
+            <Text style={{ fontSize: 8, color: '#c7cbe0' }}>{empresa.site}</Text>
+          </View>
+        </View>
+      </Page>
+    </>
+  );
+}
+
+export function DocumentoPdf({ doc, dados: d, empresa, imagens = {}, tecnica }: {
+  doc: Documento; dados: DadosProposta; empresa: DadosEmpresaFabriaco; imagens?: Record<string, string>; tecnica?: Documento | null;
+}) {
+  const comercial = doc.tipo === 'comercial';
+  const v: Variaveis = { cliente: d.cliente.nome, local: d.cliente.local, validade_dias: String(d.validadeDias || 30), codigo: `${d.codigo}-R${d.revisao}` };
   return (
     <Document title={`${comercial ? 'Proposta Comercial' : 'Proposta Técnica'} ${d.codigo}-R${d.revisao}`} author="Fabriaço Brasil" language="pt-BR">
       <Capa doc={doc} d={d} empresa={empresa} imagens={imagens} />
-      <Page size="A4" style={s.pagina}>
-        {!comercial && (
-          <View style={s.topo} fixed>
-            <Text style={{ color: C.suave }}>FABRIAÇO / ENGENHARIA INDUSTRIAL</Text>
-            <Text style={{ color: C.roxo, fontWeight: 600 }}>PROPOSTA TÉCNICA · {d.codigo} / R{d.revisao}</Text>
-          </View>
-        )}
-        <View style={s.rodape} fixed>
-          <Text style={{ fontWeight: 600 }}>FABRIAÇO BRASIL · MOCOCA / SP</Text>
-          <Text>{empresa.site}</Text>
-          <Text style={{ color: C.roxo, fontWeight: 600 }} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-        </View>
-
-        {comercial ? (
-          <View>
-            <Text style={s.kicker}>APRESENTAÇÃO COMERCIAL</Text>
-            <Text style={s.h1}>Proposta comercial · Visão geral</Text>
-            {doc.capa.subtitulo ? <Text style={s.sub}>{doc.capa.subtitulo}</Text> : null}
-            <View wrap={false} style={{ flexDirection: 'row', backgroundColor: '#f1eefc', borderWidth: 0.5, borderColor: '#ddd5f6', borderRadius: 8, padding: 14, marginBottom: 10 }}>
-              <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={{ fontSize: 12, fontWeight: 700, marginBottom: 5 }}>Olá, {d.contato.nome || 'cliente'}.</Text>
-                <Text style={{ fontSize: 8.5, color: '#4b5263' }}>{substituir(doc.abertura, v)}</Text>
-              </View>
-              <View style={{ width: 150, borderLeftWidth: 0.5, borderLeftColor: '#cfc5f2', paddingLeft: 12 }}>
-                <Text style={[s.kicker, { fontSize: 6.5 }]}>PREPARADO POR</Text>
-                <Text style={{ fontSize: 10, fontWeight: 700 }}>{d.preparadoPor || empresa.responsavel}</Text>
-                <Text style={{ fontSize: 7.5, color: C.suave, marginTop: 2 }}>Fabriaço Brasil</Text>
-                <Text style={{ fontSize: 7.5, color: C.suave }}>Mococa / SP</Text>
-              </View>
-            </View>
-            <View wrap={false} style={{ flexDirection: 'row', borderWidth: 0.5, borderColor: C.borda, borderRadius: 8, marginBottom: 10 }}>
-              {[['Emissão', dataCurta(d.emissao)], ['Validade', `${d.validadeDias || 30} dias`], ['Revisão', rotuloRev], ['Local', d.cliente.local]].map(([r, val], i) => (
-                <View key={r} style={{ flex: 1, padding: 11, borderLeftWidth: i ? 0.5 : 0, borderLeftColor: C.borda }}>
-                  <Text style={s.cartaoRotulo}>{r.toUpperCase()}</Text><Text style={s.cartaoValor}>{val || '-'}</Text>
-                </View>
-              ))}
-            </View>
-            <View wrap={false} style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              {[...d.itens.map((i) => [i.descricao, i.valor] as const), ['Total com impostos', total] as const].map(([r, val], i) => (
-                <View key={i} style={{ width: '32%', marginRight: i % 3 === 2 ? 0 : '2%', marginBottom: 8, borderWidth: 0.5, borderColor: C.borda, borderLeftWidth: 3, borderLeftColor: C.roxo, borderRadius: 6, padding: 11, backgroundColor: C.fundo }}>
-                  <Text style={s.cartaoRotulo}>{String(r).toUpperCase()}</Text><Text style={s.cartaoValor}>{moeda(Number(val))}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : (
+      {!comercial && doc.secoes.some((x) => x.ativo && x.tipo === 'sobre') && (
+        <Page size="A4" style={s.pagina}>
+          <Moldura d={d} comercial={false} empresa={empresa} />
+          <SobreNos empresa={empresa} v={v} />
+        </Page>
+      )}
+      {comercial ? <PaginasComerciais doc={doc} d={d} empresa={empresa} v={v} tecnica={tecnica} /> : (
+        <Page size="A4" style={s.pagina}>
+          <Moldura d={d} comercial={false} empresa={empresa} />
           <View>
             <Text style={s.kicker}>VISÃO DO DOCUMENTO</Text>
             <Text style={s.h1}>Especificação técnica</Text>
             {doc.capa.subtitulo ? <Text style={s.sub}>{doc.capa.subtitulo}</Text> : null}
-            <View wrap={false} style={{ flexDirection: 'row', marginBottom: 6 }}>
+            <View wrap={false} style={{ flexDirection: 'row', marginBottom: 14 }}>
               {[['Objeto', doc.visao.objeto], ['Solução', doc.visao.solucao], ['Unidade', doc.visao.unidade || `${d.cliente.nome.split(' ')[0]} · ${d.cliente.local}`]].map(([r, val], i) => (
                 <View key={r} style={{ flex: 1, backgroundColor: C.fundo, borderWidth: 0.5, borderColor: C.borda, borderRadius: 8, padding: 12, marginLeft: i ? 8 : 0 }}>
                   <Text style={s.cartaoRotulo}>{r.toUpperCase()}</Text><Text style={s.cartaoValor}>{val || '-'}</Text>
@@ -378,27 +689,16 @@ export function DocumentoPdf({ doc, dados: d, empresa, imagens = {} }: { doc: Do
               ))}
             </View>
           </View>
-        )}
-
-        {numerar(doc.secoes).map(({ secao, numero }) => (
-          <ConteudoSecao key={secao.id} secao={secao} v={v} d={d} empresa={empresa} comercial={comercial} imagens={imagens}
-            topo={<TituloSecao numero={numero} titulo={secao.titulo} comercial={comercial} />} />
-        ))}
-
-        {comercial && (
-          <View wrap={false} style={{ backgroundColor: C.navy, borderRadius: 8, padding: 16, marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View>
-              <Text style={{ fontSize: 7, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.4, marginBottom: 5 }}>CONTATO COMERCIAL E TÉCNICO</Text>
-              <Text style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>Fabriaço Brasil</Text>
-              <Text style={{ fontSize: 8, color: '#c7cbe0', marginTop: 3 }}>Engenharia · Fabricação · Montagens Industriais</Text>
-            </View>
-            <View style={{ borderLeftWidth: 0.5, borderLeftColor: '#3a4263', paddingLeft: 12 }}>
-              <Text style={{ fontSize: 7.5, color: '#c7cbe0' }}>{empresa.email}</Text>
-              <Text style={{ fontSize: 7.5, color: '#c7cbe0' }}>{empresa.site}</Text>
-            </View>
-          </View>
-        )}
-      </Page>
+          {doc.secoes.filter((x) => x.ativo && x.tipo !== 'sobre').map((secao) => {
+            const numero = numerar(doc.secoes).find((n) => n.secao.id === secao.id)?.numero;
+            return (
+              <ConteudoSecao key={secao.id} secao={secao} v={v} d={d} empresa={empresa} imagens={imagens}
+                topo={numero ? <TituloSecao numero={numero} titulo={secao.titulo} /> : null} />
+            );
+          })}
+        </Page>
+      )}
     </Document>
   );
 }
+

@@ -58,6 +58,7 @@ export interface Proposta {
   ano: number;
   empresa_id: string;
   contato_id: string;
+  contato_tecnico_id?: string | null; // decisão 67: a técnica vai A/C dele e ele entra em C/C no envio
   titulo: string;
   descricao: string;
   responsavel_id: string | null;

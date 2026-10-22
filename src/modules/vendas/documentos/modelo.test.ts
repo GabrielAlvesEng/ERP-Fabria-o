@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, nomeArquivo, numerar, substituir, trechos } from './modelo';
+import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, substituir, trechos } from './modelo';
 
 describe('documentos da proposta', () => {
   it('lê negrito', () => {
@@ -20,11 +20,11 @@ describe('documentos da proposta', () => {
   });
   it('numera só as seções ativas', () => {
     const d = documentoPadrao('tecnica');
-    expect(d.secoes).toHaveLength(16);
-    expect(numerar(d.secoes).at(-1)?.numero).toBe('16');
+    expect(d.secoes).toHaveLength(14);
+    expect(numerar(d.secoes).at(-1)?.numero).toBe('13');
     d.secoes[0].ativo = false;
     expect(numerar(d.secoes)[0]).toMatchObject({ numero: '01', secao: { id: 'dados' } });
-    expect(documentoPadrao('comercial').secoes).toHaveLength(11);
+    expect(documentoPadrao('comercial').secoes).toHaveLength(6);
   });
   it('marcadores dos cartões', () => {
     expect([marcadorCartao('letra', 0), marcadorCartao('letra', 3), marcadorCartao('numero', 0), marcadorCartao('numero', 9)]).toEqual(['A', 'D', '01', '10']);
@@ -32,8 +32,8 @@ describe('documentos da proposta', () => {
   it('completa documento salvo sem apagar o que existe', () => {
     const d = completarDocumento({ capa: { linha1: 'Vedação', linha2: '', subtitulo: '' } } as never, 'comercial');
     expect(d.capa.linha1).toBe('Vedação');
-    expect(d.secoes).toHaveLength(11);
-    expect(d.abertura).toMatch(/condições comerciais/);
+    expect(d.secoes).toHaveLength(6);
+    expect(d.versao).toBe(VERSAO_DOCUMENTO);
   });
   it('nome do arquivo', () => {
     expect(nomeArquivo('26-01-019', 0, 'Vedação Pneumática / Rosca MP', 'tecnica')).toBe('Proposta 26-01-019-R0 FABRIAÇO - Vedação Pneumática Rosca MP - Técnica.pdf');
@@ -47,8 +47,7 @@ describe('documentos da proposta', () => {
     const sec = (id: string) => t.secoes.find((s) => s.id === id)!;
     expect(sec('objetivo')).toMatchObject({ texto: 'Objetivo da IA.' });
     expect(sec('aplicacao')).toMatchObject({ texto: '' });
-    const gar = sec('garantia');
-    expect(gar.tipo === 'texto' ? gar.texto : '').toMatch(/18 meses/);
+    expect(sec('garantia')).toMatchObject({ tipo: 'garantia', meses: 18 });
     const comp = sec('competencias');
     expect(comp.tipo === 'competencias' && comp.itens.filter((i) => i.valor === 'Sim').map((i) => i.nome)).toEqual(['Mecânica', 'Pneumática']);
     const esc = sec('escopo');
@@ -70,5 +69,40 @@ describe('documentos da proposta', () => {
     const novo = t.secoes.find((s) => s.id === 'escopo')!;
     expect(novo.tipo === 'cartoes' && novo.cartoes.map((c) => c.imagens?.length ?? 0)).toEqual([2, 0, 0]);
     expect(novo.tipo === 'cartoes' && novo.cartoes[0].titulo).toBe('ENGENHARIA');
+  });
+  it('converte documento da versão 3 sem perder o que foi escrito', () => {
+    const v3 = {
+      tipo: 'tecnica', capa: { linha1: 'Vedação', linha2: 'Rosca MP', subtitulo: '' }, visao: { objeto: 'Cabeçote', solucao: '', unidade: '' }, abertura: '',
+      secoes: [
+        { id: 'sobre', titulo: 'Sobre nós', ativo: true, tipo: 'texto', texto: 'antigo' },
+        { id: 'objetivo', titulo: 'Objetivo', ativo: true, tipo: 'texto', texto: 'Objetivo escrito.' },
+        { id: 'escopo', titulo: 'Escopo', ativo: true, tipo: 'cartoes', marcador: 'letra', intro: 'Etapas', fecho: '', cartoes: [{ titulo: 'A', texto: 'x', imagens: [{ caminho: 'i.jpg', legenda: '' }] }] },
+        { id: 'responsabilidades', titulo: 'Responsabilidades', ativo: true, tipo: 'matriz', itens: [] },
+        { id: 'documentacoes', titulo: 'Documentações', ativo: true, tipo: 'matriz', itens: [] },
+        { id: 'gestao', titulo: 'Gestão do Projeto', ativo: true, tipo: 'cartoes', marcador: 'letra', intro: '', fecho: '', cartoes: [] },
+        { id: 'garantia', titulo: 'Garantia', ativo: false, tipo: 'texto', texto: '18 meses' },
+      ],
+    } as never;
+    const d = completarDocumento(v3, 'tecnica');
+    const sec = (id: string) => d.secoes.find((s) => s.id === id);
+    expect(d.versao).toBe(VERSAO_DOCUMENTO);
+    expect(d.capa.linha2).toBe('Rosca MP');
+    expect(sec('objetivo')).toMatchObject({ tipo: 'texto', texto: 'Objetivo escrito.' });
+    expect(sec('escopo')).toMatchObject({ intro: 'Etapas', cartoes: [{ imagens: [{ caminho: 'i.jpg' }] }] });
+    expect(sec('sobre')?.tipo).toBe('sobre');
+    expect(sec('responsabilidades')?.tipo).toBe('responsabilidades');
+    expect(sec('garantia')).toMatchObject({ tipo: 'garantia', meses: 18 });
+    expect(sec('documentacoes')).toBeUndefined();
+    expect(sec('gestao')).toBeUndefined();
+    expect(d.secoes.map((s) => s.id)).toEqual(documentoPadrao('tecnica').secoes.map((s) => s.id));
+  });
+  it('comercial pega garantia e prazo da técnica', () => {
+    expect(resumoTecnica(null)).toMatchObject({ meses: 18, dias: 65 });
+    const t = documentoPadrao('tecnica');
+    t.secoes = t.secoes.map((s) => (s.tipo === 'garantia' ? { ...s, meses: 12 } : s.tipo === 'cronograma' ? { ...s, etapas: [{ nome: 'Tudo', dias: 40 }] } : s));
+    expect(resumoTecnica(t)).toMatchObject({ meses: 12, dias: 40 });
+  });
+  it('troca o código nos textos', () => {
+    expect(substituir('- Proposta técnica {codigo}', { cliente: '', local: '', validade_dias: '', codigo: '26-07-001' })).toBe('- Proposta técnica 26-07-001');
   });
 });
