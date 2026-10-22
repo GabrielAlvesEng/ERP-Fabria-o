@@ -28,7 +28,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   const { data: salvos, isLoading } = useQuery({ queryKey: ['proposta_documentos', rev?.id], queryFn: () => lerDocumentos(rev!.id), enabled: Boolean(rev) });
   const preparadoPor = padroes?.empresa.responsavel ?? '';
   const { data: dados } = useQuery({
-    queryKey: ['proposta_documentos_dados', p.id, rev?.id, p.titulo, p.data_emissao, p.validade_dias, p.contato_id, p.contato_tecnico_id, p.responsavel_id, preparadoPor],
+    queryKey: ['proposta_documentos_dados', p.id, rev?.id, p.titulo, p.data_emissao, p.validade_dias, p.contato_id, p.contato_tecnico_id, p.responsavel_id, p.frete, preparadoPor],
     queryFn: () => dadosDaProposta(p, rev!.id, preparadoPor), enabled: Boolean(rev && padroes),
   });
   const editavel = Boolean(rev?.status === 'rascunho' && pode('vendas', 'editar'));
@@ -77,7 +77,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
       if (anexar) {
         await enviarArquivoRevisao(p.id, rev.id, tipo, new File([blob], nome, { type: 'application/pdf' }));
         qc.invalidateQueries({ queryKey: ['proposta', p.id] });
-        setMsg({ tipo: 'info', texto: `PDF anexado em Revisões e arquivos (${tipo === 'tecnica' ? 'técnica' : 'comercial'}, R${p.revisao_atual}). Vai junto no e-mail de envio.` });
+        setMsg({ tipo: 'info', texto: `PDF anexado em Arquivos → Propostas (${tipo === 'tecnica' ? 'técnica' : 'comercial'}, R${p.revisao_atual}). Vai junto no e-mail de envio.` });
       } else {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob); a.download = nome;

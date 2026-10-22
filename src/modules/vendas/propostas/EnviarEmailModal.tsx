@@ -142,7 +142,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
                 ))}
               </div>
               {(faltaComercial || faltaTecnica) && (
-                <div className="mt-2"><Aviso>Falta anexar a proposta {[faltaComercial && 'comercial', faltaTecnica && 'técnica'].filter(Boolean).join(' e a ')} na aba "Revisões e arquivos". Você pode enviar mesmo assim.</Aviso></div>
+                <div className="mt-2"><Aviso>Falta anexar a proposta {[faltaComercial && 'comercial', faltaTecnica && 'técnica'].filter(Boolean).join(' e a ')} (aba Documentos → "Gerar e anexar PDF"; os arquivos ficam na aba Arquivos). Você pode enviar mesmo assim.</Aviso></div>
               )}
               {propostasPdf.length > 0 && <div className="mt-1 text-xs text-suave">Os PDFs vão anexados ao e-mail.</div>}
             </div>

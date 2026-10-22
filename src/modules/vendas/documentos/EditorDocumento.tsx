@@ -1,7 +1,19 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp, ImagePlus, Plus, Trash2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Trash2 } from 'lucide-react';
 import { AreaTexto, Botao, Caixa, Campo, Entrada, Selecao } from '@/shared/ui';
-import { MAX_IMAGENS_ITEM, marcadorCartao, numerar, type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type Marca3, type Secao } from './modelo';
+import {
+  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_FIXAS, marcadorCartao, numerar,
+  type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type LinhaMatriz, type Marca3, type Secao,
+} from './modelo';
+import { TextoFormatado } from './TextoFormatado';
+
+// Rótulo para a caixa com barra de formatação (fora de <label>, para os botões da barra não dispararem o campo).
+function Rotulo({ texto, children }: { texto: string; children: ReactNode }) {
+  return <div><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">{texto}</span>{children}</div>;
+}
 
 export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<string, string> }
 
@@ -43,51 +55,63 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens }
             </div>
           )}
           <Campo rotulo="Subtítulo" className="sm:col-span-2"><AreaTexto rows={2} value={doc.capa.subtitulo} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, subtitulo: e.target.value } })} placeholder="Ex.: Fornecimento, fabricação e instalação de novo cabeçote removível…" /></Campo>
-          {doc.tipo === 'tecnica' ? (
-            <>
-              <Campo rotulo="Objeto"><Entrada value={doc.visao.objeto} onChange={(e) => onChange({ ...doc, visao: { ...doc.visao, objeto: e.target.value } })} placeholder="Ex.: Cabeçote removível" /></Campo>
-              <Campo rotulo="Solução"><Entrada value={doc.visao.solucao} onChange={(e) => onChange({ ...doc, visao: { ...doc.visao, solucao: e.target.value } })} placeholder="Ex.: Vedação pneumática" /></Campo>
-              <Campo rotulo="Unidade (vazio = cliente · cidade)" className="sm:col-span-2"><Entrada value={doc.visao.unidade} onChange={(e) => onChange({ ...doc, visao: { ...doc.visao, unidade: e.target.value } })} /></Campo>
-            </>
-          ) : (
-            <p className="text-xs text-suave sm:col-span-2">A comercial tem 4 páginas fixas: capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (da aba Custos) e encerramento (anexos, sigilo e o vendedor). Garantia e prazo vêm da proposta técnica.</p>
+          {doc.tipo === 'comercial' && (
+            <p className="text-xs text-suave sm:col-span-2">A comercial tem 4 páginas fixas: capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (da aba Custos) e encerramento (anexos, sigilo e o vendedor). Garantia e prazo vêm da proposta técnica; frete, da aba Dados.</p>
           )}
         </div>
       </div>
-      <p className="text-xs text-suave">Nos textos: linha em branco separa parágrafos, “- ” no começo da linha faz lista, **texto** fica em negrito. {'{cliente}'}, {'{local}'}, {'{validade_dias}'} e {'{codigo}'} viram os dados da proposta.</p>
-      {doc.secoes.map((s, i) => (
+      <p className="text-xs text-suave">Use a barra de cada texto para negrito, sublinhado e listas. Linha em branco separa parágrafos. Cliente, Local, Código e Validade viram os dados da proposta.</p>
+      {doc.secoes.map((s, i) => {
+        // Seções fixas (decisão 70): Conheça a Fabriaço, Dados da Empresa, Termo de Confidencialidade e Anexos.
+        const fixa = SECOES_FIXAS.includes(s.id) || s.tipo === 'sobre' || s.tipo === 'dados_empresas' || s.tipo === 'confidencialidade';
+        return (
         <div key={s.id} className={`rounded-xl ring-1 ring-borda ${s.ativo ? 'bg-superficie' : 'bg-pagina opacity-70'}`}>
           <div className="flex items-center gap-2 px-3 py-2">
             <Caixa marcado={s.ativo} onChange={(ativo) => setSecao(i, { ...s, ativo })} />
             <span className="w-6 text-xs font-semibold text-roxo-600 dark:text-roxo-100">{doc.tipo === 'tecnica' ? numeros[s.id] ?? '—' : ''}</span>
-            <input value={s.titulo} onChange={(e) => setSecao(i, { ...s, titulo: e.target.value })}
-              className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none hover:border-borda focus:border-roxo-500" />
-            {doc.tipo === 'tecnica' && <>
+            {fixa ? (
+              <span className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-0.5 text-sm font-semibold">{s.titulo} <span className="inline-flex items-center gap-0.5 text-[11px] font-normal text-suave"><Lock size={11} /> fixa</span></span>
+            ) : (
+              <input value={s.titulo} onChange={(e) => setSecao(i, { ...s, titulo: e.target.value })}
+                className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none hover:border-borda focus:border-roxo-500" />
+            )}
+            {doc.tipo === 'tecnica' && !fixa && <>
               <button type="button" onClick={() => mover(i, -1)} className="rounded p-1 text-suave hover:text-texto" title="Subir"><ChevronUp size={15} /></button>
               <button type="button" onClick={() => mover(i, 1)} className="rounded p-1 text-suave hover:text-texto" title="Descer"><ChevronDown size={15} /></button>
             </>}
             <button type="button" onClick={() => setAberta(aberta === s.id ? null : s.id)} className="rounded px-2 py-0.5 text-xs text-roxo-600 hover:bg-roxo-50 dark:text-roxo-100 dark:hover:bg-marinho-700">
-              {aberta === s.id ? 'Fechar' : 'Editar'}
+              {aberta === s.id ? 'Fechar' : fixa ? 'Ver' : 'Editar'}
             </button>
           </div>
-          {aberta === s.id && <div className="border-t border-borda p-3"><CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} /></div>}
+          {aberta === s.id && <div className="border-t border-borda p-3">{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} />}</div>}
         </div>
-      ))}
+        );
+      })}
     </fieldset>
   );
+}
+
+function SecaoFixa({ s }: { s: Secao }) {
+  const textos: Record<string, string> = {
+    sobre: 'Página “Conheça a Fabriaço”, com o mapa de São Paulo, junto com os Dados da Empresa. É igual em todas as propostas.',
+    dados: 'Preenchido sozinho: dados da Fabriaço (Administração → Modelos de proposta) e do cliente (cadastro de Empresas e Contatos).',
+    confidencialidade: 'Texto fixo, sem o nome do cliente, igual em todas as propostas.',
+    anexo: 'Os arquivos anexados na aba Arquivos → Anexos aparecem aqui em cards, com o tipo e o nome. Sem anexos, sai “Não contém”.',
+  };
+  return <p className="text-sm text-suave">{textos[s.id] ?? textos[s.tipo === 'sobre' ? 'sobre' : s.tipo === 'dados_empresas' ? 'dados' : 'confidencialidade']}</p>;
 }
 
 function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: Secao) => void; itens: { letra: string; descricao: string }[]; imagens?: Imagens }) {
   switch (s.tipo) {
     case 'texto':
-      return <AreaTexto rows={Math.min(18, Math.max(5, s.texto.split('\n').length + 2))} value={s.texto} placeholder={s.dica} onChange={(e) => onChange({ ...s, texto: e.target.value })} />;
+      return <TextoFormatado rows={Math.min(18, Math.max(5, s.texto.split('\n').length + 2))} value={s.texto} placeholder={s.dica} limite={LIMITES_TEXTO[s.id]} onChange={(v) => onChange({ ...s, texto: v })} />;
     case 'cartoes': {
       const setCartao = (i: number, c: Cartao) => onChange({ ...s, cartoes: s.cartoes.map((x, j) => (j === i ? c : x)) });
       const setFiguras = (i: number, c: Cartao, l: Figura[]) => setCartao(i, { ...c, imagens: l.length ? l : undefined });
       return (
         <div className="space-y-2">
-          <Campo rotulo="Introdução"><AreaTexto rows={3} value={s.intro} onChange={(e) => onChange({ ...s, intro: e.target.value })} /></Campo>
-          {s.destaque !== undefined && <Campo rotulo="Destaque"><AreaTexto rows={2} value={s.destaque} onChange={(e) => onChange({ ...s, destaque: e.target.value })} /></Campo>}
+          <Rotulo texto="Introdução"><TextoFormatado rows={3} value={s.intro} onChange={(v) => onChange({ ...s, intro: v })} /></Rotulo>
+          {s.destaque !== undefined && <Rotulo texto="Destaque"><TextoFormatado rows={2} value={s.destaque} onChange={(v) => onChange({ ...s, destaque: v })} /></Rotulo>}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-medium text-suave">Itens{imagens ? ' · cada item pode ter suas imagens, que saem em cards ao lado do texto' : ''}</span>
             <div className="flex rounded-lg bg-superficie p-0.5 text-xs ring-1 ring-borda">
@@ -106,7 +130,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
                   <Entrada value={c.titulo} onChange={(e) => setCartao(i, { ...c, titulo: e.target.value })} placeholder="Título" />
                   <button type="button" onClick={() => onChange({ ...s, cartoes: s.cartoes.filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Remover item"><Trash2 size={14} /></button>
                 </div>
-                <AreaTexto rows={3} value={c.texto} onChange={(e) => setCartao(i, { ...c, texto: e.target.value })} placeholder="Descrição" />
+                <TextoFormatado rows={4} value={c.texto} onChange={(v) => setCartao(i, { ...c, texto: v })} placeholder="Descrição" />
                 {imagens && (
                   <div className="space-y-1.5 pl-0 sm:pl-8">
                     {figs.map((f, k) => (
@@ -137,7 +161,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
               ))}
             </div>
           )}
-          <Campo rotulo="Fechamento"><AreaTexto rows={2} value={s.fecho} onChange={(e) => onChange({ ...s, fecho: e.target.value })} /></Campo>
+          <Rotulo texto="Fechamento"><TextoFormatado rows={2} value={s.fecho} onChange={(v) => onChange({ ...s, fecho: v })} /></Rotulo>
           {s.dica && <p className="text-xs text-suave">{s.dica}</p>}
         </div>
       );
@@ -146,15 +170,19 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
       return <p className="text-sm text-suave">Preenchido sozinho: dados da Fabriaço (Administração → Modelos de proposta) e do cliente (cadastro de Empresas e Contatos).</p>;
     case 'competencias':
       return (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {s.itens.map((it, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Entrada value={it.nome} onChange={(e) => onChange({ ...s, itens: s.itens.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)) })} />
-              <Selecao value={it.valor} className="w-24" onChange={(e) => onChange({ ...s, itens: s.itens.map((x, j) => (j === i ? { ...x, valor: e.target.value as Marca3 } : x)) })}>
-                {['Sim', 'Não', 'N/A'].map((v) => <option key={v}>{v}</option>)}
-              </Selecao>
-            </div>
-          ))}
+        <div className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {s.itens.map((it, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Entrada value={it.nome} placeholder="Competência" onChange={(e) => onChange({ ...s, itens: s.itens.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)) })} />
+                <Selecao value={it.valor} className="w-24" onChange={(e) => onChange({ ...s, itens: s.itens.map((x, j) => (j === i ? { ...x, valor: e.target.value as Marca3 } : x)) })}>
+                  {['Sim', 'Não', 'N/A'].map((v) => <option key={v}>{v}</option>)}
+                </Selecao>
+                <button type="button" onClick={() => onChange({ ...s, itens: s.itens.filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Remover competência"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+          <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, itens: [...s.itens, { nome: '', valor: 'Sim' }] })}><Plus size={14} /> Adicionar competência</Botao>
         </div>
       );
     case 'sobre':
@@ -163,7 +191,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
       const setGrupo = (g: number, novo: GrupoResponsabilidade) => onChange({ ...s, grupos: s.grupos.map((x, j) => (j === g ? novo : x)) });
       return (
         <div className="space-y-3">
-          <div className="flex gap-2 text-[11px] font-semibold uppercase text-suave"><span className="flex-1">Item</span><span className="w-14 text-center">Cliente</span><span className="w-14 text-center">Fabriaço</span><span className="w-6" /></div>
+          <div className="flex gap-2 text-[11px] font-semibold uppercase text-suave"><span className="w-5" /><span className="flex-1">Item · arraste pela alça para mudar a ordem</span><span className="w-14 text-center">Cliente</span><span className="w-14 text-center">Fabriaço</span><span className="w-6" /></div>
           {s.grupos.map((g, gi) => (
             <div key={gi} className="rounded-lg bg-pagina p-2 ring-1 ring-borda">
               <div className="mb-1 flex items-center gap-2">
@@ -171,15 +199,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
                   className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs font-bold uppercase tracking-wide text-roxo-600 outline-none hover:border-borda focus:border-roxo-500 dark:text-roxo-100" />
                 <button type="button" onClick={() => confirm(`Tirar a área “${g.area}” e os itens dela?`) && onChange({ ...s, grupos: s.grupos.filter((_, j) => j !== gi) })} className="w-6 rounded p-1 text-suave hover:text-red-600" title="Tirar a área"><Trash2 size={13} /></button>
               </div>
-              {g.itens.map((it, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input value={it.texto} onChange={(e) => setGrupo(gi, { ...g, itens: g.itens.map((x, j) => (j === i ? { ...x, texto: e.target.value } : x)) })}
-                    className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm outline-none hover:border-borda focus:border-roxo-500" />
-                  <span className="flex w-14 justify-center"><Caixa marcado={it.cliente} onChange={(v) => setGrupo(gi, { ...g, itens: g.itens.map((x, j) => (j === i ? { ...x, cliente: v } : x)) })} /></span>
-                  <span className="flex w-14 justify-center"><Caixa marcado={it.fabriaco} onChange={(v) => setGrupo(gi, { ...g, itens: g.itens.map((x, j) => (j === i ? { ...x, fabriaco: v } : x)) })} /></span>
-                  <button type="button" onClick={() => setGrupo(gi, { ...g, itens: g.itens.filter((_, j) => j !== i) })} className="w-6 rounded p-1 text-suave hover:text-red-600" title="Remover"><Trash2 size={13} /></button>
-                </div>
-              ))}
+              <ItensArrastaveis grupo={gi} itens={g.itens} onChange={(itens) => setGrupo(gi, { ...g, itens })} />
               <button type="button" onClick={() => setGrupo(gi, { ...g, itens: [...g.itens, { texto: '', cliente: false, fabriaco: true }] })} className="mt-1 text-xs font-medium text-roxo-600 hover:underline dark:text-roxo-100">+ Adicionar item em {g.area || 'esta área'}</button>
             </div>
           ))}
@@ -200,6 +220,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
       const total = s.etapas.reduce((t, e) => t + (Number(e.dias) || 0), 0);
       return (
         <div className="space-y-2">
+          <InicioPrazo valor={s.inicio?.trim() || INICIO_PRAZO_PADRAO} onChange={(inicio) => onChange({ ...s, inicio })} />
           <div className="flex gap-2 text-[11px] font-semibold uppercase text-suave"><span className="flex-1">Etapa</span><span className="w-20 text-right">Dias</span><span className="w-6" /></div>
           {s.etapas.map((e, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -210,7 +231,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
           ))}
           <div className="flex items-center justify-between gap-2">
             <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, etapas: [...s.etapas, { nome: '', dias: 5 }] })}><Plus size={14} /> Adicionar etapa</Botao>
-            <span className="text-sm">Total: <b>{total} dias</b> após a aprovação</span>
+            <span className="text-sm">Total: <b>{total} dias</b> após {s.inicio?.trim() || INICIO_PRAZO_PADRAO}</span>
           </div>
           <p className="text-xs text-suave">Cada etapa começa quando a anterior termina. A proposta comercial mostra este total.</p>
         </div>
@@ -222,11 +243,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
       return <p className="text-sm text-suave">Texto fixo, sem o nome do cliente, igual em todas as propostas.</p>;
     case 'visao_comercial':
       return (
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Campo rotulo="Frete"><Entrada value={s.frete} onChange={(e) => onChange({ ...s, frete: e.target.value })} placeholder="Ex.: CIF — incluso" /></Campo>
-          <Campo rotulo="Detalhe do frete"><Entrada value={s.frete_detalhe} onChange={(e) => onChange({ ...s, frete_detalhe: e.target.value })} /></Campo>
-          <p className="text-xs text-suave sm:col-span-2">Revisões, validade, garantia e prazo entram sozinhos (da proposta e da proposta técnica).</p>
-        </div>
+        <p className="text-sm text-suave">Entra sozinho: revisões e validade (da proposta), frete CIF/FOB e local de entrega (aba Dados), garantia e prazo (da proposta técnica).</p>
       );
     case 'matriz':
       return (
@@ -247,7 +264,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
     case 'impostos':
       return (
         <div className="space-y-2">
-          <Campo rotulo="Introdução"><AreaTexto rows={2} value={s.intro} onChange={(e) => onChange({ ...s, intro: e.target.value })} /></Campo>
+          <Rotulo texto="Introdução"><TextoFormatado rows={2} value={s.intro} onChange={(v) => onChange({ ...s, intro: v })} /></Rotulo>
           <Campo rotulo="NCM"><Entrada value={s.ncm} onChange={(e) => onChange({ ...s, ncm: e.target.value })} placeholder="Ex.: 8437.10.00" /></Campo>
           {s.linhas.map((l, i) => (
             <div key={i} className="flex gap-2">
@@ -260,7 +277,7 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
     case 'valores':
       return (
         <div className="space-y-2">
-          <Campo rotulo="Introdução"><AreaTexto rows={5} value={s.intro} onChange={(e) => onChange({ ...s, intro: e.target.value })} /></Campo>
+          <Rotulo texto="Introdução"><TextoFormatado rows={5} value={s.intro} onChange={(v) => onChange({ ...s, intro: v })} /></Rotulo>
           <p className="text-xs text-suave">Itens e valores vêm da aba Custos (preço de venda de cada item). Aqui só a descrição do fornecimento de cada um.</p>
           {itens.length === 0 && <p className="text-sm text-suave">Nenhum item nos Custos desta revisão.</p>}
           {itens.map((it) => (
@@ -275,10 +292,10 @@ function CorpoSecao({ s, onChange, itens, imagens }: { s: Secao; onChange: (s: S
         <div className="space-y-2">
           <div className="grid gap-2 sm:grid-cols-3">
             <Campo rotulo="Condição"><Entrada value={s.condicao} onChange={(e) => onChange({ ...s, condicao: e.target.value })} /></Campo>
-            <Campo rotulo="Marco"><Entrada value={s.marco} onChange={(e) => onChange({ ...s, marco: e.target.value })} /></Campo>
+            <Campo rotulo="Pago no marco"><EscolhaComOutro valor={s.marco} opcoes={MARCOS_PAGAMENTO} onChange={(marco) => onChange({ ...s, marco })} /></Campo>
             <Campo rotulo="Forma"><Entrada value={s.forma} onChange={(e) => onChange({ ...s, forma: e.target.value })} /></Campo>
           </div>
-          <AreaTexto rows={4} value={s.texto} onChange={(e) => onChange({ ...s, texto: e.target.value })} />
+          <TextoFormatado rows={4} value={s.texto} onChange={(v) => onChange({ ...s, texto: v })} />
         </div>
       );
   }
@@ -309,5 +326,64 @@ function EscolherImagem({ imagens, caminho, onEscolher, onRemover, rotulo }: {
       </div>
       {erro && <div className="mt-1 text-xs text-red-600">{erro}</div>}
     </div>
+  );
+}
+
+// Itens de uma área das Responsabilidades, em ordem que se muda arrastando pela alça (decisão 70).
+function ItensArrastaveis({ grupo, itens, onChange }: { grupo: number; itens: LinhaMatriz[]; onChange: (l: LinhaMatriz[]) => void }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const ids = itens.map((_, i) => `${grupo}-${i}`);
+  const soltar = (e: DragEndEvent) => {
+    const de = ids.indexOf(String(e.active.id)); const para = e.over ? ids.indexOf(String(e.over.id)) : -1;
+    if (de >= 0 && para >= 0 && de !== para) onChange(arrayMove(itens, de, para));
+  };
+  const set = (i: number, n: Partial<LinhaMatriz>) => onChange(itens.map((x, j) => (j === i ? { ...x, ...n } : x)));
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={soltar}>
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        {itens.map((it, i) => (
+          <ItemArrastavel key={ids[i]} id={ids[i]} it={it} onChange={(n) => set(i, n)} onRemover={() => onChange(itens.filter((_, j) => j !== i))} />
+        ))}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function ItemArrastavel({ id, it, onChange, onRemover }: { id: string; it: LinhaMatriz; onChange: (n: Partial<LinhaMatriz>) => void; onRemover: () => void }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center gap-2 rounded ${isDragging ? 'relative z-10 bg-superficie shadow-md ring-1 ring-roxo-300' : ''}`}>
+      <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} className="w-5 cursor-grab touch-none rounded text-suave hover:text-texto active:cursor-grabbing" title="Arraste para mudar a ordem"><GripVertical size={14} /></button>
+      <input value={it.texto} onChange={(e) => onChange({ texto: e.target.value })}
+        className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm outline-none hover:border-borda focus:border-roxo-500" />
+      <span className="flex w-14 justify-center"><Caixa marcado={it.cliente} onChange={(v) => onChange({ cliente: v })} /></span>
+      <span className="flex w-14 justify-center"><Caixa marcado={it.fabriaco} onChange={(v) => onChange({ fabriaco: v })} /></span>
+      <button type="button" onClick={onRemover} className="w-6 rounded p-1 text-suave hover:text-red-600" title="Remover"><Trash2 size={13} /></button>
+    </div>
+  );
+}
+
+// Lista de opções com "Outro…" para digitar (marco de pagamento, início do prazo).
+function EscolhaComOutro({ valor, opcoes, onChange, rotuloOpcao = (o: string) => o }: { valor: string; opcoes: string[]; onChange: (v: string) => void; rotuloOpcao?: (o: string) => string }) {
+  const [outro, setOutro] = useState(() => Boolean(valor) && !opcoes.includes(valor));
+  return (
+    <div className="space-y-1.5">
+      <Selecao value={outro ? '__outro' : valor} onChange={(e) => { if (e.target.value === '__outro') { setOutro(true); } else { setOutro(false); onChange(e.target.value); } }}>
+        {opcoes.map((o) => <option key={o} value={o}>{rotuloOpcao(o)}</option>)}
+        <option value="__outro">Outro…</option>
+      </Selecao>
+      {outro && <Entrada value={valor} placeholder="Escreva" onChange={(e) => onChange(e.target.value)} autoFocus />}
+    </div>
+  );
+}
+
+// De quando o prazo de entrega começa a contar (decisão 70).
+function InicioPrazo({ valor, onChange }: { valor: string; onChange: (v: string) => void }) {
+  const primeira = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  return (
+    <Campo rotulo="Prazo contado a partir de" className="max-w-md">
+      <EscolhaComOutro valor={valor} opcoes={INICIOS_PRAZO} onChange={onChange} rotuloOpcao={(o) => primeira(o.replace(/^(o|a) /, ''))} />
+    </Campo>
   );
 }

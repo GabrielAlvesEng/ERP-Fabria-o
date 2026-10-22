@@ -158,3 +158,10 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - Gatilho `funcionarios_desligado_acesso`: ao mudar a situação para desligado, o usuário ligado fica inativo (protege o último com acesso total).
 - Edge Function `rh-acesso` (criar_login, link_senha, desativar, reativar): usa a service_role só no Supabase; o login é bloqueado no Auth (`ban_duration`) além de `usuarios.ativo`. O ERP gera links (`generateLink`), nunca vê senhas.
 - Migration 42 (`20261022000042_rh_acessos_rpc.sql`): `vincular_login_funcionario(ficha, usuário)`, `definir_login_ativo(usuário, ativo)` e `registrar_acesso_rh(usuário, dados)`, security definer com `rh.critica`. A Edge Function usa a service_role só no Auth; neste projeto a service_role não tem acesso às tabelas públicas.
+
+## Frete e valor manual (`20261022000043_frete_valor_manual.sql`, decisão 70)
+
+- `propostas.frete`: `CIF` ou `FOB`, padrão `CIF`. O local de entrega não é guardado: é sempre o endereço da empresa cliente.
+- `custo_itens.valor_manual`: valor de venda digitado à mão (nulo = usa o calculado pelos custos). `copiar_custos` leva o valor para a nova revisão.
+- O início do prazo de entrega fica no documento da proposta (`proposta_documentos.conteudo`, seção cronograma, campo `inicio`), sem coluna nova.
+

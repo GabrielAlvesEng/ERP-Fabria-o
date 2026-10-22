@@ -2,7 +2,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { formatarCNPJ } from '@/shared/lib/formato';
 import { listarItens, listarLinhas } from '@/modules/vendas/custos/api';
 import { resumoItem } from '@/modules/vendas/custos/regras';
-import { listarRevisoes } from '@/modules/vendas/api';
+import { listarArquivos, listarRevisoes } from '@/modules/vendas/api';
 import type { Contato, Empresa, Proposta } from '@/modules/vendas/types';
 import { EMPRESA_PADRAO, SOBRE_PADRAO, completarDocumento, type DadosEmpresaFabriaco, type Documento, type TipoDocumento } from './modelo';
 import type { DadosProposta } from './DocumentoPdf';
@@ -40,11 +40,15 @@ export async function salvarDocumento(revisaoId: string, tipo: TipoDocumento, co
   ok(await supabase.from('proposta_documentos').upsert({ revisao_id: revisaoId, tipo, conteudo }, { onConflict: 'revisao_id,tipo' }));
 }
 
+// Local de entrega (decisão 70): sempre o endereço da empresa cliente.
+export const enderecoEntrega = (e: Pick<Empresa, 'logradouro' | 'numero' | 'bairro' | 'cidade' | 'uf'>) =>
+  [[e.logradouro, e.numero].filter(Boolean).join(', '), e.bairro, [e.cidade, e.uf].filter(Boolean).join(' / ')].filter(Boolean).join(' – ');
+
 const pessoa = (c: Contato | null | undefined) => (c ? { nome: c.nome, telefone: c.whatsapp || c.telefone, email: c.email } : null);
 
 // Tudo o que o documento puxa do ERP: cliente, contatos, vendedor, código, revisões, datas e os valores dos Custos.
 export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoPor: string): Promise<DadosProposta> {
-  const [empresa, contato, tecnico, itens, revisoes, vendedor] = await Promise.all([
+  const [empresa, contato, tecnico, itens, revisoes, vendedor, arquivos] = await Promise.all([
     supabase.from('empresas').select('*').eq('id', p.empresa_id).single().then((r) => ok(r) as Empresa),
     supabase.from('contatos').select('*').eq('id', p.contato_id).single().then((r) => ok(r) as Contato),
     p.contato_tecnico_id ? supabase.from('contatos').select('*').eq('id', p.contato_tecnico_id).maybeSingle().then((r) => ok(r) as Contato | null) : Promise.resolve(null),
@@ -54,6 +58,7 @@ export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoP
       ? supabase.from('vendedores').select('nome, cargo, telefone, usuarios!vendedores_usuario_id_fkey(nome, email)').eq('usuario_id', p.responsavel_id).maybeSingle()
         .then((r) => ok(r) as unknown as { nome: string; cargo: string; telefone: string; usuarios: { nome: string; email: string } | null } | null)
       : Promise.resolve(null),
+    listarArquivos([revisaoId]),
   ]);
   const linhas = itens.length ? await listarLinhas(itens.map((i) => i.id)) : [];
   const cep = (empresa.cep ?? '').replace(/\D/g, '');
@@ -68,6 +73,12 @@ export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoP
     },
     contato: pessoa(contato)!,
     contatoTecnico: pessoa(tecnico),
+    frete: p.frete ?? 'CIF',
+    entrega: enderecoEntrega(empresa),
+    anexos: {
+      tecnicos: arquivos.filter((a) => a.tipo === 'documento_tecnico').map((a) => ({ nome: a.nome, tamanho: a.tamanho })),
+      comerciais: arquivos.filter((a) => a.tipo === 'anexo').map((a) => ({ nome: a.nome, tamanho: a.tamanho })),
+    },
     preparadoPor,
     vendedor: vendedor ? { nome: vendedor.nome || vendedor.usuarios?.nome || '', cargo: vendedor.cargo, telefone: vendedor.telefone, email: vendedor.usuarios?.email ?? '' } : null,
     // Tabela de revisões da comercial: até a atual, com o motivo de cada uma (R0 = emissão inicial).

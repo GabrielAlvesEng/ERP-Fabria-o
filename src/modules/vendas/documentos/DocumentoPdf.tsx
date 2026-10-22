@@ -6,7 +6,7 @@ import geist600 from '@fontsource/geist-sans/files/geist-sans-latin-600-normal.w
 import geist700 from '@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff?url';
 import { moeda } from '@/shared/lib/formato';
 import {
-  blocos, CONFIDENCIALIDADE_COMERCIAL, CONFIDENCIALIDADE_TECNICA, GARANTIA_ATENDIMENTO, GARANTIA_COBRE, GARANTIA_NAO_SE_APLICA, marcadorCartao, numerar,
+  aPartirDe, blocos, INICIO_PRAZO_PADRAO, CONFIDENCIALIDADE_COMERCIAL, CONFIDENCIALIDADE_TECNICA, GARANTIA_ATENDIMENTO, GARANTIA_COBRE, GARANTIA_NAO_SE_APLICA, marcadorCartao, numerar,
   resumoTecnica, substituir, VALIDADE_CONDICOES, type Cartao, type DadosEmpresaFabriaco, type Documento, type Etapa, type Secao, type Trecho, type Variaveis,
 } from './modelo';
 import { MAPA_SP } from './mapaSP';
@@ -30,7 +30,12 @@ export interface DadosProposta {
   vendedor?: (PessoaContato & { cargo: string }) | null;
   revisoes?: { numero: number; descricao: string; emissao: string }[];
   itens: { letra: string; descricao: string; quantidade?: number; valor: number }[];
+  // Decisão 70: frete da aba Dados (o local de entrega é sempre o endereço do cliente) e os anexos da revisão (aba Arquivos).
+  frete?: 'CIF' | 'FOB';
+  entrega?: string;
+  anexos?: { tecnicos: ArquivoAnexo[]; comerciais: ArquivoAnexo[] };
 }
+export interface ArquivoAnexo { nome: string; tamanho: number }
 
 const C = {
   navy: '#141a2e', navy2: '#1f2640', navy3: '#262d4d', teal: '#15303a', roxo: '#6e48d0', roxoMarca: '#410FA0', roxoClaro: '#9a78ea', lavanda: '#ece8fb', lavanda2: '#f5f2fd',
@@ -75,13 +80,19 @@ const somarDias = (iso: string, dias: number) => {
 const qtd = (n: number) => (Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 3 }));
 
 function Rico({ trechos, estilo }: { trechos: Trecho[]; estilo?: Styles[string] }) {
-  return <Text style={estilo} wrap={false}>{trechos.map((t, i) => <Text key={i} style={t.negrito ? { fontWeight: 600 } : undefined}>{t.texto}</Text>)}</Text>;
+  const estiloTrecho = (t: Trecho) => (t.negrito || t.sublinhado ? { ...(t.negrito ? { fontWeight: 600 } : {}), ...(t.sublinhado ? { textDecoration: 'underline' as const } : {}) } : undefined);
+  return <Text style={estilo} wrap={false}>{trechos.map((t, i) => <Text key={i} style={estiloTrecho(t)}>{t.texto}</Text>)}</Text>;
 }
 
 // "topo" (título da seção) fica colado ao primeiro parágrafo ou item, para nunca sobrar sozinho no pé da página.
 function TextoRico({ texto, v, topo, estilo }: { texto: string; v: Variaveis; topo?: ReactNode; estilo?: Styles[string] }) {
   const p = estilo ? [s.p, estilo] : s.p;
-  const item = (it: Trecho[], j: number) => <View key={j} style={s.item} wrap={false}><Text style={s.bolinha}>•</Text><Rico trechos={it} estilo={{ flex: 1, ...(estilo ?? {}) }} /></View>;
+  const item = (it: Trecho[], j: number, numerada?: boolean) => (
+    <View key={j} style={s.item} wrap={false}>
+      <Text style={numerada ? [s.bolinha, { width: 14, fontWeight: 600, ...(estilo?.fontSize ? { fontSize: estilo.fontSize } : {}) }] : s.bolinha}>{numerada ? `${j + 1}.` : '•'}</Text>
+      <Rico trechos={it} estilo={{ flex: 1, ...(estilo ?? {}) }} />
+    </View>
+  );
   const lista = blocos(substituir(texto, v));
   if (!lista.length) return topo ? <View wrap={false}>{topo}</View> : null;
   return (
@@ -90,8 +101,8 @@ function TextoRico({ texto, v, topo, estilo }: { texto: string; v: Variaveis; to
         if (b.tipo === 'p') return i === 0 && topo ? <View key={i} wrap={false}>{topo}<Rico trechos={b.trechos} estilo={p as Styles[string]} /></View> : <Rico key={i} trechos={b.trechos} estilo={p as Styles[string]} />;
         return (
           <View key={i} style={{ marginBottom: 6 }}>
-            {i === 0 && topo ? <View wrap={false}>{topo}{item(b.itens[0], 0)}</View> : item(b.itens[0], 0)}
-            {b.itens.slice(1).map((it, j) => item(it, j + 1))}
+            {i === 0 && topo ? <View wrap={false}>{topo}{item(b.itens[0], 0, b.numerada)}</View> : item(b.itens[0], 0, b.numerada)}
+            {b.itens.slice(1).map((it, j) => item(it, j + 1, b.numerada))}
           </View>
         );
       })}
@@ -106,12 +117,14 @@ function Xis() {
   return <Svg width={8} height={8} viewBox="0 0 24 24"><Path d="M6 6l12 12M18 6L6 18" stroke={C.vermelho} strokeWidth={3} fill="none" /></Svg>;
 }
 
-function TituloSecao({ numero, titulo }: { numero: string; titulo: string }) {
+function TituloSecao({ numero, titulo }: { numero?: string; titulo: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, marginBottom: 10 }}>
-      <View style={{ width: 40, height: 20, borderRadius: 4, backgroundColor: C.lavanda, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-        <Text style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: C.roxo }}>{numero}</Text>
-      </View>
+      {numero ? (
+        <View style={{ width: 40, height: 20, borderRadius: 4, backgroundColor: C.lavanda, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+          <Text style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: C.roxo }}>{numero}</Text>
+        </View>
+      ) : <View style={{ width: 24, height: 3, borderRadius: 2, backgroundColor: C.roxo, marginRight: 10 }} />}
       <Text style={{ fontSize: 15, fontWeight: 700, letterSpacing: -0.3, lineHeight: 1.2, flex: 1 }}>{titulo}</Text>
     </View>
   );
@@ -172,66 +185,92 @@ const ICONES_SERVICO = [
   'M6 2.5h9l4 4V21.5H6zM15 2.5v4h4M9 11h7M9 14.5h7M9 18h5', // documentação
 ];
 
+// "Conheça a Fabriaço" compacto, para dividir a página com os Dados da Empresa (decisão 70).
 function SobreNos({ empresa, v }: { empresa: DadosEmpresaFabriaco; v: Variaveis }) {
   const sb = empresa.sobre;
   const m = MAPA_SP;
-  const W = 190; const esc = W / m.largura; const H = m.altura * esc;
+  const W = 150; const esc = W / m.largura; const H = m.altura * esc;
   return (
-    <View style={{ marginBottom: 6 }}>
-      <View wrap={false}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22, marginTop: 10 }}>
-          <View style={{ flex: 1, paddingRight: 12, paddingTop: 14 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <View style={{ width: 24, height: 3, borderRadius: 2, backgroundColor: C.roxo, marginRight: 8 }} />
-              <Text style={{ fontSize: 8, fontWeight: 600, color: C.roxo, letterSpacing: 1.4 }}>SOBRE NÓS</Text>
-            </View>
-            <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.2 }}>{sb.titulo}</Text>
-            <Text style={{ fontSize: 8, fontWeight: 600, color: '#4b5263', letterSpacing: 0.8, marginTop: 6 }}>{sb.subtitulo.toUpperCase()}</Text>
+    <View wrap={false} style={{ marginBottom: 4 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <View style={{ flex: 1, paddingRight: 12, paddingTop: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+            <View style={{ width: 24, height: 3, borderRadius: 2, backgroundColor: C.roxo, marginRight: 8 }} />
+            <Text style={{ fontSize: 8, fontWeight: 600, color: C.roxo, letterSpacing: 1.4 }}>SOBRE NÓS</Text>
           </View>
-          <View style={{ width: W + 30, alignItems: 'center' }}>
-            <View style={{ width: W, height: H }}>
-              <Svg width={W} height={H} viewBox={`0 0 ${m.largura} ${m.altura}`}>
-                <Path d={m.caminho} fill={C.lavanda2} stroke={C.roxo} strokeWidth={1.1} />
-                <Path d={`M${m.mococa[0]} ${m.mococa[1]} L${m.mococa[0] + 12} ${m.mococa[1] - 18} L${m.mococa[0] + 22} ${m.mococa[1] - 18}`} stroke={C.roxo} strokeWidth={1} fill="none" />
-                <Circle cx={m.mococa[0]} cy={m.mococa[1]} r={3.6} fill={C.roxo} />
-              </Svg>
-              <Text style={{ position: 'absolute', left: (m.mococa[0] + 23) * esc, top: (m.mococa[1] - 25) * esc, fontSize: 9, fontWeight: 700, color: C.roxo }}>Mococa</Text>
-            </View>
-            <Text style={{ fontSize: 7.5, color: C.suave, marginTop: 4 }}>São Paulo • Brasil</Text>
-          </View>
+          <Text style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, lineHeight: 1.2 }}>{sb.titulo}</Text>
+          <Text style={{ fontSize: 7.5, fontWeight: 600, color: '#4b5263', letterSpacing: 0.8, marginTop: 4 }}>{sb.subtitulo.toUpperCase()}</Text>
         </View>
-        <TextoRico texto={sb.texto} v={v} estilo={{ fontSize: 10.5, color: '#374151', lineHeight: 1.55 }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.lavanda2, borderRadius: 6, paddingVertical: 11, paddingHorizontal: 14, marginTop: 10, marginBottom: 22 }}>
-          <Text style={{ width: 90, fontSize: 7, fontWeight: 600, color: C.roxo, letterSpacing: 1 }}>MATERIAIS</Text>
-          <Text style={{ fontSize: 11.5, fontWeight: 600 }}>{sb.materiais}</Text>
+        <View style={{ width: W + 30, alignItems: 'center' }}>
+          <View style={{ width: W, height: H }}>
+            <Svg width={W} height={H} viewBox={`0 0 ${m.largura} ${m.altura}`}>
+              <Path d={m.caminho} fill={C.lavanda2} stroke={C.roxo} strokeWidth={1.1} />
+              <Path d={`M${m.mococa[0]} ${m.mococa[1]} L${m.mococa[0] + 12} ${m.mococa[1] - 18} L${m.mococa[0] + 22} ${m.mococa[1] - 18}`} stroke={C.roxo} strokeWidth={1} fill="none" />
+              <Circle cx={m.mococa[0]} cy={m.mococa[1]} r={3.6} fill={C.roxo} />
+            </Svg>
+            <Text style={{ position: 'absolute', left: (m.mococa[0] + 23) * esc, top: (m.mococa[1] - 25) * esc, fontSize: 8, fontWeight: 700, color: C.roxo }}>Mococa</Text>
+          </View>
+          <Text style={{ fontSize: 7, color: C.suave, marginTop: 2 }}>São Paulo • Brasil</Text>
         </View>
       </View>
-      <View wrap={false}>
-        <View style={{ flexDirection: 'row', marginBottom: 22 }}>
-          {sb.servicos.slice(0, 5).map((sv, i) => (
-            <View key={i} style={{ flex: 1, paddingRight: i < 4 ? 10 : 0 }}>
-              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.lavanda2, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-                <Svg width={19} height={19} viewBox="0 0 24 24"><Path d={ICONES_SERVICO[i] ?? ICONES_SERVICO[4]} stroke={C.roxo} strokeWidth={1.6} fill="none" /></Svg>
-              </View>
-              <Text style={{ fontSize: 9.5, fontWeight: 700, marginBottom: 4 }}>{sv.titulo}</Text>
-              <Text style={{ fontSize: 8.5, color: C.suave, lineHeight: 1.45 }}>{sv.texto}</Text>
+      <TextoRico texto={sb.texto} v={v} estilo={{ fontSize: 9, color: '#374151', lineHeight: 1.45 }} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.lavanda2, borderRadius: 6, paddingVertical: 7, paddingHorizontal: 12, marginTop: 4, marginBottom: 12 }}>
+        <Text style={{ width: 80, fontSize: 7, fontWeight: 600, color: C.roxo, letterSpacing: 1 }}>MATERIAIS</Text>
+        <Text style={{ fontSize: 10, fontWeight: 600 }}>{sb.materiais}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        {sb.servicos.slice(0, 5).map((sv, i) => (
+          <View key={i} style={{ flex: 1, paddingRight: i < 4 ? 9 : 0 }}>
+            <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: C.lavanda2, alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+              <Svg width={15} height={15} viewBox="0 0 24 24"><Path d={ICONES_SERVICO[i] ?? ICONES_SERVICO[4]} stroke={C.roxo} strokeWidth={1.6} fill="none" /></Svg>
             </View>
-          ))}
-        </View>
-        <View style={{ borderTopWidth: 0.5, borderTopColor: C.borda, paddingTop: 12 }}>
-          {[['Máquinas e processos', sb.maquinas], ['Setores', sb.setores]].map(([r, val]) => (
-            <View key={r} style={{ flexDirection: 'row', marginBottom: 7 }}>
-              <Text style={{ width: 130, fontSize: 7.5, fontWeight: 600, color: C.roxo, letterSpacing: 0.8 }}>{r.toUpperCase()}</Text>
-              <Text style={{ flex: 1, fontSize: 9, color: '#374151' }}>{val}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={{ backgroundColor: C.roxoMarca, borderRadius: 4, paddingVertical: 9, marginTop: 14, alignItems: 'center' }}>
-          <Text style={{ fontSize: 8.5, fontWeight: 700, color: '#ffffff', letterSpacing: 1.4 }}>{sb.lema.toUpperCase()}</Text>
-        </View>
+            <Text style={{ fontSize: 8.5, fontWeight: 700, marginBottom: 2 }}>{sv.titulo}</Text>
+            <Text style={{ fontSize: 7.5, color: C.suave, lineHeight: 1.35 }}>{sv.texto}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ borderTopWidth: 0.5, borderTopColor: C.borda, paddingTop: 8 }}>
+        {[['Máquinas e processos', sb.maquinas], ['Setores', sb.setores]].map(([r, val]) => (
+          <View key={r} style={{ flexDirection: 'row', marginBottom: 4 }}>
+            <Text style={{ width: 120, fontSize: 7, fontWeight: 600, color: C.roxo, letterSpacing: 0.8 }}>{r.toUpperCase()}</Text>
+            <Text style={{ flex: 1, fontSize: 8, color: '#374151' }}>{val}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ backgroundColor: C.roxoMarca, borderRadius: 4, paddingVertical: 6, marginTop: 6, alignItems: 'center' }}>
+        <Text style={{ fontSize: 8, fontWeight: 700, color: '#ffffff', letterSpacing: 1.4 }}>{sb.lema.toUpperCase()}</Text>
       </View>
     </View>
   );
+}
+
+// Card de arquivo anexo (decisão 70): ícone com a extensão, nome e tamanho.
+const COR_EXTENSAO: Record<string, string> = { PDF: '#d92d20', DWG: '#1570ef', DXF: '#1570ef', STEP: '#1570ef', STP: '#1570ef', XLS: '#079455', XLSX: '#079455', CSV: '#079455', DOC: '#155eef', DOCX: '#155eef', JPG: '#7a5af8', JPEG: '#7a5af8', PNG: '#7a5af8', ZIP: '#475467', RAR: '#475467' };
+const tamanhoArquivo = (b: number) => (b >= 1048576 ? `${(b / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+function CardArquivo({ nome, tamanho, detalhe }: { nome: string; tamanho?: number; detalhe?: string }) {
+  const ext = (nome.match(/\.([a-z0-9]{1,5})$/i)?.[1] ?? 'ARQ').toUpperCase();
+  const cor = COR_EXTENSAO[ext] ?? C.roxo;
+  return (
+    <View wrap={false} style={{ width: '48.8%', flexDirection: 'row', alignItems: 'center', borderWidth: 0.5, borderColor: C.borda, borderRadius: 8, backgroundColor: '#ffffff', padding: 8, marginBottom: 7 }}>
+      <View style={{ width: 26, height: 32, marginRight: 9 }}>
+        <Svg width={26} height={32} viewBox="0 0 26 32">
+          <Path d="M3 1h14l8 8v20a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z" fill="#ffffff" stroke={C.borda} strokeWidth={1} />
+          <Path d="M17 1v6a2 2 0 0 0 2 2h6" fill="none" stroke={C.borda} strokeWidth={1} />
+        </Svg>
+        <View style={{ position: 'absolute', left: -2, bottom: 5, backgroundColor: cor, borderRadius: 2, paddingHorizontal: 2.5, paddingVertical: 1 }}>
+          <Text style={{ fontSize: 5.5, fontWeight: 700, color: '#ffffff', lineHeight: 1.1 }}>{ext.slice(0, 4)}</Text>
+        </View>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 8, fontWeight: 600, lineHeight: 1.3 }}>{nome}</Text>
+        <Text style={{ fontSize: 6.5, color: C.suave, marginTop: 1 }}>{[detalhe, tamanho ? tamanhoArquivo(tamanho) : ''].filter(Boolean).join(' · ')}</Text>
+      </View>
+    </View>
+  );
+}
+function ListaAnexos({ arquivos }: { arquivos: { nome: string; tamanho?: number; detalhe?: string }[] }) {
+  if (!arquivos.length) return <Text style={{ fontSize: 8.5, color: C.suave }}>Não contém.</Text>;
+  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>{arquivos.map((a, i) => <CardArquivo key={i} {...a} />)}</View>;
 }
 
 function Garantia({ meses, topo }: { meses: number; topo: ReactNode }) {
@@ -262,23 +301,23 @@ function Garantia({ meses, topo }: { meses: number; topo: ReactNode }) {
 }
 
 // Cronograma: cada etapa começa quando a anterior termina; dias contados após a aprovação da proposta.
-function Cronograma({ etapas, topo }: { etapas: Etapa[]; topo: ReactNode }) {
+function Cronograma({ etapas, inicio, topo }: { etapas: Etapa[]; inicio: string; topo: ReactNode }) {
   const lista = etapas.filter((e) => e.nome.trim() || e.dias);
   const total = lista.reduce((t, e) => t + (Number(e.dias) || 0), 0) || 1;
-  let inicio = 0;
+  let fim = 0;
   return (
     <View wrap={false} style={{ marginBottom: 6 }}>
       {topo}
-      <Text style={[s.p, { color: '#374151' }]}>Prazos em dias corridos, contados a partir da aprovação da proposta (pedido de compra) e da liberação técnica do projeto.</Text>
+      <Text style={[s.p, { color: '#374151' }]}>Prazos em dias corridos, contados a partir {aPartirDe(inicio)}.</Text>
       <View style={[s.cartao, { backgroundColor: '#ffffff', paddingVertical: 10 }]}>
         {lista.map((e, i) => {
           const dias = Number(e.dias) || 0;
-          const de = inicio; inicio += dias;
+          const de = fim; fim += dias;
           return (
             <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i < lista.length - 1 ? 7 : 0 }}>
               <View style={{ width: 150, paddingRight: 8 }}>
                 <Text style={{ fontSize: 8.5, fontWeight: 600 }}>{e.nome}</Text>
-                <Text style={{ fontSize: 7, color: C.suave }}>{dias} dia{dias === 1 ? '' : 's'} · dia {de + 1} ao {inicio}</Text>
+                <Text style={{ fontSize: 7, color: C.suave }}>{dias} dia{dias === 1 ? '' : 's'} · dia {de + 1} ao {fim}</Text>
               </View>
               <View style={{ flex: 1, height: 12, backgroundColor: C.fundo, borderRadius: 6 }}>
                 <View style={{ position: 'absolute', left: `${(de / total) * 100}%`, width: `${Math.max((dias / total) * 100, 1.5)}%`, top: 0, bottom: 0, borderRadius: 6, backgroundColor: i % 2 ? C.roxoClaro : C.roxo }} />
@@ -289,7 +328,7 @@ function Cronograma({ etapas, topo }: { etapas: Etapa[]; topo: ReactNode }) {
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.navy, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, marginTop: 8 }}>
         <Text style={{ fontSize: 7.5, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.2 }}>PRAZO TOTAL DE ENTREGA</Text>
-        <Text style={{ fontSize: 13, fontWeight: 700, color: '#ffffff' }}>{inicio} dias após a aprovação</Text>
+        <Text style={{ fontSize: 13, fontWeight: 700, color: '#ffffff' }}>{fim} dias após {inicio}</Text>
       </View>
     </View>
   );
@@ -331,6 +370,8 @@ function Confidencialidade({ texto, v, topo }: { texto: string; v: Variaveis; to
 function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; v: Variaveis; d: DadosProposta; empresa: DadosEmpresaFabriaco; topo: ReactNode; imagens: Record<string, string> }) {
   switch (secao.tipo) {
     case 'texto':
+      // Anexos: cards dos arquivos anexados na aba Arquivos → Anexos técnicos (decisão 70).
+      if (secao.id === 'anexo') return <View wrap={false} style={{ marginBottom: 6 }}>{topo}<ListaAnexos arquivos={d.anexos?.tecnicos ?? []} /></View>;
       return secao.texto.trim() ? <TextoRico texto={secao.texto} v={v} topo={topo} /> : <View wrap={false}>{topo}<Text style={{ color: C.suave }}>(seção a preencher)</Text></View>;
     case 'cartoes': {
       const comIntro = Boolean(secao.intro.trim());
@@ -470,7 +511,7 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
     case 'garantia':
       return <Garantia meses={secao.meses} topo={topo} />;
     case 'cronograma':
-      return <Cronograma etapas={secao.etapas} topo={topo} />;
+      return <Cronograma etapas={secao.etapas} inicio={secao.inicio?.trim() || INICIO_PRAZO_PADRAO} topo={topo} />;
     case 'validade':
       return <Validade d={d} topo={topo} />;
     case 'confidencialidade':
@@ -592,10 +633,11 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
         <View style={{ flexDirection: 'row', marginTop: 4, marginBottom: 10 }}>
           <CartaoInfo rotulo="Validade" valor={`${dias} dias`} detalhe={`Até ${dataCurta(somarDias(d.emissao, dias))}`} />
           <View style={{ width: 7 }} />
-          {visao ? <><CartaoInfo rotulo="Frete" valor={substituir(visao.frete, v)} detalhe={substituir(visao.frete_detalhe, v)} /><View style={{ width: 7 }} /></> : null}
+          {visao ? <><CartaoInfo rotulo="Frete" valor={d.frete ?? substituir(visao.frete, v)}
+            detalhe={d.frete ? `${d.frete === 'CIF' ? 'Frete incluso' : 'Frete por conta do cliente'} · Entrega: ${d.entrega || d.cliente.local}` : substituir(visao.frete_detalhe, v)} /><View style={{ width: 7 }} /></> : null}
           <CartaoInfo rotulo="Garantia" valor={`${t.meses} meses`} detalhe="Após a emissão da NF" />
           <View style={{ width: 7 }} />
-          <CartaoInfo rotulo="Prazo de entrega" valor={`${t.dias} dias`} detalhe="Após a aprovação da proposta" destaque />
+          <CartaoInfo rotulo="Prazo de entrega" valor={`${t.dias} dias`} detalhe={`Após ${t.inicio}`} destaque />
         </View>
         <View style={{ flexDirection: 'row' }}>
           {impostos ? (
@@ -655,7 +697,8 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
         {anexo ? (
           <View wrap={false} style={{ marginBottom: 12 }}>
             <Text style={[s.kicker, { marginBottom: 5 }]}>{anexo.titulo.toUpperCase()}</Text>
-            <View style={[s.cartao, { backgroundColor: '#ffffff' }]}><TextoRico texto={anexo.texto.trim() || 'Não contém.'} v={v} estilo={{ fontSize: 8.5 }} /></View>
+            {/* Decisão 70: a proposta técnica da revisão e os anexos comerciais da aba Arquivos, em cards. */}
+            <ListaAnexos arquivos={[{ nome: `Proposta técnica ${d.codigo}-R${d.revisao}.pdf`, detalhe: 'Proposta técnica' }, ...(d.anexos?.comerciais ?? [])]} />
           </View>
         ) : null}
         {sigilo ? (
@@ -690,28 +733,21 @@ export function DocumentoPdf({ doc, dados: d, empresa, imagens = {}, tecnica }: 
   return (
     <Document title={`${comercial ? 'Proposta Comercial' : 'Proposta Técnica'} ${d.codigo}-R${d.revisao}`} author="Fabriaço Brasil" language="pt-BR">
       <Capa doc={doc} d={d} empresa={empresa} imagens={imagens} />
-      {!comercial && doc.secoes.some((x) => x.ativo && x.tipo === 'sobre') && (
+      {/* Técnica (decisão 70): página de abertura com "Conheça a Fabriaço" e os Dados da Empresa, sem número;
+          as seções numeradas começam em página nova, pelo Objetivo (01). */}
+      {!comercial && doc.secoes.some((x) => x.ativo && (x.tipo === 'sobre' || x.tipo === 'dados_empresas')) && (
         <Page size="A4" style={s.pagina}>
           <Moldura d={d} comercial={false} empresa={empresa} />
-          <SobreNos empresa={empresa} v={v} />
+          {doc.secoes.some((x) => x.ativo && x.tipo === 'sobre') && <SobreNos empresa={empresa} v={v} />}
+          {doc.secoes.filter((x) => x.ativo && x.tipo === 'dados_empresas').map((secao) => (
+            <ConteudoSecao key={secao.id} secao={secao} v={v} d={d} empresa={empresa} imagens={imagens} topo={<TituloSecao titulo={secao.titulo} />} />
+          ))}
         </Page>
       )}
       {comercial ? <PaginasComerciais doc={doc} d={d} empresa={empresa} v={v} tecnica={tecnica} /> : (
         <Page size="A4" style={s.pagina}>
           <Moldura d={d} comercial={false} empresa={empresa} />
-          <View>
-            <Text style={s.kicker}>VISÃO DO DOCUMENTO</Text>
-            <Text style={s.h1}>Especificação técnica</Text>
-            {doc.capa.subtitulo ? <Text style={s.sub}>{doc.capa.subtitulo}</Text> : null}
-            <View wrap={false} style={{ flexDirection: 'row', marginBottom: 14 }}>
-              {[['Objeto', doc.visao.objeto], ['Solução', doc.visao.solucao], ['Unidade', doc.visao.unidade || `${d.cliente.nome.split(' ')[0]} · ${d.cliente.local}`]].map(([r, val], i) => (
-                <View key={r} style={{ flex: 1, backgroundColor: C.fundo, borderWidth: 0.5, borderColor: C.borda, borderRadius: 8, padding: 12, marginLeft: i ? 8 : 0 }}>
-                  <Text style={s.cartaoRotulo}>{r.toUpperCase()}</Text><Text style={s.cartaoValor}>{val || '-'}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-          {doc.secoes.filter((x) => x.ativo && x.tipo !== 'sobre').map((secao) => {
+          {doc.secoes.filter((x) => x.ativo && x.tipo !== 'sobre' && x.tipo !== 'dados_empresas').map((secao) => {
             const numero = numerar(doc.secoes).find((n) => n.secao.id === secao.id)?.numero;
             return (
               <ConteudoSecao key={secao.id} secao={secao} v={v} d={d} empresa={empresa} imagens={imagens}

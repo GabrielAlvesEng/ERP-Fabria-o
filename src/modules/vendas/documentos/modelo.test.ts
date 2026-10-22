@@ -21,10 +21,19 @@ describe('documentos da proposta', () => {
   it('numera só as seções ativas', () => {
     const d = documentoPadrao('tecnica');
     expect(d.secoes).toHaveLength(14);
-    expect(numerar(d.secoes).at(-1)?.numero).toBe('13');
-    d.secoes[0].ativo = false;
-    expect(numerar(d.secoes)[0]).toMatchObject({ numero: '01', secao: { id: 'dados' } });
+    expect(numerar(d.secoes).at(-1)?.numero).toBe('12');
+    // Decisão 70: Conheça a Fabriaço e Dados da Empresa ficam sem número; o 01 é o Objetivo.
+    expect(numerar(d.secoes)[0]).toMatchObject({ numero: '01', secao: { id: 'objetivo' } });
+    d.secoes[2].ativo = false;
+    expect(numerar(d.secoes)[0]).toMatchObject({ numero: '01', secao: { id: 'aplicacao' } });
     expect(documentoPadrao('comercial').secoes).toHaveLength(6);
+  });
+  it('lê sublinhado e lista numerada', () => {
+    expect(trechos('Ver __item 3__ e **nota**.')).toEqual([
+      { texto: 'Ver ', negrito: false }, { texto: 'item 3', negrito: false, sublinhado: true }, { texto: ' e ', negrito: false }, { texto: 'nota', negrito: true }, { texto: '.', negrito: false },
+    ]);
+    const b = blocos('Etapas:\n1. Projeto\n2. Fabricação\n- Observação');
+    expect(b.map((x) => (x.tipo === 'lista' ? `lista${x.numerada ? '-num' : ''}:${x.itens.length}` : 'p'))).toEqual(['p', 'lista-num:2', 'lista:1']);
   });
   it('marcadores dos cartões', () => {
     expect([marcadorCartao('letra', 0), marcadorCartao('letra', 3), marcadorCartao('numero', 0), marcadorCartao('numero', 9)]).toEqual(['A', 'D', '01', '10']);

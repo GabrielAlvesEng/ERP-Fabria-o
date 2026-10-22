@@ -25,7 +25,7 @@ export type Secao = { id: string; titulo: string; ativo: boolean } & (
   | { tipo: 'sobre' } // "Conheça a Fabriaço": conteúdo nos dados da empresa (Modelos de proposta)
   | { tipo: 'responsabilidades'; grupos: GrupoResponsabilidade[] }
   | { tipo: 'garantia'; meses: number } // só os meses mudam; o resto é fixo
-  | { tipo: 'cronograma'; etapas: Etapa[] } // dias após a aprovação da proposta
+  | { tipo: 'cronograma'; etapas: Etapa[]; inicio?: string } // dias contados a partir do "inicio" (decisão 70)
   | { tipo: 'validade' } // dias vêm da proposta
   | { tipo: 'confidencialidade' } // texto fixo, sem o nome do cliente
   | { tipo: 'visao_comercial'; frete: string; frete_detalhe: string }
@@ -114,6 +114,16 @@ Este documento destina-se ao uso interno da empresa destinatária, pelas áreas 
 
 Ao receber esta proposta, o destinatário concorda em preservar o sigilo das informações aqui contidas.`;
 export const GARANTIA_MESES_PADRAO = 18;
+// Decisão 70: de quando o prazo de entrega começa a contar, e os marcos de pagamento. "Outro" deixa digitar.
+export const INICIOS_PRAZO = ['o recebimento do pedido de compra', 'a aprovação da proposta', 'a aprovação do projeto', 'o recebimento dos materiais', 'o pagamento do sinal', 'a liberação da área'];
+export const INICIO_PRAZO_PADRAO = INICIOS_PRAZO[0];
+// "o recebimento…" → "do recebimento…" (texto do PDF: "a partir do recebimento do pedido de compra").
+export const aPartirDe = (inicio: string) => { const m = inicio.trim().match(/^(os|as|o|a) (.*)$/i); return m ? `d${m[1].toLowerCase()} ${m[2]}` : `de ${inicio.trim()}`; };
+export const MARCOS_PAGAMENTO = ['Emissão da Nota Fiscal', 'Recebimento do pedido de compra', 'Aprovação do projeto', 'Entrega do equipamento', 'Conclusão da instalação', 'Medição mensal'];
+// Seções fixas (decisão 70): não se editam nem se renomeiam na proposta.
+export const SECOES_FIXAS = ['sobre', 'dados', 'confidencialidade', 'anexo'];
+// Limite de caracteres para Objetivo, Aplicação e Referência e Normas caberem juntos numa página (decisão 70).
+export const LIMITES_TEXTO: Record<string, number> = { objetivo: 800, aplicacao: 1000, normas: 1200 };
 export const CRONOGRAMA_PADRAO: Etapa[] = [
   { nome: 'Engenharia e aprovação do projeto', dias: 10 },
   { nome: 'Compra de materiais', dias: 15 },
@@ -190,7 +200,7 @@ export function documentoPadrao(tipo: TipoDocumento): Documento {
           intro: 'A presente proposta contempla o fornecimento de materiais, fabricação e instalação, conforme descrito a seguir:', dica: 'Etapas do serviço, uma por item, cada uma com as imagens que precisar.' },
         texto('fora', 'Fora do Escopo', FORA_DO_ESCOPO),
         { id: 'garantia', titulo: 'Garantia', ativo: true, tipo: 'garantia', meses: GARANTIA_MESES_PADRAO },
-        { id: 'prazo', titulo: 'Prazo de Entrega', ativo: true, tipo: 'cronograma', etapas: CRONOGRAMA_PADRAO },
+        { id: 'prazo', titulo: 'Prazo de Entrega', ativo: true, tipo: 'cronograma', etapas: CRONOGRAMA_PADRAO, inicio: INICIO_PRAZO_PADRAO },
         { id: 'validade', titulo: 'Validade da Proposta', ativo: true, tipo: 'validade' },
         { id: 'confidencialidade', titulo: 'Termo de Confidencialidade', ativo: true, tipo: 'confidencialidade' },
         texto('anexo', 'Anexo', 'Não contém.'),
@@ -229,20 +239,26 @@ export function completarDocumento(doc: Partial<Documento> | null | undefined, t
 }
 
 // Comercial: garantia e prazo vêm da proposta técnica da mesma revisão (decisão 67).
-export function resumoTecnica(tecnica?: Documento | null): { meses: number; dias: number; etapas: Etapa[] } {
+export function resumoTecnica(tecnica?: Documento | null): { meses: number; dias: number; etapas: Etapa[]; inicio: string } {
   const g = tecnica?.secoes.find((s) => s.tipo === 'garantia');
   const c = tecnica?.secoes.find((s) => s.tipo === 'cronograma');
   const etapas = c?.tipo === 'cronograma' ? c.etapas : CRONOGRAMA_PADRAO;
-  return { meses: g?.tipo === 'garantia' ? g.meses : GARANTIA_MESES_PADRAO, dias: etapas.reduce((t, e) => t + (Number(e.dias) || 0), 0), etapas };
+  const inicio = (c?.tipo === 'cronograma' && c.inicio?.trim()) || INICIO_PRAZO_PADRAO;
+  return { meses: g?.tipo === 'garantia' ? g.meses : GARANTIA_MESES_PADRAO, dias: etapas.reduce((t, e) => t + (Number(e.dias) || 0), 0), etapas, inicio };
 }
 
 // Texto simples → blocos para a prévia e o PDF.
-export type Trecho = { texto: string; negrito: boolean };
-export type Bloco = { tipo: 'p'; trechos: Trecho[] } | { tipo: 'lista'; itens: Trecho[][] };
+// **negrito** e __sublinhado__ (barra de formatação, decisão 70); "- " faz lista e "1. " lista numerada.
+export type Trecho = { texto: string; negrito: boolean; sublinhado?: boolean };
+export type Bloco = { tipo: 'p'; trechos: Trecho[] } | { tipo: 'lista'; itens: Trecho[][]; numerada?: boolean };
 
 export function trechos(linha: string): Trecho[] {
-  const partes = linha.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
-  return partes.map((p) => (p.startsWith('**') && p.endsWith('**') && p.length > 4 ? { texto: p.slice(2, -2), negrito: true } : { texto: p, negrito: false }));
+  const partes = linha.split(/(\*\*[^*]+\*\*|__[^_]+__)/g).filter(Boolean);
+  return partes.map((p) => {
+    if (p.startsWith('**') && p.endsWith('**') && p.length > 4) return { texto: p.slice(2, -2), negrito: true };
+    if (p.startsWith('__') && p.endsWith('__') && p.length > 4) return { texto: p.slice(2, -2), negrito: false, sublinhado: true };
+    return { texto: p, negrito: false };
+  });
 }
 
 export function blocos(texto: string): Bloco[] {
@@ -252,10 +268,16 @@ export function blocos(texto: string): Bloco[] {
     if (!linhas.length) continue;
     let texto: string[] = [];
     let lista: Trecho[][] = [];
+    let numerada = false;
     const fecharTexto = () => { if (texto.length) saida.push({ tipo: 'p', trechos: trechos(texto.join(' ')) }); texto = []; };
-    const fecharLista = () => { if (lista.length) saida.push({ tipo: 'lista', itens: lista }); lista = []; };
+    const fecharLista = () => { if (lista.length) saida.push(numerada ? { tipo: 'lista', itens: lista, numerada: true } : { tipo: 'lista', itens: lista }); lista = []; };
     for (const l of linhas) {
-      if (/^[-•]\s+/.test(l)) { fecharTexto(); lista.push(trechos(l.replace(/^[-•]\s+/, ''))); } else { fecharLista(); texto.push(l); }
+      const marcador = /^[-•]\s+/.test(l) ? 'ponto' : /^\d{1,2}[.)]\s+/.test(l) ? 'numero' : null;
+      if (!marcador) { fecharLista(); texto.push(l); continue; }
+      fecharTexto();
+      if (lista.length && numerada !== (marcador === 'numero')) fecharLista();
+      numerada = marcador === 'numero';
+      lista.push(trechos(l.replace(/^([-•]|\d{1,2}[.)])\s+/, '')));
     }
     fecharTexto(); fecharLista();
   }
@@ -267,7 +289,8 @@ export const substituir = (t: string, v: Variaveis) =>
   t.replace(/\{(cliente|local|validade_dias|codigo)\}/g, (_, k: keyof Variaveis) => v[k] || `{${k}}`);
 
 // Numeração das seções ativas: 01, 02… (como nos modelos). "Sobre nós" tem título próprio e não leva número.
-export const numerar = (secoes: Secao[]) => secoes.filter((s) => s.ativo && s.tipo !== 'sobre').map((s, i) => ({ secao: s, numero: String(i + 1).padStart(2, '0') }));
+// Decisão 70: "Conheça a Fabriaço" e "Dados da Empresa" ficam na página de abertura, sem número; o 01 é o Objetivo.
+export const numerar = (secoes: Secao[]) => secoes.filter((s) => s.ativo && s.tipo !== 'sobre' && s.tipo !== 'dados_empresas').map((s, i) => ({ secao: s, numero: String(i + 1).padStart(2, '0') }));
 export const marcadorCartao = (marcador: 'numero' | 'letra', i: number) => (marcador === 'letra' ? String.fromCharCode(65 + i) : String(i + 1).padStart(2, '0'));
 
 // Nome do arquivo gerado: "Proposta 26-01-019-R0 FABRIAÇO - Título - Técnica.pdf".

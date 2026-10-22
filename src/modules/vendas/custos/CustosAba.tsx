@@ -67,6 +67,14 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['propostas'] }); qc.invalidateQueries({ queryKey: ['proposta', proposta.id] }); },
     onError: (e) => setErro(mensagemErro(e)),
   });
+  // Decisão 70: o valor da proposta acompanha sozinho a soma dos itens (com os valores manuais), 1,5 s depois da última mudança.
+  const podeSincronizar = Boolean(editavel && proposta.status === 'À enviar' && pode('vendas', 'editar') && itens.length > 0 && rev?.numero === proposta.revisao_atual);
+  const diferente = Math.abs(totalProposta - Number(proposta.valor)) > 0.005;
+  useEffect(() => {
+    if (!podeSincronizar || !diferente || usarValor.isPending) return;
+    const t = setTimeout(() => usarValor.mutate(), 1500);
+    return () => clearTimeout(t);
+  }, [podeSincronizar, diferente, totalProposta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!rev) return <EsqueletoTabela />;
 
@@ -85,11 +93,7 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
         <div className="text-right">
           <div className="text-xs text-suave">Preço de venda da proposta ({itens.length} {itens.length === 1 ? 'item' : 'itens'})</div>
           <div className="text-xl font-bold text-petroleo-600 dark:text-teal-300">{moeda(totalProposta)}</div>
-          {editavel && proposta.status === 'À enviar' && pode('vendas', 'editar') && itens.length > 0 && Math.abs(totalProposta - Number(proposta.valor)) > 0.005 && (
-            <button className="text-xs text-roxo-600 hover:underline disabled:opacity-50" disabled={usarValor.isPending} onClick={() => usarValor.mutate()}>
-              Usar como valor da proposta (hoje {moeda(proposta.valor)})
-            </button>
-          )}
+          {podeSincronizar && <div className="text-xs text-suave">{diferente ? 'Atualizando o valor da proposta…' : 'É o valor da proposta'}</div>}
         </div>
       </div>
 
@@ -267,8 +271,24 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarre
           <Linha r="Preço unitário" v={r.precoUnitario} forte />
           <div className="flex justify-between py-0.5 text-slate-300"><span>Quantidade</span><span className="tabular-nums">× {Number(it.quantidade).toLocaleString('pt-BR')}</span></div>
           <div className="mt-2 flex items-baseline justify-between rounded-lg bg-petroleo-600 px-3 py-2">
-            <span className="font-semibold">Preço de venda</span>
+            <span className="font-semibold">Preço de venda{r.manual ? ' (manual)' : ''}</span>
             <span className="text-lg font-bold tabular-nums">{moeda(r.precoTotal)}</span>
+          </div>
+          {/* Valor manual (decisão 70): vale na proposta comercial e na soma do valor da proposta. */}
+          <div className="mt-3 rounded-lg bg-marinho-700/60 p-2.5">
+            <label className="flex items-center gap-2 text-xs text-slate-200">
+              <input type="checkbox" className="accent-roxo-500" checked={r.manual} disabled={!editavel}
+                onChange={(e) => salvarItem({ valor_manual: e.target.checked ? r.precoCalculado : null })} />
+              Digitar o valor de venda do item à mão
+            </label>
+            {r.manual && (
+              <div className="mt-2 space-y-1">
+                <div className="rounded-lg bg-white text-texto dark:bg-marinho-800 dark:text-slate-100">
+                  <CampoNumero moeda valor={Number(it.valor_manual ?? 0)} casas={2} disabled={!editavel} onConfirmar={(n) => n >= 0 && salvarItem({ valor_manual: n })} className="py-1.5" />
+                </div>
+                <div className="text-[11px] text-slate-300">Calculado pelos custos: {moeda(r.precoCalculado)}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>

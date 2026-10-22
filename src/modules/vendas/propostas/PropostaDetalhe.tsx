@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Lock, Trash2, Upload, X } from 'lucide-react';
+import { FileText, Lock, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
 import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
 import { AreaTexto, Aviso, Botao, Campo, CampoData, Entrada, EntradaMoeda, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
-  abrirArquivo, atualizarRascunho, enviarArquivoRevisao, listarArquivos, listarContatos, listarEventos, listarReprovacoes, listarRevisoes,
-  moverProposta, obterAprovacao, obterProposta, removerArquivo,
+  abrirArquivo, atualizarRascunho, listarContatos, listarEmpresas, listarEventos, listarReprovacoes,
+  moverProposta, obterAprovacao, obterProposta,
 } from '../api';
-import type { Arquivo, Proposta, StatusProposta } from '../types';
+import type { Proposta, StatusProposta } from '../types';
 import { rotuloRevisao, tipoTransicao, validadeAte } from './regras';
 import type { Pendente } from './PropostasPage';
 import { FollowupModal } from './TransicaoModais';
@@ -18,9 +18,11 @@ import { CampoVendedor } from '../vendedores/CampoVendedor';
 import { CustosAba } from '../custos/CustosAba';
 import { KickoffAba } from '../kickoff/KickoffAba';
 import { ExcluirModal } from './ExcluirModal';
+import { ArquivosAba } from './ArquivosAba';
+import { enderecoEntrega } from '../documentos/api';
 
-const abas = ['Dados', 'Custos', 'Documentos', 'Revisões e arquivos', 'Aprovação', 'Kick-off', 'Histórico'] as const;
-const tiposArquivo: Record<Arquivo['tipo'], string> = { comercial: 'Proposta comercial', tecnica: 'Proposta técnica', documento_tecnico: 'Documento técnico', anexo: 'Anexo', imagem_documento: 'Imagem do documento' };
+// Decisão 70: "Revisões e arquivos" e "Aprovação" viraram a aba Arquivos (Propostas, Anexos e Aprovação).
+const abas = ['Dados', 'Custos', 'Documentos', 'Arquivos', 'Kick-off', 'Histórico'] as const;
 
 const proximos: Partial<Record<StatusProposta, StatusProposta[]>> = {
   'À enviar': ['Enviados'],
@@ -109,8 +111,7 @@ export function PropostaDetalhe({ id, onFechar, onTransicao }: { id: string; onF
               {aba === 'Dados' && <AbaDados p={p} />}
               {aba === 'Custos' && <CustosAba proposta={p} />}
               {aba === 'Documentos' && <DocumentosAba proposta={p} />}
-              {aba === 'Revisões e arquivos' && <AbaRevisoes p={p} />}
-              {aba === 'Aprovação' && <AbaAprovacao p={p} />}
+              {aba === 'Arquivos' && <ArquivosAba p={p} aprovacao={<AbaAprovacao p={p} />} />}
               {aba === 'Kick-off' && <KickoffAba propostaId={p.id} statusProposta={p.status} />}
               {aba === 'Histórico' && <AbaHistorico id={p.id} />}
             </div>
@@ -130,6 +131,8 @@ function AbaDados({ p }: { p: Proposta }) {
   const [f, setF] = useState(p);
   const [msg, setMsg] = useState('');
   const { data: contatos = [] } = useQuery({ queryKey: ['contatos'], queryFn: listarContatos });
+  const { data: empresas = [] } = useQuery({ queryKey: ['empresas'], queryFn: listarEmpresas });
+  const empresa = empresas.find((e) => e.id === p.empresa_id);
   const comprador = contatos.find((c) => c.id === p.contato_id);
   const daEmpresa = contatos.filter((c) => c.empresa_id === p.empresa_id && c.id !== p.contato_id).sort((a, b) => a.nome.localeCompare(b.nome));
   useEffect(() => setF(p), [p]);
@@ -140,7 +143,7 @@ function AbaDados({ p }: { p: Proposta }) {
       atualizarRascunho(p.id, {
         titulo: f.titulo, responsavel_id: f.responsavel_id, descricao: f.descricao, valor: Number(numeroBR(String(f.valor)) || 0), prazo_previsto: f.prazo_previsto,
         validade_dias: f.validade_dias || null, condicoes_comerciais: f.condicoes_comerciais, observacoes: f.observacoes, data_emissao: f.data_emissao,
-        contato_tecnico_id: f.contato_tecnico_id || null,
+        contato_tecnico_id: f.contato_tecnico_id || null, frete: f.frete ?? 'CIF',
       }),
     onSuccess: () => {
       setMsg('Salvo. Edição em À enviar não gera revisão.');
@@ -166,6 +169,14 @@ function AbaDados({ p }: { p: Proposta }) {
             {daEmpresa.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.cargo ? ` · ${c.cargo}` : ''}</option>)}
           </Selecao>
         </Campo>
+        {/* Frete (decisão 70): CIF ou FOB; o local de entrega é sempre o endereço da empresa cliente. */}
+        <Campo rotulo="Frete">
+          <Selecao value={f.frete ?? 'CIF'} onChange={(e) => setF({ ...f, frete: e.target.value as 'CIF' | 'FOB' })} disabled={!editavel}>
+            <option value="CIF">CIF · frete por conta da Fabriaço</option>
+            <option value="FOB">FOB · frete por conta do cliente</option>
+          </Selecao>
+        </Campo>
+        <Campo rotulo="Local de entrega (endereço da empresa)"><Entrada value={empresa ? enderecoEntrega(empresa) || 'Endereço não cadastrado na empresa' : '—'} disabled /></Campo>
         <Campo rotulo="Descrição" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} disabled={!editavel} /></Campo>
         <Campo rotulo="Valor (R$)"><EntradaMoeda value={String(f.valor)} onChange={(v) => set('valor')({ target: { value: v } })} disabled={!editavel} /></Campo>
         <Campo rotulo="Data de emissão"><CampoData value={f.data_emissao} onChange={(v) => setF({ ...f, data_emissao: v })} disabled={!editavel} /></Campo>
@@ -184,79 +195,6 @@ function AbaDados({ p }: { p: Proposta }) {
         </div>
       </div>
       {editavel && <div className="flex justify-end"><Botao onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? 'Salvando…' : 'Salvar alterações'}</Botao></div>}
-    </div>
-  );
-}
-
-function AbaRevisoes({ p }: { p: Proposta }) {
-  const { pode } = useAuth();
-  const qc = useQueryClient();
-  const [tipo, setTipo] = useState<Arquivo['tipo']>('comercial');
-  const [erro, setErro] = useState('');
-  const { data: revisoes = [] } = useQuery({ queryKey: ['proposta', p.id, 'revisoes', p.revisao_atual, p.status], queryFn: () => listarRevisoes(p.id) });
-  const { data: arquivos = [] } = useQuery({
-    queryKey: ['proposta', p.id, 'arquivos', revisoes.map((r) => r.id).join()],
-    queryFn: () => listarArquivos(revisoes.map((r) => r.id)),
-    enabled: revisoes.length > 0,
-  });
-  const atual = revisoes.find((r) => r.numero === p.revisao_atual);
-  const podeEnviar = atual?.status === 'rascunho' && pode('vendas', 'editar');
-
-  const up = useMutation({
-    mutationFn: (file: File) => enviarArquivoRevisao(p.id, atual!.id, tipo, file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['proposta', p.id, 'arquivos'] }),
-    onError: (e) => setErro(mensagemErro(e)),
-  });
-  const rm = useMutation({
-    mutationFn: removerArquivo,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['proposta', p.id, 'arquivos'] }),
-    onError: (e) => setErro(mensagemErro(e)),
-  });
-
-  return (
-    <div className="space-y-4">
-      {erro && <Aviso>{erro}</Aviso>}
-      {podeEnviar && (
-        <div className="flex flex-wrap items-end gap-2 rounded-xl bg-pagina p-3">
-          <Campo rotulo={`Anexar à ${rotuloRevisao(p.revisao_atual)} (rascunho)`}>
-            <Selecao value={tipo} onChange={(e) => setTipo(e.target.value as Arquivo['tipo'])}>
-              {Object.entries(tiposArquivo).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </Selecao>
-          </Campo>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-roxo-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-roxo-600">
-            <Upload size={16} /> {up.isPending ? 'Enviando…' : 'Escolher arquivo'}
-            <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) up.mutate(f); e.target.value = ''; }} />
-          </label>
-        </div>
-      )}
-      {revisoes.map((r) => {
-        const doR = arquivos.filter((a) => a.revisao_id === r.id);
-        return (
-          <div key={r.id} className="rounded-xl ring-1 ring-borda">
-            <div className="flex items-center justify-between border-b border-borda px-4 py-2">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">{rotuloRevisao(r.numero)}</span>
-                {r.status === 'enviada' ? <Selo cor="verde">Enviada em {dataBR(r.enviada_em)}</Selo> : <Selo cor="amarelo">Rascunho</Selo>}
-              </div>
-              {r.valor !== null && <span className="text-sm text-suave">{moeda(r.valor)}</span>}
-            </div>
-            {r.motivo && <div className="px-4 pt-2 text-xs text-suave">Motivo: {r.motivo}</div>}
-            <div className="divide-y divide-borda">
-              {doR.length === 0 && <div className="px-4 py-3 text-sm text-suave">Sem arquivos.</div>}
-              {doR.map((a) => (
-                <div key={a.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                  <button className="flex items-center gap-2 text-left hover:text-roxo-600" onClick={() => abrirArquivo(a.caminho).catch((e) => setErro(mensagemErro(e)))}>
-                    <FileText size={15} /> <span>{a.nome}</span> <span className="text-xs text-suave">({tiposArquivo[a.tipo]})</span>
-                  </button>
-                  {r.status === 'rascunho' && pode('vendas', 'editar') && (
-                    <button onClick={() => rm.mutate(a)} className="rounded p-1 text-slate-400 hover:text-red-600" aria-label="Remover"><Trash2 size={15} /></button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

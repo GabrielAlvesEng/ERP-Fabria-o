@@ -16,6 +16,7 @@ export interface CustoItem {
   imposto_pct: number;
   imposto_modo: 'dentro';
   ordem: number;
+  valor_manual?: number | null; // decisão 70: preço de venda do item digitado à mão (vale no lugar do calculado)
 }
 
 export interface CustoLinha {
@@ -280,24 +281,30 @@ export interface Resumo {
   imposto: number;
   precoUnitario: number;
   precoTotal: number;
+  precoCalculado: number; // pelos custos, margem, negociação e imposto
+  manual: boolean;
 }
 
 // Margem e negociação sobre todos os custos; imposto sempre por dentro, sobre o preço (decisões 30 e 43).
-export function resumoItem(item: Pick<CustoItem, 'quantidade' | 'lucro_pct' | 'negociacao_pct' | 'imposto_pct'>, linhas: CustoLinha[]): Resumo {
+// Valor manual (decisão 70): quando preenchido, é o preço de venda do item na comercial e na soma da proposta.
+export function resumoItem(item: Pick<CustoItem, 'quantidade' | 'lucro_pct' | 'negociacao_pct' | 'imposto_pct'> & Partial<Pick<CustoItem, 'valor_manual'>>, linhas: CustoLinha[]): Resumo {
   const porSecao = Object.fromEntries(SECOES.map((s) => [s.id, r2(totalSecao(linhas, s.id))])) as Record<Secao, number>;
   const custos = Object.values(porSecao).reduce((a, b) => a + b, 0);
   const margem = (custos * Number(item.lucro_pct)) / 100;
   const negociacao = (custos * Number(item.negociacao_pct)) / 100;
   const base = custos + margem + negociacao;
   const pu = base / (1 - Number(item.imposto_pct) / 100);
+  const manual = item.valor_manual != null;
   return {
     porSecao,
     custos: r2(custos),
     margem: r2(margem),
     negociacao: r2(negociacao),
     imposto: r2(pu - base),
-    precoUnitario: r2(pu),
-    precoTotal: r2(pu * Number(item.quantidade)),
+    precoUnitario: manual ? r2(Number(item.valor_manual) / (Number(item.quantidade) || 1)) : r2(pu),
+    precoTotal: manual ? r2(Number(item.valor_manual)) : r2(pu * Number(item.quantidade)),
+    precoCalculado: r2(pu * Number(item.quantidade)),
+    manual,
   };
 }
 
