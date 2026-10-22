@@ -64,7 +64,7 @@ export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoP
   const cep = (empresa.cep ?? '').replace(/\D/g, '');
   const cidadeUf = [empresa.cidade, empresa.uf].filter(Boolean).join(' - ');
   return {
-    codigo: p.codigo, revisao: p.revisao_atual, titulo: p.titulo, emissao: p.data_emissao, validadeDias: p.validade_dias ?? 30,
+    codigo: p.codigo, revisao: p.revisao_atual, titulo: p.titulo, descricao: p.descricao ?? '', emissao: p.data_emissao, validadeDias: p.validade_dias ?? 30,
     cliente: {
       nome: empresa.nome_fantasia || empresa.razao_social, razao_social: empresa.razao_social, cnpj: formatarCNPJ(empresa.cnpj), ie: empresa.inscricao_estadual,
       endereco: [empresa.logradouro, empresa.numero].filter(Boolean).join(', ') + (empresa.complemento ? ` - ${empresa.complemento}` : ''),

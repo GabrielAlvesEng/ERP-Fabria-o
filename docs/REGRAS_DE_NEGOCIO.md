@@ -201,6 +201,10 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - **Sobre nós e Dados da Empresa são obrigatórios na técnica:** saem sempre no PDF (mesmo em documentos antigos com a seção desligada) e não aparecem mais no editor.
     - A imagem principal da capa ocupa todo o espaço livre até o rodapé (antes tinha no máximo 210 pt de altura). Na capa clara, sem moldura.
     - **Publicação só pelo GitHub por enquanto (22/10/2026, 13:44 de Brasília):** o Gabriel pediu para esquecer o Netlify. A decisão 37 volta a valer: nada de Netlify até ele liberar de novo.
+72. **Capa pelos Dados, valor sugerido e fim das "Condições comerciais" (22/10/2026)** (pedido do Gabriel; *complementa* as decisões 70 e 71):
+    - Na seção Valores da comercial, o valor que os custos dão para cada item aparece como **sugestão**, já preenchida e editável. "Usar a sugestão" volta para ele.
+    - O **título da capa** (técnica e comercial) é sempre o Título do fornecimento da aba Dados. O **subtítulo** é a Descrição da aba Dados, numa linha corrida de até 280 caracteres. Os campos de título e subtítulo saíram do editor. A 2ª linha do título continua, como complemento opcional. Documento antigo sem descrição em Dados ainda mostra o subtítulo que tinha.
+    - O campo **Condições comerciais** saiu da aba Dados e da Nova proposta. A coluna continua no banco com o que já estava gravado (nada foi apagado).
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

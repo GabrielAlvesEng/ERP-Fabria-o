@@ -160,7 +160,7 @@ function AbaDados({ p }: { p: Proposta }) {
       )}
       {msg && <Aviso tipo="info">{msg}</Aviso>}
       <div className="grid gap-3 sm:grid-cols-2">
-        <Campo rotulo="Título do fornecimento" className="sm:col-span-2"><Entrada value={f.titulo} onChange={set('titulo')} disabled={!editavel} /></Campo>
+        <Campo rotulo="Título do fornecimento (título da capa das propostas)" className="sm:col-span-2"><Entrada value={f.titulo} onChange={set('titulo')} disabled={!editavel} /></Campo>
         <Campo rotulo="Vendedor" className="sm:col-span-2"><CampoVendedor valor={f.responsavel_id} onChange={(id) => setF({ ...f, responsavel_id: id })} disabled={!editavel} /></Campo>
         <Campo rotulo="Contato da proposta (recebe a comercial)"><Entrada value={comprador ? `${comprador.nome}${comprador.cargo ? ` · ${comprador.cargo}` : ''}` : '—'} disabled /></Campo>
         <Campo rotulo="Contato técnico (recebe a técnica e vai em C/C)">
@@ -177,7 +177,7 @@ function AbaDados({ p }: { p: Proposta }) {
           </Selecao>
         </Campo>
         <Campo rotulo="Local de entrega (endereço da empresa)"><Entrada value={empresa ? enderecoEntrega(empresa) || 'Endereço não cadastrado na empresa' : '—'} disabled /></Campo>
-        <Campo rotulo="Descrição" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} disabled={!editavel} /></Campo>
+        <Campo rotulo="Descrição (subtítulo da capa das propostas)" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} disabled={!editavel} /></Campo>
         <Campo rotulo="Valor (R$)"><EntradaMoeda value={String(f.valor)} onChange={(v) => set('valor')({ target: { value: v } })} disabled={!editavel} /></Campo>
         <Campo rotulo="Data de emissão"><CampoData value={f.data_emissao} onChange={(v) => setF({ ...f, data_emissao: v })} disabled={!editavel} /></Campo>
         <Campo rotulo="Prazo previsto"><Entrada value={f.prazo_previsto} onChange={set('prazo_previsto')} disabled={!editavel} /></Campo>
@@ -188,7 +188,6 @@ function AbaDados({ p }: { p: Proposta }) {
             <span className="text-xs text-suave">{validadeAte(f.data_emissao, f.validade_dias)}</span>
           </div>
         </Campo>
-        <Campo rotulo="Condições comerciais" className="sm:col-span-2"><AreaTexto value={f.condicoes_comerciais} onChange={set('condicoes_comerciais')} disabled={!editavel} /></Campo>
         <Campo rotulo="Observações" className="sm:col-span-2"><AreaTexto value={f.observacoes} onChange={set('observacoes')} disabled={!editavel} /></Campo>
         <div className="text-sm text-suave sm:col-span-2">
           Responsável: {p.usuarios?.nome ?? '—'} · Próximo follow-up: {dataBR(p.proximo_followup)}

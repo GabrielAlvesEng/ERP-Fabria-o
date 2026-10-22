@@ -23,8 +23,9 @@ export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<st
 export type ItemValor = { id?: string; letra: string; descricao: string; valor: number; manual?: boolean; calculado?: number };
 export type AcoesValor = { salvar: (id: string, valor: number | null) => void; criarItem: () => void; ocupado: boolean };
 
-export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores }: {
+export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados }: {
   doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: ItemValor[]; imagens?: Imagens; valores?: AcoesValor;
+  capaDados?: { titulo: string; descricao: string }; // decisão 72: título e subtítulo da capa vêm da aba Dados
 }) {
   const [aberta, setAberta] = useState<string | null>(null);
   const numeros = Object.fromEntries(numerar(doc.secoes).map((n) => [n.secao.id, n.numero]));
@@ -51,15 +52,19 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
           </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Campo rotulo="Título · 1ª linha (assunto)"><Entrada value={doc.capa.linha1} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, linha1: e.target.value } })} placeholder="Ex.: Vedação Pneumática" /></Campo>
-          <Campo rotulo="Título · 2ª linha (equipamento)"><Entrada value={doc.capa.linha2} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, linha2: e.target.value } })} placeholder="Ex.: Rosca MP" /></Campo>
+          <div className="rounded-lg bg-pagina px-3 py-2 text-sm ring-1 ring-borda sm:col-span-2">
+            <div className="text-xs font-medium text-suave">Título da capa (Título do fornecimento, na aba Dados)</div>
+            <div className="font-semibold">{capaDados?.titulo || '—'}</div>
+            <div className="mt-1.5 text-xs font-medium text-suave">Subtítulo da capa (Descrição, na aba Dados)</div>
+            <div className="whitespace-pre-line text-suave">{capaDados?.descricao || 'Sem descrição.'}</div>
+          </div>
+          <Campo rotulo="Complemento do título (2ª linha, opcional)" className="sm:col-span-2"><Entrada value={doc.capa.linha2} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, linha2: e.target.value } })} placeholder="Ex.: Unidade Arceburgo" /></Campo>
           {imagens && (
             <div className="sm:col-span-2">
               <div className="mb-1 text-xs font-medium text-suave">Imagem principal (capa)</div>
               <EscolherImagem imagens={imagens} caminho={doc.capa.imagem} onEscolher={(c) => onChange({ ...doc, capa: { ...doc.capa, imagem: c } })} onRemover={() => onChange({ ...doc, capa: { ...doc.capa, imagem: undefined } })} />
             </div>
           )}
-          <Campo rotulo="Subtítulo" className="sm:col-span-2"><AreaTexto rows={2} value={doc.capa.subtitulo} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, subtitulo: e.target.value } })} placeholder="Ex.: Fornecimento, fabricação e instalação de novo cabeçote removível…" /></Campo>
           {doc.tipo === 'comercial' && (
             <p className="text-xs text-suave sm:col-span-2">A comercial tem 4 páginas fixas: capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (itens da aba Custos, com o valor digitado na seção Valores ou o calculado) e encerramento (anexos, sigilo e o vendedor). Garantia e prazo vêm da proposta técnica; frete, da aba Dados.</p>
           )}
@@ -285,7 +290,7 @@ function CorpoSecao({ s, onChange, itens, imagens, valores }: { s: Secao; onChan
       return (
         <div className="space-y-2">
           <Rotulo texto="Introdução"><TextoFormatado rows={5} value={s.intro} onChange={(v) => onChange({ ...s, intro: v })} /></Rotulo>
-          <p className="text-xs text-suave">Os itens são os da aba Custos. Digite aqui o valor de venda de cada item (ou deixe o calculado pelos custos). A soma é o valor total da proposta.</p>
+          <p className="text-xs text-suave">Os itens são os da aba Custos. O valor de cada item já vem com a sugestão calculada pelos custos e pode ser alterado aqui. A soma é o valor total da proposta.</p>
           {itens.length === 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg bg-pagina p-3 text-sm text-suave ring-1 ring-borda">
               Nenhum item nesta revisão.
@@ -303,8 +308,9 @@ function CorpoSecao({ s, onChange, itens, imagens, valores }: { s: Secao; onChan
                 </div>
               </div>
               <div className="text-xs text-suave">
-                {it.manual ? <>Valor digitado. Pelos custos daria {moeda(it.calculado ?? 0)}. {valores && it.id && <button type="button" className="font-medium text-roxo-600 hover:underline dark:text-roxo-100" onClick={() => valores.salvar(it.id!, null)}>Voltar ao calculado</button>}</>
-                  : 'Valor calculado pelos custos.'}
+                Sugestão pelos custos: <span className="font-medium tabular-nums">{moeda(it.calculado ?? it.valor)}</span>
+                {it.manual ? <>{' · '}valor alterado à mão. {valores && it.id && <button type="button" className="font-medium text-roxo-600 hover:underline dark:text-roxo-100" onClick={() => valores.salvar(it.id!, null)}>Usar a sugestão</button>}</>
+                  : ' · em uso. Pode alterar no campo ao lado.'}
               </div>
               <Rotulo texto="Descrição do fornecimento">
                 <AreaTexto rows={2} value={s.descricoes[it.letra] ?? ''} onChange={(e) => onChange({ ...s, descricoes: { ...s.descricoes, [it.letra]: e.target.value } })} />

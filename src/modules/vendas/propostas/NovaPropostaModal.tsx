@@ -112,7 +112,6 @@ export function NovaPropostaModal({ ano, onFechar, onCriada }: { ano: number; on
             <span className="text-xs text-suave">{validadeAte(hojeISO(), Number(f.validade_dias) || null)}</span>
           </div>
         </Campo>
-        <Campo rotulo="Condições comerciais" className="sm:col-span-2"><AreaTexto value={f.condicoes_comerciais} onChange={set('condicoes_comerciais')} /></Campo>
         <div className="flex justify-end gap-2 sm:col-span-2">
           <Botao type="button" variante="secundario" onClick={onFechar}>Cancelar</Botao>
           <Botao type="submit" disabled={m.isPending}>{m.isPending ? 'Criando…' : 'Criar proposta (R0)'}</Botao>

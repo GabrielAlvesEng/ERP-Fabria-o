@@ -29,7 +29,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   const { data: salvos, isLoading } = useQuery({ queryKey: ['proposta_documentos', rev?.id], queryFn: () => lerDocumentos(rev!.id), enabled: Boolean(rev) });
   const preparadoPor = padroes?.empresa.responsavel ?? '';
   const { data: dados } = useQuery({
-    queryKey: ['proposta_documentos_dados', p.id, rev?.id, p.titulo, p.data_emissao, p.validade_dias, p.contato_id, p.contato_tecnico_id, p.responsavel_id, p.frete, preparadoPor],
+    queryKey: ['proposta_documentos_dados', p.id, rev?.id, p.titulo, p.descricao, p.data_emissao, p.validade_dias, p.contato_id, p.contato_tecnico_id, p.responsavel_id, p.frete, preparadoPor],
     queryFn: () => dadosDaProposta(p, rev!.id, preparadoPor), enabled: Boolean(rev && padroes),
   });
   const editavel = Boolean(rev?.status === 'rascunho' && pode('vendas', 'editar'));
@@ -180,7 +180,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
       {msg && <Aviso tipo={msg.tipo === 'info' ? 'info' : undefined}>{msg.texto}</Aviso>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className={verPrevia ? 'hidden lg:block' : ''}>
-          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} />
+          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} capaDados={{ titulo: p.titulo, descricao: p.descricao ?? '' }} />
         </div>
         <div className={`lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:block'}`}>
           {dados ? <Suspense fallback={<EsqueletoPagina />}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} tecnica={tipo === 'comercial' ? docs.tecnica : null} /></Suspense> : <EsqueletoPagina />}

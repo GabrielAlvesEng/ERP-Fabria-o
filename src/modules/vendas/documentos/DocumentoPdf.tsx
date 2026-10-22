@@ -23,6 +23,7 @@ Font.registerHyphenationCallback((palavra) => [palavra]);
 export interface PessoaContato { nome: string; telefone: string; email: string }
 export interface DadosProposta {
   codigo: string; revisao: number; titulo: string; emissao: string; validadeDias: number;
+  descricao?: string; // decisão 72: subtítulo da capa = descrição da aba Dados
   cliente: { nome: string; razao_social: string; cnpj: string; ie: string; endereco: string; bairro: string; cep_cidade: string; local: string };
   contato: PessoaContato;
   contatoTecnico?: PessoaContato | null; // a técnica vai A/C dele (decisão 67); sem ele, A/C do contato da proposta
@@ -571,9 +572,10 @@ function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; 
         <Text style={{ fontSize: 7.5, fontWeight: 600, color: T.destaque, letterSpacing: 2, marginBottom: 12 }}>
           {comercial ? 'PROPOSTA COMERCIAL / CONDIÇÕES DE FORNECIMENTO' : 'PROPOSTA TÉCNICA / ENGENHARIA'} · R{d.revisao}
         </Text>
-        <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15 }}>{doc.capa.linha1 || d.titulo}</Text>
+        <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15 }}>{d.titulo}</Text>
         {doc.capa.linha2 ? <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15, color: T.destaque }}>{doc.capa.linha2}</Text> : null}
-        {doc.capa.subtitulo ? <Text style={{ fontSize: 10.5, color: T.sub, marginTop: 12, maxWidth: 420, lineHeight: 1.5 }}>{doc.capa.subtitulo}</Text> : null}
+        {/* Documento antigo sem descrição em Dados ainda mostra o subtítulo que tinha. */}
+        {(d.descricao?.trim() || doc.capa.subtitulo) ? <Text style={{ fontSize: 10.5, color: T.sub, marginTop: 12, maxWidth: 420, lineHeight: 1.5 }}>{resumirTexto(d.descricao?.trim() || doc.capa.subtitulo, 280)}</Text> : null}
         <View style={{ flexDirection: 'row', marginTop: 20 }}>
           {[['Cliente', d.cliente.nome], ['A/C', ac], ['Unidade', d.cliente.local], ['Identificação', `${d.codigo} · R${d.revisao}`]].map(([r, val], i) => (
             <View key={r} style={{ flex: 1, backgroundColor: T.cartao, borderRadius: 8, borderWidth: 0.5, borderColor: T.cartaoBorda, padding: 10, marginLeft: i ? 7 : 0 }}>
@@ -628,7 +630,7 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
     <>
       <Page size="A4" style={s.pagina}>
         <Moldura d={d} comercial empresa={empresa} />
-        <TituloPagina rotulo="Visão geral" titulo="Proposta comercial" sub={doc.capa.subtitulo || d.titulo} />
+        <TituloPagina rotulo="Visão geral" titulo="Proposta comercial" sub={d.descricao?.trim() ? resumirTexto(d.descricao, 180) : d.titulo} />
         <Text style={[s.kicker, { marginBottom: 5 }]}>REVISÕES</Text>
         <Tabela cabecalho={['Revisão', 'Descrição', 'Emissão']} larguras={[0.8, 4, 1.2]} alinhar={['left', 'left', 'right']}
           linhas={revisoes.map((r) => [`R${r.numero}`, r.descricao || '-', dataCurta(r.emissao)])} />
@@ -726,6 +728,9 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
     </>
   );
 }
+
+// Descrição da aba Dados como subtítulo: uma linha só, cortada no limite para não empurrar a capa.
+const resumirTexto = (t: string, max: number) => { const l = t.replace(/\s+/g, ' ').trim(); return l.length > max ? `${l.slice(0, max - 1).trimEnd()}…` : l; };
 
 // Sobre nós e Dados da Empresa são obrigatórios na técnica (decisão 71): saem sempre, sem card no editor.
 const DADOS_EMPRESA: Secao = { id: 'dados', titulo: 'Dados da Empresa', ativo: true, tipo: 'dados_empresas' };
