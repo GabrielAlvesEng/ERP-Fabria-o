@@ -19,6 +19,7 @@ import { AdminLayout, ExcluidasPage, SenhasPage } from '@/modules/admin/AdminPag
 import { FrotaPage } from '@/modules/admin/FrotaPage';
 import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
 import { PredefinicoesPage } from '@/modules/admin/predefinicoes/PredefinicoesPage';
+import { PerfilPage } from '@/modules/perfil/PerfilPage';
 
 export function App() {
   const { session, carregando } = useAuth();
@@ -51,6 +52,7 @@ export function App() {
             <Route index element={<ProjetosPage />} />
             <Route path="projetos/:id" element={<ProjetoPage />} />
           </Route>
+          <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<SenhasPage />} />
             <Route path="excluidas" element={<ExcluidasPage />} />

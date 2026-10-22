@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Mail, PenLine, Pencil, Phone, Plus, UserRound } from 'lucide-react';
+import { Mail, PenLine, Pencil, Phone, Plus } from 'lucide-react';
+import { Avatar } from '@/modules/perfil/Avatar';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
@@ -11,6 +12,7 @@ import { resumoVendedor } from './regras';
 import { AssinaturaModal, useMinhaAssinatura } from './AssinaturaModal';
 
 // Vendas → Vendedores (decisão 62): a equipe com os números do ano. Cadastro e edição só para o RH (permissão rh.editar).
+// Quem não é do RH (o vendedor comum) vê só o próprio cartão (decisão 68).
 export function VendedoresPage() {
   const { ano } = useAno();
   const { pode, session } = useAuth();
@@ -22,15 +24,16 @@ export function VendedoresPage() {
   const [aberto, setAberto] = useState<string | null>(null);
   const hoje = hojeISO();
   const rh = pode('rh', 'editar');
-  const ordenados = useMemo(() => [...vendedores].sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome)), [vendedores]);
+  const veTodos = pode('rh', 'ler');
+  const ordenados = useMemo(() => [...vendedores].filter((v) => veTodos || v.usuario_id === session?.user.id).sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome)), [vendedores, veTodos, session?.user.id]);
   const semVendedor = propostas.filter((p) => !p.responsavel_id).length;
 
   return (
     <>
-      <Cabecalho titulo="Vendedores" subtitulo={`Equipe comercial e os números de ${ano}. O cadastro de vendedores é feito pelo RH.`}
+      <Cabecalho titulo={veTodos ? 'Vendedores' : 'Meus números'} subtitulo={veTodos ? `Equipe comercial e os números de ${ano}. O cadastro de vendedores é feito pelo RH.` : `Seus números de ${ano} e a sua assinatura de e-mail.`}
         acoes={rh ? <Botao onClick={() => setEditando('novo')}><Plus size={15} /> Cadastrar vendedor</Botao> : undefined} />
-      {semVendedor > 0 && <div className="mb-3"><Aviso tipo="info">{semVendedor} proposta(s) de {ano} sem vendedor. Escolha o vendedor na aba Dados da proposta.</Aviso></div>}
-      {isLoading ? <EsqueletoCartoes /> : ordenados.length === 0 ? <Vazio>Nenhum vendedor cadastrado.</Vazio> : (
+      {veTodos && semVendedor > 0 && <div className="mb-3"><Aviso tipo="info">{semVendedor} proposta(s) de {ano} sem vendedor. Escolha o vendedor na aba Dados da proposta.</Aviso></div>}
+      {isLoading ? <EsqueletoCartoes /> : ordenados.length === 0 ? <Vazio>{veTodos ? 'Nenhum vendedor cadastrado.' : 'Você ainda não está cadastrado como vendedor. Peça ao RH.'}</Vazio> : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {ordenados.map((v) => {
             const dele = propostas.filter((p) => p.responsavel_id === v.usuario_id);
@@ -39,7 +42,7 @@ export function VendedoresPage() {
               <div key={v.usuario_id} className={`rounded-xl bg-superficie p-4 shadow-sm ring-1 ring-borda ${v.ativo ? '' : 'opacity-70'}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-roxo-50 text-roxo-600 dark:bg-roxo-500/20 dark:text-roxo-100"><UserRound size={20} /></div>
+                    <Avatar caminho={v.usuarios?.foto_caminho} versao={v.usuarios?.foto_atualizada_em} nome={v.nome} tamanho={40} />
                     <div className="min-w-0">
                       <div className="truncate font-semibold">{v.nome || v.usuarios?.nome}</div>
                       <div className="text-xs text-suave">{v.cargo}{v.ativo ? '' : ' · inativo'}</div>

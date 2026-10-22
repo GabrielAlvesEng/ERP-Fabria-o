@@ -31,6 +31,7 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `usuarios.assinatura`; RPC `salvar_minha_assinatura(texto)`
 - `usuarios.assinatura_html` e `assinatura_atualizada_em` (decisão 66): assinatura importada do Outlook, em HTML com imagens embutidas; RPC `salvar_minha_assinatura_html(html)` grava só a do próprio usuário. A coluna `assinatura` (texto) não é mais usada.
 - `propostas.contato_tecnico_id` (decisão 67) → contatos: contato técnico do cliente (a técnica vai A/C dele; entra em C/C no envio). Gatilho `validar_contato_tecnico` exige contato da mesma empresa da proposta.
+- `usuarios.telefone`, `nascimento`, `foto_caminho` e `foto_atualizada_em` (decisão 68, Meu perfil): RPCs `salvar_meu_perfil(nome, telefone, nascimento)` e `salvar_minha_foto(caminho)` gravam só o próprio usuário. Bucket privado `perfis` (até 2 MB, JPG/PNG/WEBP): todos os logados leem; cada um só envia e troca em `{id do usuário}/…`.
 
 ## Engenharia (`20261020000007_engenharia.sql`)
 
