@@ -99,7 +99,7 @@ export default function AssinaturaGeradaModal({ funcionario, cargo, onFechar }: 
               onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { try { setFoto(await fotoDeBlob(f)); } catch (x) { setErro(mensagemErro(x)); } } }} />
           </label>
           {foto && <Botao variante="fantasma" tamanho="sm" onClick={() => setFoto(null)}>Sem foto</Botao>}
-          <span className="text-xs text-suave">{carregandoFoto ? 'Carregando a foto do perfil…' : 'Foto quadrada ou de rosto centralizado fica melhor.'}</span>
+          <span className="text-xs text-suave">{carregandoFoto ? 'Carregando a foto do perfil…' : 'Foto em pé (retrato), com o rosto na parte de cima, fica melhor.'}</span>
         </div>
 
         <canvas ref={canvas} className="aspect-[1200/512] w-full rounded-xl bg-pagina ring-1 ring-borda" />

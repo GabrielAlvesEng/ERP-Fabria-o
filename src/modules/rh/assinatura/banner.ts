@@ -1,10 +1,9 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Cog, Flame, Globe, HardHat, Mail, Phone, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { Globe, Mail, Phone, type LucideIcon } from 'lucide-react';
 import { dividirNome, EMPRESA_ASSINATURA, formatarTelefone, type DadosAssinatura } from './assinatura';
 
-// Banner da assinatura (decisão 89), no estilo do modelo da Fabriaço: painel roxo com a logo à esquerda,
-// nome, função e contatos no meio, foto à direita e as faixas do lema e dos ícones embaixo.
+// Banner da assinatura (decisão 89): imagem no padrão da Fabriaço, feita no navegador.
 // Desenhado em 1200 × 512 (escala 1); a escala 2 dá a imagem para baixar.
 export const LARGURA = 1200;
 export const ALTURA = 512;
@@ -62,14 +61,21 @@ function poligono(ctx: CanvasRenderingContext2D, pts: [number, number][]) {
   ctx.closePath();
 }
 
-// Borda do painel roxo: de (520, 0) a (380, 440).
-const bordaPainel = (y: number) => 520 - (140 * y) / 440;
+// Foto "cobrindo" o retângulo, puxada para cima (o rosto costuma ficar no terço de cima).
+function cobrir(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
+  const k = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+  const sw = w / k;
+  const sh = h / k;
+  ctx.drawImage(img, (img.naturalWidth - sw) / 2, Math.max(0, (img.naturalHeight - sh) * 0.25), sw, sh, x, y, w, h);
+}
+
+// Desenho corporativo (decisão 89, revisão): painel da marca à esquerda, dados ao centro, foto em painel
+// inteiro à direita com corte inclinado e faixa escura com o lema embaixo.
+const RODAPE = 440;
 
 export async function desenharBanner(canvas: HTMLCanvasElement, d: DadosAssinatura, foto: HTMLImageElement | null, escala = 1): Promise<void> {
   await Promise.all([400, 500, 600, 700].map((p) => document.fonts.load(`${p} 20px "Geist Sans"`))).catch(() => undefined);
-  const [imgLogo, iMail, iFone, iSite, ...iLema] = await Promise.all([
-    logo(), icone(Mail), icone(Phone), icone(Globe), icone(HardHat), icone(Cog), icone(Flame), icone(ShieldCheck),
-  ]);
+  const [imgLogo, iMail, iFone, iSite] = await Promise.all([logo(), icone(Mail, COR.roxo), icone(Phone, COR.roxo), icone(Globe, COR.roxo)]);
 
   canvas.width = LARGURA * escala;
   canvas.height = ALTURA * escala;
@@ -77,196 +83,123 @@ export async function desenharBanner(canvas: HTMLCanvasElement, d: DadosAssinatu
   ctx.setTransform(escala, 0, 0, escala, 0, 0);
   ctx.textBaseline = 'middle';
 
-  // Cartão com cantos arredondados (fora deles, branco: o JPEG não tem transparência).
+  // Fundo branco (o JPEG não tem transparência) e cantos levemente arredondados.
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, LARGURA, ALTURA);
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(0, 0, LARGURA, ALTURA, 22);
+  ctx.roundRect(0, 0, LARGURA, ALTURA, 12);
   ctx.clip();
-  ctx.fillStyle = COR.fundo;
-  ctx.fillRect(0, 0, LARGURA, ALTURA);
 
-  // Painel roxo com traços finos de desenho técnico.
-  poligono(ctx, [[0, 0], [520, 0], [380, 440], [0, 440]]);
-  const g = ctx.createLinearGradient(0, 0, 520, 440);
-  g.addColorStop(0, '#4c16b8');
+  // Painel da marca.
+  poligono(ctx, [[0, 0], [372, 0], [322, RODAPE], [0, RODAPE]]);
+  const g = ctx.createLinearGradient(0, 0, 372, RODAPE);
+  g.addColorStop(0, '#4a14b3');
   g.addColorStop(1, COR.roxoEscuro);
   ctx.fillStyle = g;
   ctx.fill();
-  ctx.save();
-  ctx.clip();
-  const brilho = ctx.createRadialGradient(150, 120, 10, 150, 120, 380);
-  brilho.addColorStop(0, 'rgba(255,255,255,0.10)');
-  brilho.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = brilho;
-  ctx.fillRect(0, 0, 520, 440);
-  ctx.strokeStyle = 'rgba(255,255,255,0.09)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(330, 22, 160, 70);
-  ctx.strokeRect(20, 345, 120, 95);
-  ctx.strokeRect(255, 385, 70, 55);
-  ctx.beginPath();
-  ctx.moveTo(470, 30); ctx.lineTo(400, 240);
-  ctx.moveTo(60, 0); ctx.lineTo(60, 60); ctx.lineTo(0, 60);
-  ctx.stroke();
-  ctx.restore();
-
-  // Logo e faixa "Montagens industriais e caldeiraria".
-  const lw = 300;
+  const lw = 250;
   const lh = (lw * 722) / 1322;
-  ctx.drawImage(imgLogo, 210 - lw / 2, 62, lw, lh);
-  const yFaixa = 62 + lh + 22;
-  poligono(ctx, [[0, yFaixa], [bordaPainel(yFaixa) - 20, yFaixa], [bordaPainel(yFaixa + 32) - 30, yFaixa + 32], [0, yFaixa + 32]]);
-  ctx.fillStyle = 'rgba(20,20,26,0.82)';
-  ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `500 14px ${FONTE}`;
-  espacado(ctx, 'MONTAGENS INDUSTRIAIS E CALDEIRARIA', 34, yFaixa + 17, 2.6);
-
-  // Traço roxo inclinado entre o painel e os dados.
-  ctx.strokeStyle = COR.roxo;
-  ctx.lineCap = 'round';
-  ctx.lineWidth = 9;
+  ctx.drawImage(imgLogo, 170 - lw / 2, 100, lw, lh);
+  ctx.strokeStyle = 'rgba(201,182,241,0.6)';
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(bordaPainel(130) + 30, 130);
-  ctx.lineTo(bordaPainel(345) + 30, 345);
+  ctx.moveTo(140, 300); ctx.lineTo(200, 300);
   ctx.stroke();
-
-  // Nome (primeiro em negrito roxo) e função.
-  const x0 = 548;
-  const limite = 925;
-  const [primeiro, resto] = dividirNome(d.nome);
-  const tam = caber(ctx, 700, 36, limite - x0, `${primeiro} ${resto}`, 20);
-  ctx.font = `700 ${tam}px ${FONTE}`;
-  ctx.fillStyle = COR.roxo;
-  ctx.fillText(primeiro, x0, 92);
-  const wPrimeiro = ctx.measureText(`${primeiro} `).width;
-  ctx.font = `400 ${tam}px ${FONTE}`;
-  ctx.fillStyle = COR.texto;
-  ctx.fillText(resto, x0 + wPrimeiro, 92);
-
-  ctx.fillStyle = COR.roxo;
-  poligono(ctx, [[x0 + 6, 132], [x0 + 12, 132], [x0 + 7, 146], [x0 + 1, 146]]);
-  ctx.fill();
-  poligono(ctx, [[x0 + 13, 132], [x0 + 16, 132], [x0 + 11, 146], [x0 + 8, 146]]);
-  ctx.fill();
-  const cargo = d.cargo.trim().toUpperCase();
-  ctx.font = `600 15px ${FONTE}`;
-  let espacoCargo = 2;
-  while (espacoCargo > 0 && espacado(ctx, cargo, 0, 0, espacoCargo, true) > limite - x0 - 26) espacoCargo -= 0.5;
-  caber(ctx, 600, 15, limite - x0 - 26, cargo, 10);
-  espacado(ctx, cargo, x0 + 26, 140, espacoCargo);
-
-  // Linhas de contato com ícone em círculo.
-  const linhas: { y: number; icone: HTMLImageElement; rotulo: string; valor: string }[] = [
-    { y: 232, icone: iMail, rotulo: 'Email:', valor: d.email.trim() },
-    { y: 304, icone: iFone, rotulo: 'Phone:', valor: formatarTelefone(d.telefone) },
-    { y: 374, icone: iSite, rotulo: '', valor: EMPRESA_ASSINATURA.site },
-  ];
-  ctx.strokeStyle = COR.roxo;
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 1.2;
-  for (const y of [180, 268, 340]) {
-    ctx.beginPath();
-    ctx.moveTo(x0 - (y > 200 ? 0 : -10), y);
-    ctx.lineTo(limite - (y > 200 ? 30 : 0), y);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-  for (const l of linhas) {
-    const cx = x0 + 22;
-    ctx.fillStyle = COR.roxoEscuro;
-    ctx.beginPath();
-    ctx.arc(cx, l.y, 21, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.drawImage(l.icone, cx - 11, l.y - 11, 22, 22);
-    let x = cx + 36;
-    if (l.rotulo) {
-      ctx.font = `700 18px ${FONTE}`;
-      ctx.fillStyle = COR.roxo;
-      ctx.fillText(l.rotulo, x, l.y);
-      x += ctx.measureText(l.rotulo).width + 8;
-    }
-    caber(ctx, 400, l.rotulo ? 16 : 18, limite - x, l.valor, 10);
-    ctx.fillStyle = COR.texto;
-    ctx.fillText(l.valor, x, l.y);
+  ctx.font = `500 12.5px ${FONTE}`;
+  ctx.fillStyle = COR.lavanda;
+  for (const [t, y] of [['MONTAGENS INDUSTRIAIS', 326], ['E CALDEIRARIA', 346]] as const) {
+    const w = espacado(ctx, t, 0, 0, 3, true);
+    espacado(ctx, t, 170 - w / 2, y, 3);
   }
 
-  // Foto em círculo (ou o símbolo, sem foto).
-  const fx = 1056;
-  const fy = 222;
-  const r = 112;
-  ctx.fillStyle = COR.lavandaClara;
-  ctx.beginPath();
-  ctx.arc(fx + 10, fy + 8, r + 24, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = COR.roxo;
-  ctx.beginPath();
-  ctx.arc(fx, fy, r + 9, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(fx, fy, r + 4, 0, Math.PI * 2);
-  ctx.fill();
+  // Painel da foto (ou das iniciais), com faixa roxa no corte.
+  const painelFoto: [number, number][] = [[888, 0], [LARGURA, 0], [LARGURA, RODAPE], [836, RODAPE]];
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(fx, fy, r, 0, Math.PI * 2);
+  poligono(ctx, painelFoto);
   ctx.clip();
-  if (foto) {
-    // Recorte "cobrir", puxado para cima (o rosto costuma ficar no terço de cima).
-    const lado = Math.min(foto.naturalWidth, foto.naturalHeight);
-    const sx = (foto.naturalWidth - lado) / 2;
-    const sy = Math.max(0, (foto.naturalHeight - lado) * 0.3);
-    ctx.drawImage(foto, sx, sy, lado, lado, fx - r, fy - r, r * 2, r * 2);
-  } else {
-    ctx.fillStyle = COR.roxoEscuro;
-    ctx.fillRect(fx - r, fy - r, r * 2, r * 2);
-    const iniciais = d.nome.trim().split(/\s+/).filter(Boolean);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `600 84px ${FONTE}`;
+  if (foto) cobrir(ctx, foto, 836, 0, LARGURA - 836, RODAPE);
+  else {
+    ctx.fillStyle = COR.lavandaClara;
+    ctx.fillRect(836, 0, LARGURA - 836, RODAPE);
+    const ini = d.nome.trim().split(/\s+/).filter(Boolean);
+    ctx.fillStyle = COR.roxo;
+    ctx.font = `600 96px ${FONTE}`;
     ctx.textAlign = 'center';
-    ctx.fillText(((iniciais[0]?.[0] ?? '') + (iniciais.length > 1 ? iniciais[iniciais.length - 1][0] : '')).toUpperCase(), fx, fy + 4);
+    ctx.fillText(((ini[0]?.[0] ?? '') + (ini.length > 1 ? ini[ini.length - 1][0] : '')).toUpperCase(), 1030, RODAPE / 2);
     ctx.textAlign = 'left';
   }
   ctx.restore();
-
-  // Faixa preta com o lema e faixa roxa com os ícones.
-  poligono(ctx, [[0, 448], [748, 448], [728, 512], [0, 512]]);
-  ctx.fillStyle = COR.faixa;
+  poligono(ctx, [[874, 0], [888, 0], [836, RODAPE], [822, RODAPE]]);
+  ctx.fillStyle = COR.roxo;
   ctx.fill();
-  ctx.font = `500 14px ${FONTE}`;
+
+  // Nome (primeiro nome em negrito roxo), função e contatos.
+  const x0 = 404;
+  const limite = 800;
+  const [primeiro, resto] = dividirNome(d.nome);
+  const tam = caber(ctx, 700, 38, limite - x0, `${primeiro} ${resto}`, 20);
+  ctx.font = `700 ${tam}px ${FONTE}`;
+  ctx.fillStyle = COR.roxo;
+  ctx.fillText(primeiro, x0, 108);
+  const wPrimeiro = ctx.measureText(`${primeiro} `).width;
+  ctx.font = `400 ${tam}px ${FONTE}`;
+  ctx.fillStyle = COR.texto;
+  ctx.fillText(resto, x0 + wPrimeiro, 108);
+
+  const cargo = d.cargo.trim().toUpperCase();
+  ctx.font = `600 14px ${FONTE}`;
+  let espacoCargo = 2.5;
+  while (espacoCargo > 0 && espacado(ctx, cargo, 0, 0, espacoCargo, true) > limite - x0) espacoCargo -= 0.5;
+  caber(ctx, 600, 14, limite - x0, cargo, 10);
+  ctx.fillStyle = COR.suave;
+  espacado(ctx, cargo, x0 + 1, 150, espacoCargo);
+
+  ctx.fillStyle = COR.roxo;
+  ctx.fillRect(x0 + 1, 180, 48, 3);
+  ctx.fillStyle = '#e5e3ee';
+  ctx.fillRect(x0 + 49, 181, limite - x0 - 49, 1);
+
+  const linhas: [HTMLImageElement, string][] = [[iMail, d.email.trim()], [iFone, formatarTelefone(d.telefone)], [iSite, EMPRESA_ASSINATURA.site]];
+  linhas.forEach(([img, valor], i) => {
+    const y = 236 + i * 56;
+    ctx.fillStyle = COR.lavandaClara;
+    ctx.beginPath();
+    ctx.roundRect(x0, y - 18, 36, 36, 8);
+    ctx.fill();
+    ctx.drawImage(img, x0 + 8, y - 10, 20, 20);
+    caber(ctx, 400, 18, limite - x0 - 52, valor, 10);
+    ctx.fillStyle = COR.texto;
+    ctx.fillText(valor, x0 + 52, y + 1);
+  });
+
+  // Faixa escura com o lema.
+  ctx.fillStyle = '#141a2e';
+  ctx.fillRect(0, RODAPE, LARGURA, ALTURA - RODAPE);
+  const ga = ctx.createLinearGradient(0, 0, LARGURA, 0);
+  ga.addColorStop(0, COR.roxoMedio);
+  ga.addColorStop(1, COR.roxo);
+  ctx.fillStyle = ga;
+  ctx.fillRect(0, RODAPE, LARGURA, 4);
+  ctx.font = `500 13px ${FONTE}`;
   let x = 40;
+  const yLema = RODAPE + 38;
   EMPRESA_ASSINATURA.lema.forEach((p, i) => {
     if (i) {
       ctx.fillStyle = '#7b4fe0';
       const cx = x + 18;
-      poligono(ctx, [[cx, 474], [cx + 5, 480], [cx, 486], [cx - 5, 480]]);
+      poligono(ctx, [[cx, yLema - 5], [cx + 5, yLema], [cx, yLema + 5], [cx - 5, yLema]]);
       ctx.fill();
       x += 36;
     }
     ctx.fillStyle = '#ffffff';
-    x += espacado(ctx, p, x, 481, 3.4);
+    x += espacado(ctx, p, x, yLema, 3.4);
   });
-
-  poligono(ctx, [[778, 440], [LARGURA, 440], [LARGURA, 512], [752, 512]]);
-  const gb = ctx.createLinearGradient(760, 0, LARGURA, 0);
-  gb.addColorStop(0, COR.roxoEscuro);
-  gb.addColorStop(1, COR.roxo);
-  ctx.fillStyle = gb;
-  ctx.fill();
-  iLema.forEach((img, i) => {
-    const cx = 850 + i * 96;
-    ctx.drawImage(img, cx - 17, 459, 34, 34);
-    if (i) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(cx - 48, 456);
-      ctx.lineTo(cx - 48, 496);
-      ctx.stroke();
-    }
-  });
+  ctx.font = `600 14px ${FONTE}`;
+  ctx.fillStyle = COR.lavanda;
+  ctx.textAlign = 'right';
+  ctx.fillText('FABRIAÇO BRASIL', LARGURA - 40, yLema);
+  ctx.textAlign = 'left';
   ctx.restore();
 }
 

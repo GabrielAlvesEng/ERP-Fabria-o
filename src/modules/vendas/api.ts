@@ -1,6 +1,7 @@
 // Acesso a dados de Vendas. Regras sensíveis ficam nas RPCs do banco.
 import { supabase } from '@/shared/lib/supabase';
 import type { Arquivo, Contato, Empresa, Evento, Proposta, Revisao, StatusProposta } from './types';
+import type { Marcos } from './dashboard/indicadores';
 
 function ok<T>(r: { data: T | null; error: unknown }): T {
   if (r.error) throw r.error;
@@ -147,4 +148,14 @@ export type RetornoVencido = Pick<Proposta, 'id' | 'codigo' | 'titulo' | 'proxim
 export async function listarRetornosVencidos(hoje: string): Promise<RetornoVencido[]> {
   return ok<unknown>(await supabase.from('propostas').select('id, codigo, titulo, proximo_followup, responsavel_id, empresas(nome_fantasia), contatos!propostas_contato_id_fkey(nome)')
     .in('status', ['Enviados', 'Follow-up']).lte('proximo_followup', hoje).order('proximo_followup')) as RetornoVencido[];
+}
+
+// Dashboard (decisão 90): envios, aprovações e reprovações das propostas do ano.
+export async function listarMarcosDoAno(ano: number): Promise<Marcos> {
+  const [envios, aprovacoes, reprovacoes] = await Promise.all([
+    supabase.from('proposta_revisoes').select('proposta_id, numero, enviada_em, valor, propostas!inner(ano)').eq('propostas.ano', ano).not('enviada_em', 'is', null),
+    supabase.from('proposta_aprovacoes').select('proposta_id, data_aprovacao, valor_aprovado, propostas!inner(ano)').eq('propostas.ano', ano),
+    supabase.from('proposta_reprovacoes').select('proposta_id, criado_em, propostas!inner(ano)').eq('propostas.ano', ano),
+  ]);
+  return { envios: ok(envios) ?? [], aprovacoes: ok(aprovacoes) ?? [], reprovacoes: ok(reprovacoes) ?? [] } as unknown as Marcos;
 }
