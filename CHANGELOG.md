@@ -215,3 +215,4 @@
 - **Decisão 89 (revisão):** assinatura com desenho corporativo (foto em painel inteiro à direita, sem bolha). Conferida na página de teste local.
 - **Decisão 89 (2ª revisão):** assinatura com a esquerda e o centro corporativos e a foto de volta na bolha à direita. Conferida na página de teste local.
 - **Decisão 90:** Dashboard Comercial com filtro por vendedor, gráficos de linha por mês (quantidades e valores) e tabela de desempenho por vendedor. Conferido na tela com dados simulados (1500 e 900 px, dica ao passar o mouse, filtro pelo clique na tabela). 161 testes ok e build ok. Não conferido com login real.
+- **Decisão 91:** remover vendedor (exclusão lógica, só o RH) e cadastro de vendedor só com funcionários do RH. Migration 50 aplicada. Typecheck, testes e build ok; a tela não foi conferida com login real.

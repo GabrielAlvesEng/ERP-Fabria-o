@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Mail, PenLine, Pencil, Phone, Plus } from 'lucide-react';
+import { Mail, PenLine, Pencil, Phone, Plus, Trash2 } from 'lucide-react';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { useAno } from '@/app/AnoContext';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Entrada, EsqueletoCartoes, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import { listarPropostas } from '../api';
-import { listarUsuarios, listarVendedores, salvarVendedor, type Vendedor } from './api';
+import { listarCandidatosVendedor, listarVendedores, removerVendedor, salvarVendedor, type Vendedor } from './api';
 import { resumoVendedor } from './regras';
 import { AssinaturaModal, useMinhaAssinatura } from './AssinaturaModal';
 
@@ -25,7 +25,7 @@ export function VendedoresPage() {
   const hoje = hojeISO();
   const rh = pode('rh', 'editar');
   const veTodos = pode('rh', 'ler');
-  const ordenados = useMemo(() => [...vendedores].filter((v) => veTodos || v.usuario_id === session?.user.id).sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome)), [vendedores, veTodos, session?.user.id]);
+  const ordenados = useMemo(() => vendedores.filter((v) => !v.removido_em).filter((v) => veTodos || v.usuario_id === session?.user.id).sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome)), [vendedores, veTodos, session?.user.id]);
   const semVendedor = propostas.filter((p) => !p.responsavel_id).length;
 
   return (
@@ -91,7 +91,7 @@ export function VendedoresPage() {
         </div>
       )}
       {assinando && <AssinaturaModal onFechar={() => setAssinando(false)} />}
-      {editando && <FichaVendedor vendedor={editando === 'novo' ? null : editando} jaVendedores={vendedores.map((v) => v.usuario_id)} onFechar={() => setEditando(null)} />}
+      {editando && <FichaVendedor vendedor={editando === 'novo' ? null : editando} jaVendedores={vendedores.filter((v) => !v.removido_em).map((v) => v.usuario_id)} onFechar={() => setEditando(null)} />}
     </>
   );
 }
@@ -105,11 +105,12 @@ function Numero({ rotulo, valor, destaque }: { rotulo: string; valor: string; de
   );
 }
 
-// Cadastro do vendedor: escolhe um usuário do ERP (precisa ter login) e completa cargo e telefone.
+// Cadastro do vendedor: escolhe um funcionário do RH com login (decisão 91) e completa cargo e telefone.
 function FichaVendedor({ vendedor, jaVendedores, onFechar }: { vendedor: Vendedor | null; jaVendedores: string[]; onFechar: () => void }) {
   const qc = useQueryClient();
-  const { data: usuarios = [] } = useQuery({ queryKey: ['usuarios'], queryFn: listarUsuarios, enabled: !vendedor });
-  const livres = usuarios.filter((u) => u.ativo && !jaVendedores.includes(u.id));
+  const { data: candidatos = [] } = useQuery({ queryKey: ['vendedores', 'candidatos'], queryFn: listarCandidatosVendedor, enabled: !vendedor });
+  const livres = candidatos.filter((c) => !jaVendedores.includes(c.usuario_id));
+  const [confirmarRemocao, setConfirmarRemocao] = useState(false);
   const [f, setF] = useState({
     usuario_id: vendedor?.usuario_id ?? '', nome: vendedor?.nome ?? '', cargo: vendedor?.cargo ?? 'Vendedor',
     telefone: vendedor?.telefone ?? '', observacoes: vendedor?.observacoes ?? '', ativo: vendedor?.ativo ?? true,
@@ -131,6 +132,17 @@ function FichaVendedor({ vendedor, jaVendedores, onFechar }: { vendedor: Vendedo
     setSalvando(false);
   }
 
+  async function remover() {
+    if (!vendedor) return;
+    setErro(''); setSalvando(true);
+    try {
+      await removerVendedor(vendedor.usuario_id);
+      await qc.invalidateQueries({ queryKey: ['vendedores'] });
+      onFechar();
+    } catch (e) { setErro(mensagemErro(e)); }
+    setSalvando(false);
+  }
+
   return (
     <Modal aberto titulo={vendedor ? `Vendedor · ${vendedor.nome}` : 'Cadastrar vendedor'} onFechar={onFechar}>
       <div className="space-y-3">
@@ -138,15 +150,17 @@ function FichaVendedor({ vendedor, jaVendedores, onFechar }: { vendedor: Vendedo
         {vendedor ? (
           <div className="text-sm text-suave">Usuário: <b className="text-texto">{vendedor.usuarios?.email ?? vendedor.usuarios?.nome}</b></div>
         ) : (
-          <Campo rotulo="Usuário do ERP *">
+          <Campo rotulo="Funcionário (RH) *">
             <Selecao value={f.usuario_id} onChange={(e) => {
-              const u = usuarios.find((x) => x.id === e.target.value);
-              setF({ ...f, usuario_id: e.target.value, nome: f.nome || (u?.nome.includes('.') ? '' : u?.nome ?? '') });
+              const c = candidatos.find((x) => x.usuario_id === e.target.value);
+              setF({ ...f, usuario_id: e.target.value, nome: f.nome || c?.nome || '', telefone: f.telefone || c?.telefone || '' });
             }}>
               <option value="">Escolha…</option>
-              {livres.map((u) => <option key={u.id} value={u.id}>{u.nome} · {u.email}</option>)}
+              {livres.map((c) => <option key={c.usuario_id} value={c.usuario_id}>{c.nome} · {c.email}</option>)}
             </Selecao>
-            {livres.length === 0 && <p className="mt-1 text-xs text-suave">Todos os usuários já são vendedores. Para um vendedor novo, crie antes o login dele (Supabase → Authentication).</p>}
+            <p className="mt-1 text-xs text-suave">{livres.length === 0
+              ? 'Ninguém disponível. Só aparecem funcionários cadastrados no RH, com login no ERP e que ainda não são vendedores.'
+              : 'Só aparecem funcionários cadastrados no RH, com login no ERP.'}</p>
           </Campo>
         )}
         <Campo rotulo="Nome do vendedor *"><Entrada value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} placeholder="Ex.: Gabriel Alves" /></Campo>
@@ -156,9 +170,19 @@ function FichaVendedor({ vendedor, jaVendedores, onFechar }: { vendedor: Vendedo
         </div>
         <Campo rotulo="Observações"><AreaTexto rows={2} value={f.observacoes} onChange={(e) => setF({ ...f, observacoes: e.target.value })} /></Campo>
         {vendedor && <Caixa marcado={f.ativo} onChange={(ativo) => setF({ ...f, ativo })}>Vendedor ativo (inativo não aparece para novas propostas)</Caixa>}
-        <div className="flex justify-end gap-2 pt-1">
-          <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
-          <Botao onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</Botao>
+        {confirmarRemocao && (
+          <Aviso>Remover {vendedor?.nome}? Ele sai da lista de vendedores e não pode ser escolhido em novas propostas. As propostas dele continuam com o nome dele. Dá para cadastrar de novo depois.</Aviso>
+        )}
+        <div className="flex flex-wrap justify-between gap-2 pt-1">
+          <div>
+            {vendedor && (confirmarRemocao
+              ? <div className="flex gap-2"><Botao variante="perigo" onClick={remover} disabled={salvando}>Sim, remover</Botao><Botao variante="fantasma" onClick={() => setConfirmarRemocao(false)}>Não</Botao></div>
+              : <Botao variante="fantasma" className="text-red-600" onClick={() => setConfirmarRemocao(true)}><Trash2 size={15} /> Remover vendedor</Botao>)}
+          </div>
+          <div className="flex gap-2">
+            <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
+            <Botao onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</Botao>
+          </div>
         </div>
       </div>
     </Modal>
