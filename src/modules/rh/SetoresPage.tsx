@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ListChecks, Pencil, Plus } from 'lucide-react';
+import { Crown, ListChecks, Pencil, Plus } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Entrada, EsqueletoCartoes, Modal, Selecao, Selo } from '@/shared/ui';
-import { listarFuncionarios, listarFuncoes, listarRequisitosFuncoes, listarSetores, listarTiposDocumento, salvarFuncao, salvarRequisitosFuncao, salvarSetor, type Funcao, type Setor } from './api';
+import { listarFuncionarios, listarFuncoes, listarRequisitosFuncoes, listarSetores, listarTiposDocumento, salvarFuncao, salvarRequisitosFuncao, salvarSetor, type Funcao, type Funcionario, type Setor } from './api';
 import { EscolherRequisitos } from './EscolherRequisitos';
+import { listarLideres, salvarLideres } from '@/modules/comunicacao/api';
 
 type Editando = { tipo: 'setor'; item: Partial<Setor> } | { tipo: 'funcao'; item: Partial<Funcao> };
 
@@ -22,6 +23,11 @@ export function SetoresPage() {
   const qc = useQueryClient();
   const [editando, setEditando] = useState<Editando | null>(null);
   const [requisitosDe, setRequisitosDe] = useState<Funcao | null>(null);
+  const [lideresDe, setLideresDe] = useState<Setor | null>(null);
+  // Líderes de cada setor (Comunicação): mandam comunicados para as pessoas do setor.
+  const { data: lideres = [] } = useQuery({ queryKey: ['rh', 'setor_lideres'], queryFn: listarLideres });
+  const nomeFuncionario = new Map(funcionarios.map((f) => [f.id, f.nome]));
+  const lideresDoSetor = (setorId: string) => lideres.filter((l) => l.setor_id === setorId).map((l) => l.funcionario_id);
   const reqs = (funcaoId: string) => requisitos.filter((r) => r.funcao_id === funcaoId).map((r) => r.tipo_documento_id);
   const nomeTipo = new Map(tipos.map((t) => [t.id, t.nome]));
   const pessoas = (funcaoId: string) => funcionarios.filter((f) => f.funcao_id === funcaoId && f.situacao !== 'desligado').length;
@@ -41,8 +47,16 @@ export function SetoresPage() {
               <div key={s.id} className={`rounded-xl bg-superficie p-4 shadow-sm ring-1 ring-borda ${s.ativo ? '' : 'opacity-70'}`}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 font-semibold">{s.nome}{!s.ativo && <Selo>Inativo</Selo>}</div>
-                  {editavel && <button type="button" onClick={() => setEditando({ tipo: 'setor', item: s })} className="rounded p-1.5 text-suave hover:bg-pagina hover:text-texto" title="Editar setor"><Pencil size={15} /></button>}
+                  {editavel && (
+                    <span className="flex">
+                      <button type="button" onClick={() => setLideresDe(s)} className="rounded p-1.5 text-suave hover:bg-pagina hover:text-texto" title="Líderes do setor"><Crown size={15} /></button>
+                      <button type="button" onClick={() => setEditando({ tipo: 'setor', item: s })} className="rounded p-1.5 text-suave hover:bg-pagina hover:text-texto" title="Editar setor"><Pencil size={15} /></button>
+                    </span>
+                  )}
                 </div>
+                {lideresDoSetor(s.id).length > 0 && (
+                  <div className="mt-1 flex items-center gap-1 text-xs text-suave"><Crown size={12} className="text-amber-500" /> Líder: {lideresDoSetor(s.id).map((id) => nomeFuncionario.get(id) ?? '…').join(', ')}</div>
+                )}
                 {lista.length === 0 ? <p className="mt-2 text-xs text-suave">Nenhuma função.</p> : (
                   <ul className="mt-2 divide-y divide-borda text-sm">
                     {lista.map((f) => (
@@ -65,6 +79,10 @@ export function SetoresPage() {
             );
           })}
         </div>
+      )}
+      {lideresDe && (
+        <LideresModal setor={lideresDe} funcionarios={funcionarios} funcoes={funcoes} marcados={lideresDoSetor(lideresDe.id)} onFechar={() => setLideresDe(null)}
+          onSalvar={async (ids) => { await salvarLideres(lideresDe.id, ids); await qc.invalidateQueries({ queryKey: ['rh', 'setor_lideres'] }); await qc.invalidateQueries({ queryKey: ['comunicacao'] }); }} />
       )}
       {editando && <EditarModal editando={editando} setores={setores} onFechar={() => setEditando(null)} />}
       {requisitosDe && (
@@ -120,6 +138,45 @@ function EditarModal({ editando, setores, onFechar }: { editando: Editando; seto
         <Campo rotulo="Nome *"><Entrada value={item.nome ?? ''} onChange={(e) => setItem({ ...item, nome: e.target.value })} placeholder={setor ? 'Ex.: Fabricação' : 'Ex.: Motorista de munck'} /></Campo>
         {!setor && <Campo rotulo="Descrição"><AreaTexto rows={2} value={(item as Partial<Funcao>).descricao ?? ''} onChange={(e) => setItem({ ...item, descricao: e.target.value })} /></Campo>}
         {!novo && <Caixa marcado={item.ativo ?? true} onChange={(ativo) => setItem({ ...item, ativo })}>{setor ? 'Setor ativo' : 'Função ativa'} (inativo não aparece para novos cadastros)</Caixa>}
+        <div className="flex justify-end gap-2 pt-1">
+          <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
+          <Botao onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</Botao>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// Líderes do setor (Comunicação): quem pode mandar comunicados para as pessoas deste setor. Pode haver mais de um.
+function LideresModal({ setor, funcionarios, funcoes, marcados, onSalvar, onFechar }: {
+  setor: Setor; funcionarios: Funcionario[]; funcoes: Funcao[]; marcados: string[]; onSalvar: (ids: string[]) => Promise<void>; onFechar: () => void;
+}) {
+  const [sel, setSel] = useState(marcados);
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const setorDe = new Map(funcoes.map((f) => [f.id, f.setor_id]));
+  const ativos = funcionarios.filter((f) => f.situacao !== 'desligado')
+    .sort((a, b) => Number(setorDe.get(b.funcao_id ?? '') === setor.id) - Number(setorDe.get(a.funcao_id ?? '') === setor.id) || a.nome.localeCompare(b.nome));
+  async function salvar() {
+    setErro(''); setSalvando(true);
+    try { await onSalvar(sel); onFechar(); } catch (e) { setErro(mensagemErro(e)); }
+    setSalvando(false);
+  }
+  return (
+    <Modal aberto titulo={`Líderes · ${setor.nome}`} onFechar={onFechar}>
+      <div className="space-y-3">
+        <p className="text-sm text-suave">O líder manda comunicados (Comunicação) para as pessoas deste setor. Para mandar, ele precisa ter login no ERP.</p>
+        {erro && <Aviso>{erro}</Aviso>}
+        <div className="max-h-80 space-y-1 overflow-y-auto">
+          {ativos.map((f) => (
+            <div key={f.id} className="flex items-center justify-between gap-2">
+              <Caixa marcado={sel.includes(f.id)} onChange={() => setSel(sel.includes(f.id) ? sel.filter((x) => x !== f.id) : [...sel, f.id])}>
+                {f.nome}{setorDe.get(f.funcao_id ?? '') !== setor.id && <span className="text-xs text-suave"> · outro setor</span>}
+              </Caixa>
+              {!f.usuario_id && <Selo>sem login</Selo>}
+            </div>
+          ))}
+        </div>
         <div className="flex justify-end gap-2 pt-1">
           <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
           <Botao onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</Botao>

@@ -7,6 +7,7 @@ import { AssinaturaModal, PreviaAssinatura, useMinhaAssinatura } from '@/modules
 import { enviarMinhaFoto, salvarMeuPerfil, tirarMinhaFoto, useMeuUsuario } from './api';
 import { Avatar } from './Avatar';
 import { MinhaFicha } from '@/modules/rh/MinhaFicha';
+import { NotificacoesPerfil } from '@/modules/comunicacao/CelularAviso';
 
 // Meu perfil (decisão 68): aberto pelo nome no menu lateral, em qualquer módulo. Cada um edita só os próprios dados.
 export function PerfilPage() {
@@ -102,6 +103,8 @@ export function PerfilPage() {
               ? <PreviaAssinatura html={assinatura.html} />
               : <p className="text-sm text-suave">Ainda sem assinatura. Ela vai no fim dos e-mails de proposta enviados pelo ERP, igual à do seu Outlook.</p>}
           </div>
+
+          <NotificacoesPerfil />
 
           <MinhaFicha />
         </div>

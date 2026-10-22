@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import { createPortal } from 'react-dom';
 import { CalendarDays, Check, Minus, Paperclip, Plus, X } from 'lucide-react';
 import { Bolhas, useIdCampo } from './presenca';
 
@@ -179,7 +180,8 @@ export function Modal({ aberto, titulo, onFechar, children, largura = 'max-w-lg'
     return () => window.removeEventListener('keydown', esc);
   }, [aberto, onFechar]);
   if (!aberto) return null;
-  return (
+  // No <body> (portal): dentro da animação de entrada da página (.entrar), o "fixed" ficaria preso à área do conteúdo.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-marinho-900/60 p-4 sm:p-10" onMouseDown={onFechar}>
       <div className={cx('w-full rounded-2xl bg-superficie shadow-xl', largura)} onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-borda px-5 py-3">
@@ -188,7 +190,8 @@ export function Modal({ aberto, titulo, onFechar, children, largura = 'max-w-lg'
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

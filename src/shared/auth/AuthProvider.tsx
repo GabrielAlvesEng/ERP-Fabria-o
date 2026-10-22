@@ -9,6 +9,7 @@ interface AuthCtx {
   session: Session | null;
   carregando: boolean;
   pode: (modulo: string, acao: Acao) => boolean;
+  permissoesProntas: boolean;
   sair: () => Promise<void>;
 }
 
@@ -28,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // A interface só esconde/desabilita; quem garante é o RLS e as RPCs no banco.
-  const { data: permissoes = [] } = useQuery({
+  const { data: permissoes = [], isSuccess: permissoesProntas } = useQuery({
     queryKey: ['minhas_permissoes', session?.user.id],
     enabled: Boolean(session),
     queryFn: async () => {
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  return <Ctx.Provider value={{ session, carregando, pode, sair }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ session, carregando, pode, permissoesProntas, sair }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

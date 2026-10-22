@@ -173,3 +173,13 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `projeto_pecas.largura` (chapas lançadas à mão); `adicionar_peca` passa a gravar COD_MAT, largura e comprimento.
 - Visão `painel_engenharia` (security_invoker): contagens por projeto para o Dashboard.
 - Permissão `engenharia.aprovar` = Engenheiro Mecânico Chefe (individual, dada ao Gabriel). Perfil Engenharia sem `vendas.ler`; perfil Comercial sem `engenharia.ler`.
+
+## Comunicação (`20261022000055_comunicacao.sql`, `20261022000056_comunicacao_chaves.sql`, decisão 100)
+- `setor_lideres` (setor, funcionário, removido_em): líderes de cada setor, definidos pelo RH com `definir_lideres(setor, funcionarios[])`. Nada é apagado.
+- `comunicados` (autor, alcance empresa/setores/pessoas, título, texto, urgente, exige_ciente, enviar_email, fixado_ate, anexo, lembrado_em, cancelado_em) e `comunicado_setores`. Gravados só pelas funções.
+- `comunicado_destinatarios` (comunicado, usuário, funcionário, push_enviado_em, email_enviado_em, lido_em, ciente_em): uma linha por pessoa, gerada no envio.
+- `push_aparelhos` (usuário, endpoint, chaves, nome, ativo, último envio): inscrições Web Push. Cada um vê só os seus; login desativado desativa os aparelhos.
+- `segredos_servidor`: chaves VAPID criadas pela Edge Function; só a service_role lê.
+- Funções: `enviar_comunicado`, `anexar_comunicado`, `marcar_comunicado_lido`, `dar_ciente_comunicado`, `cancelar_comunicado`, `comunicacao_meu_papel`, `comunicacao_pessoas` (sem dados pessoais), `comunicado_para_envio` e `registrar_envio_comunicado` (usadas pela Edge Function `comunicacao-envio`, como quem enviou), `registrar_aparelho`, `remover_aparelho`.
+- Permissão `comunicacao.critica` = "Comunicado geral". Perfil "Funcionário" sem permissões. Bucket privado `comunicacao` ({comunicado}/{arquivo}). `comunicados` e `comunicado_destinatarios` no Realtime.
+

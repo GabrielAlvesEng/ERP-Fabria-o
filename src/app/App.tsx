@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { linkAuth, supabase, supabaseConfigurado } from '@/shared/lib/supabase';
 import { BarraCarregamento, esconderPreloader } from '@/shared/ui/Carregando';
 import { AnoProvider } from './AnoContext';
-import { Layout } from './Layout';
+import { Inicio, Layout } from './Layout';
 import { LoginPage } from './LoginPage';
 import { DefinirSenhaPage } from './DefinirSenhaPage';
 import { VendasLayout } from '@/modules/vendas/VendasLayout';
@@ -34,6 +34,7 @@ import { SetoresPage } from '@/modules/rh/SetoresPage';
 import { TiposDocumentoPage } from '@/modules/rh/TiposDocumentoPage';
 import { VencimentosPage } from '@/modules/rh/VencimentosPage';
 import { IntegracoesPage } from '@/modules/rh/IntegracoesPage';
+import { CaixaEntradaPage, ComunicacaoLayout, EnviadosPage } from '@/modules/comunicacao/ComunicacaoPages';
 
 export function App() {
   const { session, carregando } = useAuth();
@@ -90,6 +91,10 @@ export function App() {
             <Route path="vencimentos" element={<VencimentosPage />} />
             <Route path="integracoes" element={<IntegracoesPage />} />
           </Route>
+          <Route path="/comunicacao" element={<ComunicacaoLayout />}>
+            <Route index element={<CaixaEntradaPage />} />
+            <Route path="enviados" element={<EnviadosPage />} />
+          </Route>
           <Route path="/financeiro" element={<FinanceiroPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/admin" element={<AdminLayout />}>
@@ -99,7 +104,7 @@ export function App() {
             <Route path="modelos" element={<ModelosPropostaPage />} />
             <Route path="predefinicoes" element={<PredefinicoesPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/vendas" replace />} />
+          <Route path="*" element={<Inicio />} />
         </Route>
       </Routes>
     </AnoProvider>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, Lock, LogOut, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, Lock, LogOut, Megaphone, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
@@ -9,6 +9,8 @@ import { VencimentosSino } from '@/modules/rh/VencimentosSino';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { useMeuUsuario } from '@/modules/perfil/api';
 import { PresencaVendas, useVendasAoVivo } from '@/modules/vendas/aoVivo';
+import { ComunicadosSino, useComunicacaoAoVivo } from '@/modules/comunicacao/ComunicadosSino';
+import { desativarNesteAparelho } from '@/modules/comunicacao/push';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 // Decisão 78: o menu é dividido em Operacionais (a operação dos projetos: Vendas, Engenharia, Fabricação...)
@@ -18,6 +20,8 @@ const modulos = [
   { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia', grupo: 'operacional' },
   { to: '/compras', rotulo: 'Compras', icone: ShoppingCart, modulo: 'compras', grupo: 'operacional' },
   { to: '/almoxarifado', rotulo: 'Almoxarifado', icone: Warehouse, modulo: 'almoxarifado', grupo: 'operacional' },
+  // Comunicação: todos os logados (cada um tem a sua caixa de entrada); quem envia é decidido no banco.
+  { to: '/comunicacao', rotulo: 'Comunicação', icone: Megaphone, modulo: null, grupo: 'administrativo' },
   { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh', grupo: 'administrativo' },
   { to: '/financeiro', rotulo: 'Financeiro', icone: Wallet, modulo: 'financeiro', grupo: 'administrativo' },
   { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const, grupo: 'administrativo' },
@@ -26,12 +30,26 @@ const modulos = [
 // Para liberar um módulo, basta tirá-lo desta lista.
 const BLOQUEADOS = new Set(['/compras', '/financeiro', '/almoxarifado']);
 const GRUPOS = [['operacional', 'Módulos operacionais'], ['administrativo', 'Módulos administrativos']] as const;
+type Pode = ReturnType<typeof useAuth>['pode'];
+const visivel = (m: (typeof modulos)[number], pode: Pode) => m.modulo === null || pode(m.modulo, ('acao' in m && m.acao) || 'ler');
+
+// Endereço desconhecido ou a raiz: o primeiro módulo que a pessoa pode abrir (quem só tem o perfil Funcionário cai na
+// Comunicação).
+export function Inicio() {
+  const { pode, permissoesProntas } = useAuth();
+  if (!permissoesProntas) return null;
+  const m = modulos.find((x) => x.modulo !== null && !BLOQUEADOS.has(x.to) && visivel(x, pode));
+  return <Navigate to={m?.to ?? '/comunicacao'} replace />;
+}
 
 export function Layout() {
-  const { session, sair, pode } = useAuth();
-  const menu = modulos.filter((m) => pode(m.modulo, ('acao' in m && m.acao) || 'ler'));
+  const { session, sair: sairDoErp, pode } = useAuth();
+  const menu = modulos.filter((m) => visivel(m, pode));
+  // Ao sair, este aparelho deixa de receber os avisos (o próximo usuário do mesmo navegador não recebe os de outro).
+  const sair = async () => { await desativarNesteAparelho().catch(() => {}); await sairDoErp(); };
   const { ano, setAno } = useAno();
   useVendasAoVivo(); // decisão 83: telas de Vendas atualizam sozinhas quando outra pessoa altera
+  useComunicacaoAoVivo();
   const [tema, setTema] = useState<Tema>(lerTema);
   useEffect(() => aplicarTema(tema), [tema]);
   // Celular: menu lateral que abre pelo botão ☰ e fecha ao trocar de tela, tocar fora ou apertar Esc.
@@ -69,6 +87,7 @@ export function Layout() {
             <button className="rounded-md p-1 text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700" onClick={() => setAno(ano + 1)} aria-label="Próximo ano"><ChevronRight size={16} /></button>
           </div>
           <div className="flex items-center sm:gap-1">
+            <ComunicadosSino />
             <RetornosSino />
             <VencimentosSino />
             <button onClick={() => setTema(tema === 'claro' ? 'escuro' : 'claro')} className="rounded-lg p-2 text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700" aria-label="Alternar tema">
