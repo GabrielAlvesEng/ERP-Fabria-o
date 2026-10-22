@@ -1,7 +1,7 @@
 // Biblioteca de Materiais na Engenharia (decisão 53): cada peça pode apontar para um item da biblioteca
 // (chapa, perfil ou item comercial/fixador/consumível). O ERP sugere; a Engenharia confirma.
 import { FORMATOS, lerMedida, precosPerfil, tuboSch, type Formato } from '@/modules/biblioteca/regras';
-import type { Peca } from './regras';
+import type { Bloco, Peca } from './regras';
 
 export type TipoBib = 'chapa' | 'perfil' | 'item';
 
@@ -14,7 +14,7 @@ export interface RefsEng {
   precosChapa: { cod_mat: string; tipo_id: string; valor_kg: number }[];
 }
 
-export type PecaBib = Pick<Peca, 'descricao' | 'cod_op' | 'cod_mat' | 'espessura' | 'peso_unit' | 'comprimento'> & { bib_tipo?: TipoBib | null; bib_id?: string | null; bib_confirmado?: boolean };
+export type PecaBib = Pick<Peca, 'descricao' | 'cod_op' | 'cod_mat' | 'espessura' | 'peso_unit' | 'comprimento'> & { largura?: number | null; bib_tipo?: TipoBib | null; bib_id?: string | null; bib_confirmado?: boolean };
 
 const OPS_CHAPA = ['LC', 'GU', 'DO', 'CL'];
 const OPS_PERFIL = ['LP', 'PO'];
@@ -25,9 +25,17 @@ const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 // Que tipo de item da biblioteca a peça deve usar.
 export function tipoDaPeca(p: PecaBib): TipoBib | null {
   if (p.cod_op.includes('CM')) return 'item';
+  // Chapa lançada à mão tem espessura e largura (o comprimento dela não a torna perfil).
+  if (Number(p.largura) > 0 && Number(p.espessura) > 0) return 'chapa';
   if (Number(p.comprimento) > 0 || p.cod_op.some((o) => OPS_PERFIL.includes(o)) || /\b(tubo|barra|cantoneira|perfil|viga)\b/i.test(p.descricao)) return 'perfil';
   if (Number(p.espessura) > 0 || p.cod_op.some((o) => OPS_CHAPA.includes(o)) || /\bchapa\b/i.test(p.descricao)) return 'chapa';
   return null;
+}
+
+// Bloco da lista de materiais (decisão 96): o item da biblioteca escolhido manda; sem ele, a mesma regra da sugestão.
+export function blocoDaPeca(p: PecaBib): Bloco {
+  const t = (p.bib_tipo as TipoBib | null | undefined) ?? tipoDaPeca(p);
+  return t === 'item' ? 'comercial' : t === 'perfil' ? 'perfil' : 'chapa';
 }
 
 // Família do perfil pela descrição do CAD ("TUBO REDONDO Ø1.1/4" X 1,5" → tubo redondo) e medidas em mm.

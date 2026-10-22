@@ -10,20 +10,50 @@ export const NOME_OP: Record<CodOp, string> = {
 };
 export const NOME_STATUS: Record<StatusConjunto, string> = { modelando: 'Modelando', detalhando: 'Detalhando', revisao: 'Em revisão', liberado: 'Liberado' };
 
+// Kanban da Engenharia (decisão 96): Cancelado fica fora do quadro; Pausado é selo.
+export type StatusProjeto = 'nao_iniciado' | 'em_andamento' | 'liberado' | 'finalizado' | 'cancelado';
+export const COLUNAS_PROJETO = ['nao_iniciado', 'em_andamento', 'liberado', 'finalizado'] as const;
+export type ColunaProjeto = (typeof COLUNAS_PROJETO)[number];
+export const NOME_STATUS_PROJETO: Record<StatusProjeto, string> = {
+  nao_iniciado: 'Não iniciado', em_andamento: 'Em andamento', liberado: 'Liberado para fabricação', finalizado: 'Finalizado', cancelado: 'Cancelado',
+};
+export const COR_STATUS_PROJETO: Record<StatusProjeto, 'cinza' | 'roxo' | 'azul' | 'verde' | 'vermelho'> = {
+  nao_iniciado: 'cinza', em_andamento: 'roxo', liberado: 'azul', finalizado: 'verde', cancelado: 'vermelho',
+};
+
 export interface Projeto {
   id: string;
-  proposta_id: string;
+  proposta_id: string | null;
   codigo: string;
   titulo: string;
-  empresa_id: string;
-  status: 'em_andamento' | 'pausado' | 'concluido' | 'cancelado';
+  empresa_id: string | null;
+  status: StatusProjeto;
+  pausado: boolean;
+  exemplo: boolean;
+  fabricacao_concluida_em: string | null;
   responsavel_id: string | null;
   prazo: string | null;
   observacoes: string;
   criado_em: string;
   dados_cad?: Record<string, unknown>;
   importado_cad_em?: string | null;
-  empresas?: { nome_fantasia: string } | null;
+  cliente_nome?: string | null;
+}
+
+// Atrasado: não finalizado (nem cancelado) com prazo antes de hoje.
+export function atrasado(p: Pick<Projeto, 'status' | 'prazo'>, hoje: string): boolean {
+  return !!p.prazo && p.prazo < hoje && p.status !== 'finalizado' && p.status !== 'cancelado';
+}
+
+// Regras do Kanban na tela (o banco valida de novo em mover_projeto).
+export type Movimento = 'simples' | 'liberar' | 'finalizar' | 'voltar' | 'proibido';
+export function tipoMovimento(de: StatusProjeto, para: ColunaProjeto, chefe: boolean): Movimento {
+  const ordem = (s: StatusProjeto) => COLUNAS_PROJETO.indexOf(s as ColunaProjeto);
+  if (de === 'cancelado' || de === para) return 'proibido';
+  if (ordem(para) < ordem(de)) return chefe ? 'voltar' : 'proibido';
+  if (para === 'finalizado') return chefe ? 'finalizar' : 'proibido';
+  if (para === 'liberado') return chefe ? 'liberar' : 'proibido';
+  return 'simples';
 }
 
 export interface Conjunto {
@@ -58,6 +88,7 @@ export interface Peca {
   material: string;
   cod_mat: string | null;
   espessura: number | null;
+  largura?: number | null;
   peso_unit: number | null;
   comprimento?: number | null;
   codigo_cad?: string;
@@ -158,4 +189,37 @@ export const rotuloMaterial = (p: Pick<Peca, 'cod_mat' | 'material'>) => (p.cod_
 export function progresso(conjuntos: Conjunto[]): number {
   if (!conjuntos.length) return 0;
   return Math.round((conjuntos.filter((c) => c.status === 'liberado').length / conjuntos.length) * 100);
+}
+
+// Blocos da lista de materiais (decisão 96): Chapas, Perfis e Itens comerciais (fixadores entram nos comerciais).
+export type Bloco = 'chapa' | 'perfil' | 'comercial';
+export const NOME_BLOCO: Record<Bloco, string> = { chapa: 'Chapas', perfil: 'Perfis', comercial: 'Itens comerciais' };
+export const OPS_PADRAO: Record<Bloco, CodOp[]> = { chapa: ['LC'], perfil: ['PO'], comercial: ['CM'] };
+
+// Avanço pelos registros reais (Dashboard, decisão 96).
+export interface PainelProjeto {
+  id: string; conjuntos: number; conjuntos_modelados: number; conjuntos_liberados: number; conjuntos_revisao: number;
+  status_geral: StatusConjunto | null; pecas: number; pecas_material: number; pecas_sem_material: number;
+}
+export interface Avanco { modelagem: number | null; materiais: number | null; detalhamento: number | null }
+const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : null);
+
+export function avanco(p: PainelProjeto): Avanco {
+  // Sem conjuntos, vale a montagem geral (projeto feito só com a lista manual).
+  const semConj = p.conjuntos === 0;
+  return {
+    modelagem: semConj ? (p.status_geral ? (p.status_geral === 'modelando' ? 0 : 100) : null) : pct(p.conjuntos_modelados, p.conjuntos),
+    materiais: pct(p.pecas_material, p.pecas),
+    detalhamento: semConj ? (p.status_geral ? (p.status_geral === 'liberado' ? 100 : 0) : null) : pct(p.conjuntos_liberados, p.conjuntos),
+  };
+}
+
+export function pendencias(pj: Pick<Projeto, 'responsavel_id' | 'prazo' | 'status'>, p: PainelProjeto | undefined): string[] {
+  if (pj.status === 'finalizado' || pj.status === 'cancelado') return [];
+  const lista: string[] = [];
+  if (!pj.responsavel_id) lista.push('Sem responsável');
+  if (!pj.prazo) lista.push('Sem prazo');
+  if (p?.pecas_sem_material) lista.push(`${p.pecas_sem_material} peça(s) sem material`);
+  if (p?.conjuntos_revisao) lista.push(`${p.conjuntos_revisao} conjunto(s) em revisão`);
+  return lista;
 }

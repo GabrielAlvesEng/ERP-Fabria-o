@@ -165,3 +165,11 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `custo_itens.valor_manual`: valor de venda digitado à mão (nulo = usa o calculado pelos custos). `copiar_custos` leva o valor para a nova revisão.
 - O início do prazo de entrega fica no documento da proposta (`proposta_documentos.conteudo`, seção cronograma, campo `inicio`), sem coluna nova.
 
+## Engenharia: Kanban e lista manual (`20261022000054_engenharia_kanban.sql`, decisão 96)
+
+- `projetos.status`: `nao_iniciado` (padrão), `em_andamento`, `liberado`, `finalizado` ou `cancelado`; `pausado` (selo), `fabricacao_concluida_em` (obrigatória no finalizado) e `exemplo`. Projeto de exemplo pode não ter proposta nem cliente (`projetos_origem`). O gatilho `proteger_status_projeto` só deixa mudar status, pausa e término pelas funções.
+- `projeto_eventos` (projeto, tipo criado/status/pausa, de, para, justificativa, dados, usuário, data): histórico; lê quem tem `engenharia.ler`; só as funções gravam.
+- Funções: `mover_projeto(projeto, status, justificativa, data)`, `pausar_projeto`, `criar_projeto_exemplo`, `conjuntos_nao_liberados`, `propostas_aguardando_projeto` (sem ler Vendas), `cliente_nome(projetos)` (campo calculado) e gatilho `iniciar_projeto_automatico` (primeiro conjunto ou peça → Em andamento).
+- `projeto_pecas.largura` (chapas lançadas à mão); `adicionar_peca` passa a gravar COD_MAT, largura e comprimento.
+- Visão `painel_engenharia` (security_invoker): contagens por projeto para o Dashboard.
+- Permissão `engenharia.aprovar` = Engenheiro Mecânico Chefe (individual, dada ao Gabriel). Perfil Engenharia sem `vendas.ler`; perfil Comercial sem `engenharia.ler`.

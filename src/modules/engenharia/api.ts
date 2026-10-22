@@ -1,6 +1,6 @@
 import { lerTudo } from '@/shared/lib/consulta';
 import { supabase } from '@/shared/lib/supabase';
-import type { Conjunto, MaterialCatalogo, Peca, Projeto } from './regras';
+import type { ColunaProjeto, Conjunto, MaterialCatalogo, PainelProjeto, Peca, Projeto } from './regras';
 import type { RefsEng } from './biblioteca';
 
 function ok<T>(r: { data: T | null; error: unknown }): T {
@@ -8,28 +8,51 @@ function ok<T>(r: { data: T | null; error: unknown }): T {
   return r.data as T;
 }
 
+// O cliente vem pelo campo calculado cliente_nome: a Engenharia não lê o cadastro de Vendas (decisão 96).
 export async function listarProjetos(): Promise<Projeto[]> {
-  return ok(await supabase.from('projetos').select('*, empresas(nome_fantasia)').order('codigo', { ascending: false }));
+  return ok(await supabase.from('projetos').select('*, cliente_nome').order('codigo', { ascending: false }));
 }
 
 export async function obterProjeto(id: string): Promise<Projeto> {
-  return ok(await supabase.from('projetos').select('*, empresas(nome_fantasia)').eq('id', id).single());
+  return ok(await supabase.from('projetos').select('*, cliente_nome').eq('id', id).single());
 }
 
-export async function atualizarProjeto(id: string, dados: Partial<Projeto>): Promise<void> {
-  const { empresas: _e, ...resto } = dados;
-  ok(await supabase.from('projetos').update(resto).eq('id', id));
+export async function atualizarProjeto(id: string, dados: Partial<Pick<Projeto, 'responsavel_id' | 'prazo' | 'observacoes' | 'titulo'>>): Promise<void> {
+  ok(await supabase.from('projetos').update(dados).eq('id', id));
 }
 
-export interface PropostaAprovada { id: string; codigo: string; titulo: string; status: string; empresas: { nome_fantasia: string } | null }
+export interface PropostaAprovada { id: string; codigo: string; titulo: string; cliente: string | null }
 
 export async function propostasSemProjeto(): Promise<PropostaAprovada[]> {
-  const [props, projs] = await Promise.all([
-    supabase.from('propostas').select('id, codigo, titulo, status, empresas(nome_fantasia)').in('status', ['Aprovado', 'Finalizado', 'Emitido NF', 'Pago']).order('codigo', { ascending: false }),
-    supabase.from('projetos').select('proposta_id'),
-  ]);
-  const comProjeto = new Set((ok(projs) as { proposta_id: string }[]).map((p) => p.proposta_id));
-  return (ok(props) as unknown as PropostaAprovada[]).filter((p) => !comProjeto.has(p.id));
+  return ok(await supabase.rpc('propostas_aguardando_projeto')) ?? [];
+}
+
+export async function moverProjeto(id: string, status: ColunaProjeto, justificativa = '', data: string | null = null): Promise<void> {
+  ok(await supabase.rpc('mover_projeto', { p_projeto: id, p_status: status, p_justificativa: justificativa, p_data: data }));
+}
+
+export async function pausarProjeto(id: string, pausado: boolean, justificativa = ''): Promise<void> {
+  ok(await supabase.rpc('pausar_projeto', { p_projeto: id, p_pausado: pausado, p_justificativa: justificativa }));
+}
+
+export async function criarProjetoExemplo(titulo: string): Promise<Projeto> {
+  return ok(await supabase.rpc('criar_projeto_exemplo', { p_titulo: titulo })) as Projeto;
+}
+
+export async function listarPainel(): Promise<PainelProjeto[]> {
+  return ok(await supabase.from('painel_engenharia').select('*'));
+}
+
+export interface EventoProjeto { id: string; tipo: 'criado' | 'status' | 'pausa'; de: string | null; para: string | null; justificativa: string; criado_em: string; usuarios: { nome: string } | null }
+
+export async function listarEventos(projetoId: string): Promise<EventoProjeto[]> {
+  return ok(await supabase.from('projeto_eventos').select('id, tipo, de, para, justificativa, criado_em, usuarios(nome)').eq('projeto_id', projetoId).order('criado_em', { ascending: false })) as unknown as EventoProjeto[];
+}
+
+export interface UsuarioAtivo { id: string; nome: string }
+
+export async function listarUsuariosAtivos(): Promise<UsuarioAtivo[]> {
+  return ok(await supabase.from('usuarios').select('id, nome').eq('ativo', true).order('nome'));
 }
 
 export async function criarProjeto(propostaId: string): Promise<Projeto> {
@@ -94,18 +117,4 @@ export async function listarRefsEng(): Promise<RefsEng> {
     supabase.from('bib_chapa_precos').select('cod_mat, tipo_id, valor_kg'),
   ]);
   return { chapas: ok(ch) ?? [], perfis: ok(pf) ?? [], itens: ok(it) ?? [], tipos: ok(tp) ?? [], precosChapa: ok(pc) ?? [] };
-}
-
-// Custo de materiais (seção A) da revisão atual da proposta do projeto, por item × quantidade. Vazio sem permissão de custos.
-export async function custoMateriaisProposta(propostaId: string): Promise<{ total: number; revisao: number } | null> {
-  const { data: prop } = await supabase.from('propostas').select('revisao_atual').eq('id', propostaId).maybeSingle();
-  if (!prop) return null;
-  const { data: rev } = await supabase.from('proposta_revisoes').select('id, numero').eq('proposta_id', propostaId).eq('numero', prop.revisao_atual).maybeSingle();
-  if (!rev) return null;
-  const { data: itens } = await supabase.from('custo_itens').select('id, quantidade').eq('revisao_id', rev.id);
-  if (!itens?.length) return null;
-  const { data: linhas } = await supabase.from('custo_linhas').select('item_id, total').eq('secao', 'materiais').in('item_id', itens.map((i) => i.id));
-  const qtd = new Map(itens.map((i) => [i.id, Number(i.quantidade)]));
-  const total = (linhas ?? []).reduce((s, l) => s + Number(l.total) * (qtd.get(l.item_id) ?? 1), 0);
-  return { total: Math.round(total * 100) / 100, revisao: rev.numero };
 }

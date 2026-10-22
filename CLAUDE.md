@@ -12,7 +12,7 @@ Responda sempre em português do Brasil. O dono do projeto é o Gabriel, da Fabr
 
 ## Módulo atual
 
-Veja `ROADMAP.md`. Hoje o módulo autorizado é **Vendas**, e ele está na fase de planejamento (aguardando aprovação). Engenharia e os demais módulos são só contexto futuro.
+Veja `ROADMAP.md`, que é a fonte do estado de cada módulo. Vendas foi validado pelo Gabriel em 22/10/2026; a Engenharia está autorizada e em andamento (decisões 33 e 96); o RH foi feito antes (decisão 69). Os demais módulos só começam com autorização expressa.
 
 ## Fontes de verdade (nesta ordem)
 

@@ -1,28 +1,31 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, ClipboardList, Download, FileUp, ListTree, Network, Settings2, Table2, Trash2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, ArrowLeft, ClipboardList, Download, FileUp, History, ListTree, Pencil, Plus, Settings2, Table2, Trash2 } from 'lucide-react';
 import { ExcluirProjetoModal } from './ExcluirProjetoModal';
 import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
 import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
-import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, EsqueletoDetalhe, Selecao, Selo, Vazio } from '@/shared/ui';
-import { atualizarProjeto, custoMateriaisProposta, listarCatalogo, listarConjuntos, listarImportacoesCad, listarPecas, listarRefsEng, obterProjeto } from './api';
-import { LIMITE_DIFERENCA, estimar, resumoCompra, type RefsEng } from './biblioteca';
+import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, Entrada, EsqueletoDetalhe, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import {
+  adicionarPeca, atualizarPeca, atualizarProjeto, excluirItem, listarCatalogo, listarConjuntos, listarEventos, listarImportacoesCad, listarPecas,
+  listarRefsEng, listarUsuariosAtivos, obterProjeto, pausarProjeto,
+} from './api';
+import { LIMITE_DIFERENCA, blocoDaPeca, estimar, resumoCompra, type RefsEng } from './biblioteca';
 import { descricaoDoItem } from './CampoBiblioteca';
 import { ArvoreView } from './Arvore';
 import { ImportarSolidworks } from './ImportarSolidworks';
-import { MapaView } from './Mapa';
-import { COR_STATUS_PROJETO, NOME_STATUS_PROJETO } from './ProjetosPage';
-import { COD_OPS, NOME_PASTA, listaMateriais, progresso, rotuloMaterial, type CodOp, type Pasta, type Projeto } from './regras';
+import {
+  COD_OPS, COR_STATUS_PROJETO, NOME_BLOCO, NOME_STATUS_PROJETO, OPS_PADRAO, listaMateriais, progresso, rotuloMaterial,
+  type Bloco, type CodOp, type Conjunto, type LinhaBom, type MaterialCatalogo, type Peca, type Projeto,
+} from './regras';
 
+// Dentro do projeto, por enquanto, só Kick-off, Árvore e Lista de materiais (decisão 96).
 const abas = [
-  { id: 'arvore', rotulo: 'Árvore', icone: ListTree },
-  { id: 'mapa', rotulo: 'Mapa', icone: Network },
-  { id: 'bom', rotulo: 'Lista de materiais', icone: Table2 },
   { id: 'kickoff', rotulo: 'Kick-off', icone: ClipboardList },
-  { id: 'dados', rotulo: 'Dados', icone: Settings2 },
+  { id: 'arvore', rotulo: 'Árvore', icone: ListTree },
+  { id: 'bom', rotulo: 'Lista de materiais', icone: Table2 },
 ] as const;
 type Aba = (typeof abas)[number]['id'];
 
@@ -32,30 +35,36 @@ export function ProjetoPage() {
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [dados, setDados] = useState(false);
   const navegar = useNavigate();
   const { pode } = useAuth();
   const { data: projeto, error } = useQuery({ queryKey: ['eng', id, 'projeto'], queryFn: () => obterProjeto(id) });
   const { data: conjuntos = [] } = useQuery({ queryKey: ['eng', id, 'conjuntos'], queryFn: () => listarConjuntos(id) });
   const { data: pecas = [] } = useQuery({ queryKey: ['eng', id, 'pecas'], queryFn: () => listarPecas(id) });
+  const { data: usuarios = [] } = useQuery({ queryKey: ['usuarios_ativos'], queryFn: listarUsuariosAtivos, staleTime: 5 * 60_000 });
   const linhaAbas = useIndicadorAbas(`${aba}|${projeto ? 1 : 0}`);
 
   if (error) return <Aviso>{mensagemErro(error)}</Aviso>;
   if (!projeto) return <EsqueletoDetalhe />;
   const pct = progresso(conjuntos);
+  const responsavel = usuarios.find((u) => u.id === projeto.responsavel_id)?.nome;
 
   return (
     <div className="space-y-4">
-      <Link to="/engenharia" className="inline-flex items-center gap-1 text-sm text-suave hover:text-roxo-600"><ArrowLeft size={15} /> Projetos</Link>
+      <Link to="/engenharia/projetos" className="inline-flex items-center gap-1 text-sm text-suave hover:text-roxo-600"><ArrowLeft size={15} /> Projetos</Link>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-mono text-2xl font-bold text-texto">{projeto.codigo}</h1>
             <Selo cor={COR_STATUS_PROJETO[projeto.status]}>{NOME_STATUS_PROJETO[projeto.status]}</Selo>
+            {projeto.pausado && <Selo cor="amarelo">Pausado</Selo>}
+            {projeto.exemplo && <Selo cor="amarelo">Exemplo</Selo>}
           </div>
           <div className="font-semibold">{projeto.titulo}</div>
-          <div className="text-sm text-suave">{projeto.empresas?.nome_fantasia}</div>
+          <div className="text-sm text-suave">{projeto.cliente_nome}{responsavel && ` · Resp.: ${responsavel}`}{projeto.prazo && ` · prazo ${projeto.prazo.split('-').reverse().join('/')}`}</div>
         </div>
         <div className="flex flex-wrap items-end gap-4 text-sm">
+          <Botao variante="secundario" onClick={() => setDados(true)}><Settings2 size={15} /> Dados e histórico</Botao>
           {pode('engenharia', 'editar') && (
             <Botao variante="secundario" onClick={() => setImportando(true)}><FileUp size={15} /> {projeto.importado_cad_em ? 'Atualizar do SolidWorks' : 'Importar do SolidWorks'}</Botao>
           )}
@@ -83,15 +92,15 @@ export function ProjetoPage() {
         <span className="abas-linha" />
       </div>
       <div key={aba} className="entrar">
-
-      {aba === 'arvore' && <ArvoreView projetoCodigo={projeto.codigo} conjuntos={conjuntos} pecas={pecas} selecionado={selecionado} onSelecionar={setSelecionado} />}
-      {aba === 'mapa' && <MapaView projetoCodigo={projeto.codigo} conjuntos={conjuntos} pecas={pecas} onAbrir={(cid) => { setSelecionado(cid); setAba('arvore'); }} />}
-      {aba === 'bom' && <ListaMateriais projeto={projeto} />}
-      {aba === 'kickoff' && <KickoffAba propostaId={projeto.proposta_id} statusProposta="Aprovado" somenteLeitura />}
-      {aba === 'dados' && <DadosProjeto projeto={projeto} />}
+        {aba === 'kickoff' && (projeto.proposta_id
+          ? <KickoffAba propostaId={projeto.proposta_id} statusProposta="Aprovado" somenteLeitura />
+          : <Vazio>O Kick-off vem da proposta aprovada. Este projeto de exemplo não tem proposta, então não tem Kick-off.</Vazio>)}
+        {aba === 'arvore' && <ArvoreView projetoCodigo={projeto.codigo} conjuntos={conjuntos} pecas={pecas} selecionado={selecionado} onSelecionar={setSelecionado} />}
+        {aba === 'bom' && <ListaMateriais projeto={projeto} conjuntos={conjuntos} pecas={pecas} />}
       </div>
       {importando && <ImportarSolidworks projeto={projeto} conjuntos={conjuntos} pecas={pecas} onFechar={() => setImportando(false)} />}
-      {excluindo && <ExcluirProjetoModal projeto={projeto} onFechar={() => setExcluindo(false)} onExcluido={() => navegar('/engenharia')} />}
+      {excluindo && <ExcluirProjetoModal projeto={projeto} onFechar={() => setExcluindo(false)} onExcluido={() => navegar('/engenharia/projetos')} />}
+      {dados && <DadosModal projeto={projeto} onFechar={() => setDados(false)} />}
     </div>
   );
 }
@@ -101,185 +110,357 @@ function Indicador({ rotulo, valor }: { rotulo: string; valor: string }) {
 }
 
 const REFS_VAZIAS: RefsEng = { chapas: [], perfis: [], itens: [], tipos: [], precosChapa: [] };
-const num = (n: number | null) => (n == null ? '' : String(n).replace('.', ','));
+const num = (n: number | null | undefined) => (n == null ? '' : String(n).replace('.', ','));
+const mm = (n: number | null | undefined) => (n == null ? '—' : Number(n).toLocaleString('pt-BR'));
 const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
 function baixarCsv(nome: string, linhas: (string | number | null)[][]) {
   const csv = linhas.map((r) => r.map((c) => esc(String(c ?? ''))).join(';')).join('\r\n');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
   a.download = nome;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }
 
-function ListaMateriais({ projeto }: { projeto: Projeto }) {
+const BLOCOS: Bloco[] = ['chapa', 'perfil', 'comercial'];
+type LinhaEst = LinhaBom & { bloco: Bloco; est: ReturnType<typeof estimar> };
+
+// Lista de materiais em Chapas, Perfis e Itens comerciais, com cadastro manual (decisão 96).
+function ListaMateriais({ projeto, conjuntos, pecas }: { projeto: Projeto; conjuntos: Conjunto[]; pecas: Peca[] }) {
   const { pode } = useAuth();
-  const { data: conjuntos = [] } = useQuery({ queryKey: ['eng', projeto.id, 'conjuntos'], queryFn: () => listarConjuntos(projeto.id) });
-  const { data: pecas = [] } = useQuery({ queryKey: ['eng', projeto.id, 'pecas'], queryFn: () => listarPecas(projeto.id) });
+  const editavel = pode('engenharia', 'editar');
   const { data: refs = REFS_VAZIAS } = useQuery({ queryKey: ['bib', 'eng_refs'], queryFn: listarRefsEng, staleTime: 5 * 60_000 });
   const { data: catalogo = [] } = useQuery({ queryKey: ['catalogo_materiais'], queryFn: listarCatalogo, staleTime: 10 * 60_000 });
-  const { data: proposta } = useQuery({ queryKey: ['eng', projeto.id, 'custo_proposta'], queryFn: () => custoMateriaisProposta(projeto.proposta_id), enabled: pode('custos', 'ler') });
   const [visao, setVisao] = useState<'pecas' | 'compra'>('pecas');
-  const [pasta, setPasta] = useState<Pasta | ''>('');
-  const [op, setOp] = useState<CodOp | ''>('');
   const [verRemovidos, setVerRemovidos] = useState(false);
+  const [editando, setEditando] = useState<{ bloco: Bloco; peca?: Peca } | null>(null);
   const temRemovidos = pecas.some((p) => p.removido_cad_em) || conjuntos.some((c) => c.removido_cad_em);
-  const linhas = useMemo(() => listaMateriais(pecas, conjuntos, verRemovidos).filter((l) => (!pasta || l.pasta === pasta) && (!op || l.cod_op.includes(op)))
-    .map((l) => ({ ...l, est: estimar(l, refs) })), [pecas, conjuntos, pasta, op, verRemovidos, refs]);
+  const linhas: LinhaEst[] = useMemo(() => listaMateriais(pecas, conjuntos, verRemovidos)
+    .map((l) => ({ ...l, bloco: blocoDaPeca(l), est: estimar(l, refs) })), [pecas, conjuntos, verRemovidos, refs]);
   const ativas = linhas.filter((l) => !l.removido);
   const pesoTotal = ativas.reduce((s, l) => s + (l.pesoTotal ?? 0), 0);
-  const qtdTotal = ativas.reduce((s, l) => s + l.qtdTotal, 0);
-  const custoTotal = ativas.reduce((s, l) => s + (l.est.custoUnit ?? 0) * l.qtdTotal, 0);
   const nomeMaterial = (cod: string | null) => catalogo.find((c) => c.cod_mat === cod)?.nome ?? cod ?? '';
-  // O resumo usa todas as peças ativas do projeto (sem os filtros de pasta e operação).
   const resumo = useMemo(() => resumoCompra(listaMateriais(pecas, conjuntos, false), refs, nomeMaterial), [pecas, conjuntos, refs, catalogo]); // eslint-disable-line react-hooks/exhaustive-deps
   const custoResumo = resumo.reduce((s, l) => s + (l.custo ?? 0), 0);
-  const semCusto = useMemo(() => listaMateriais(pecas, conjuntos, false).filter((l) => estimar(l, refs).custoUnit == null).length, [pecas, conjuntos, refs]);
+  const semCusto = ativas.filter((l) => l.est.custoUnit == null).length;
 
   function exportarCsv() {
     if (visao === 'compra') {
       return baixarCsv(`Resumo para compra ${projeto.codigo}.csv`, [['Grupo', 'Material / item', 'Quantidade', 'Unidade', 'Comprar', 'Custo estimado (R$)'],
         ...resumo.map((l) => [l.grupo, l.descricao, num(l.quantidade), l.unidade, l.compra, num(l.custo)])]);
     }
-    baixarCsv(`Lista de materiais ${projeto.codigo}.csv`, [['Código', 'Descrição', 'Conjunto', 'COD_OP', 'COD_MAT', 'Material', 'Item da biblioteca', 'Espessura', 'Qtd no conjunto', 'Qtd total', 'Peso un. (kg)', 'Peso total (kg)', 'Custo un. (R$)', 'Custo total (R$)'],
-      ...linhas.map((l) => [l.codigo, l.descricao, l.conjunto, l.cod_op.join('/'), l.cod_mat ?? '', l.material, l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) ?? '' : '', num(l.espessura), num(l.quantidade), num(l.qtdTotal), num(l.peso_unit), num(l.pesoTotal), num(l.est.custoUnit), num(l.est.custoUnit == null ? null : Math.round(l.est.custoUnit * l.qtdTotal * 100) / 100)])]);
+    baixarCsv(`Lista de materiais ${projeto.codigo}.csv`, [['Bloco', 'Código', 'Descrição', 'Conjunto', 'COD_OP', 'COD_MAT', 'Material', 'Item da biblioteca', 'Espessura (mm)', 'Largura (mm)', 'Comprimento (mm)', 'Qtd no conjunto', 'Qtd total', 'Peso un. (kg)', 'Peso total (kg)', 'Custo un. (R$)', 'Custo total (R$)'],
+      ...linhas.map((l) => [NOME_BLOCO[l.bloco], l.codigo, l.descricao, l.conjunto, l.cod_op.join('/'), l.cod_mat ?? '', l.material, l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) ?? '' : '',
+        num(l.espessura), num(l.largura), num(l.comprimento), num(l.quantidade), num(l.qtdTotal), num(l.peso_unit), num(l.pesoTotal), num(l.est.custoUnit),
+        num(l.est.custoUnit == null ? null : Math.round(l.est.custoUnit * l.qtdTotal * 100) / 100)])]);
   }
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Cartao className="p-4"><div className="text-xs text-suave">Peso total</div><div className="mt-1 text-xl font-semibold tabular-nums">{pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</div></Cartao>
-        <Cartao className="p-4">
-          <div className="text-xs text-suave">Custo de materiais estimado (biblioteca)</div>
-          <div className="mt-1 text-xl font-semibold tabular-nums text-petroleo-600 dark:text-teal-300">{moeda(custoResumo)}</div>
-          {semCusto > 0 && <div className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">{semCusto} item(ns) sem preço na biblioteca ficaram de fora</div>}
-        </Cartao>
-        <Cartao className="p-4">
-          <div className="text-xs text-suave">Materiais na proposta{proposta ? ` (R${proposta.revisao})` : ''}</div>
-          {proposta ? (
-            <>
-              <div className="mt-1 text-xl font-semibold tabular-nums">{moeda(proposta.total)}</div>
-              <div className={`mt-0.5 text-xs ${custoResumo > proposta.total ? 'text-amber-600 dark:text-amber-400' : 'text-suave'}`}>
-                {custoResumo > proposta.total ? `Projeto ${moeda(custoResumo - proposta.total)} acima do orçado` : `Dentro do orçado (folga de ${moeda(proposta.total - custoResumo)})`}
-              </div>
-            </>
-          ) : <div className="mt-1 text-sm text-suave">{pode('custos', 'ler') ? 'A proposta não tem custos de materiais lançados.' : 'Sem acesso aos custos da proposta.'}</div>}
-        </Cartao>
+        {BLOCOS.map((b) => {
+          const doBloco = ativas.filter((l) => l.bloco === b);
+          return (
+            <Cartao key={b} className="p-4">
+              <div className="text-xs text-suave">{NOME_BLOCO[b]}</div>
+              <div className="mt-1 text-xl font-semibold tabular-nums">{doBloco.length} <span className="text-sm font-normal text-suave">itens</span></div>
+              <div className="text-xs text-suave">{b === 'comercial' ? `${doBloco.reduce((s, l) => s + l.qtdTotal, 0).toLocaleString('pt-BR')} unidades` : `${doBloco.reduce((s, l) => s + (l.pesoTotal ?? 0), 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`}</div>
+            </Cartao>
+          );
+        })}
       </div>
 
-      <Cartao className="overflow-hidden p-0">
-        <div className="flex flex-wrap items-center gap-2 border-b border-borda p-3">
-          <div className="inline-flex rounded-lg bg-pagina p-0.5 ring-1 ring-borda">
-            {([['pecas', 'Peças'], ['compra', 'Resumo para compra']] as const).map(([v, r]) => (
-              <button key={v} onClick={() => setVisao(v)} className={`rounded-md px-3 py-1 text-sm transition-colors duration-150 ${visao === v ? 'bg-superficie font-semibold text-roxo-600 shadow-sm dark:text-roxo-100' : 'text-suave hover:text-texto'}`}>{r}</button>
-            ))}
-          </div>
-          {visao === 'pecas' && (
-            <>
-              <Selecao value={pasta} onChange={(e) => setPasta(e.target.value as Pasta | '')} className="w-48">
-                <option value="">Todas as pastas</option>
-                {(Object.keys(NOME_PASTA) as Pasta[]).map((p) => <option key={p} value={p}>{NOME_PASTA[p]}</option>)}
-              </Selecao>
-              <Selecao value={op} onChange={(e) => setOp(e.target.value as CodOp | '')} className="w-40">
-                <option value="">Todas as operações</option>
-                {COD_OPS.map((o) => <option key={o} value={o}>{o}</option>)}
-              </Selecao>
-              {temRemovidos && <Caixa marcado={verRemovidos} onChange={setVerRemovidos}>Mostrar removidos do CAD</Caixa>}
-            </>
-          )}
-          <span className="ml-auto text-sm text-suave">{visao === 'pecas' ? `${linhas.length} itens · ${qtdTotal.toLocaleString('pt-BR')} unidades · ${moeda(custoTotal)}` : `${resumo.length} linhas de compra`}</span>
-          <button onClick={exportarCsv} disabled={visao === 'pecas' ? !linhas.length : !resumo.length} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-roxo-600 hover:bg-roxo-50 disabled:opacity-40 dark:text-roxo-100 dark:hover:bg-marinho-700"><Download size={15} /> Excel (CSV)</button>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-lg bg-pagina p-0.5 ring-1 ring-borda">
+          {([['pecas', 'Lista'], ['compra', 'Resumo para compra']] as const).map(([v, r]) => (
+            <button key={v} onClick={() => setVisao(v)} className={`rounded-md px-3 py-1 text-sm transition-colors duration-150 ${visao === v ? 'bg-superficie font-semibold text-roxo-600 shadow-sm dark:text-roxo-100' : 'text-suave hover:text-texto'}`}>{r}</button>
+          ))}
         </div>
-        {visao === 'compra' ? (
-          resumo.length === 0 ? <Vazio>Nenhuma peça lançada na árvore.</Vazio> : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-pagina text-left text-xs uppercase text-suave">
-                  <tr><th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Material / item</th><th className="px-3 py-2 text-right">Quantidade</th><th className="px-3 py-2">Comprar</th><th className="px-3 py-2 text-right">Custo estimado</th></tr>
-                </thead>
-                <tbody>
-                  {resumo.map((l) => (
-                    <tr key={l.chave} className="border-t border-borda">
-                      <td className="px-3 py-1.5 text-suave">{l.grupo}</td>
-                      <td className="px-3 py-1.5">{l.descricao}</td>
-                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {l.unidade}</td>
-                      <td className={`px-3 py-1.5 ${l.grupo === 'Sem item' || l.compra.startsWith('Cadastre') || l.compra.startsWith('Informe') ? 'text-amber-600 dark:text-amber-400' : ''}`}>{l.compra}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{l.custo == null ? '—' : moeda(l.custo)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot><tr className="border-t border-borda font-semibold"><td className="px-3 py-2" colSpan={4}>Total estimado</td><td className="px-3 py-2 text-right tabular-nums">{moeda(custoResumo)}</td></tr></tfoot>
-              </table>
-            </div>
-          )
-        ) : linhas.length === 0 ? <Vazio>Nenhuma peça lançada na árvore.</Vazio> : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-pagina text-left text-xs uppercase text-suave">
-                <tr>
-                  <th className="px-3 py-2">Código</th><th className="px-3 py-2">Descrição</th><th className="px-3 py-2">COD_OP</th><th className="px-3 py-2">Material</th><th className="px-3 py-2">Biblioteca</th>
-                  <th className="px-3 py-2 text-right">Esp.</th><th className="px-3 py-2 text-right">Qtd/conj.</th><th className="px-3 py-2 text-right">Qtd total</th><th className="px-3 py-2 text-right">Peso total</th><th className="px-3 py-2 text-right">Custo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linhas.map((l) => {
-                  const avisa = l.est.diferenca != null && l.est.diferenca > LIMITE_DIFERENCA;
-                  return (
-                    <tr key={l.id} className={`border-t border-borda ${l.removido ? 'text-slate-400 line-through' : ''}`}>
-                      <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
-                      <td className="px-3 py-1.5">{l.descricao}<div className="text-[11px] text-suave no-underline">{l.removido ? 'Removido do CAD' : NOME_PASTA[l.pasta]}</div></td>
-                      <td className="px-3 py-1.5"><div className="flex flex-wrap gap-0.5">{l.cod_op.map((o) => <span key={o} className={`rounded px-1 font-mono text-[10px] font-semibold text-white ${o === 'CM' ? 'bg-amber-500' : 'bg-roxo-500'}`}>{o}</span>)}</div></td>
-                      <td className="px-3 py-1.5">{rotuloMaterial(l) || '—'}</td>
-                      <td className="px-3 py-1.5 text-xs">{l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) ?? '—' : <span className="text-suave">—</span>}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{l.espessura == null ? '—' : Number(l.espessura).toLocaleString('pt-BR')}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{Number(l.quantidade).toLocaleString('pt-BR')}</td>
-                      <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{l.qtdTotal.toLocaleString('pt-BR')}</td>
-                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
-                        {avisa && <span title={`Peso do CAD ${Number(l.peso_unit).toLocaleString('pt-BR')} kg × biblioteca ${l.est.pesoBib?.toLocaleString('pt-BR')} kg por unidade (${Math.round(l.est.diferenca! * 100)}% de diferença): confira material ou medidas`}><AlertTriangle size={13} className="mr-1 inline text-amber-500" /></span>}
-                        {l.pesoTotal == null ? (l.est.pesoBib ? `${(l.est.pesoBib * l.qtdTotal).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} kg*` : '—') : `${l.pesoTotal.toLocaleString('pt-BR')} kg`}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{l.est.custoUnit == null ? '—' : moeda(l.est.custoUnit * l.qtdTotal)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {linhas.some((l) => l.pesoTotal == null && l.est.pesoBib) && <div className="border-t border-borda px-3 py-2 text-xs text-suave">* Peso calculado pela biblioteca (kg/m × comprimento): a peça não tem peso do CAD.</div>}
-          </div>
-        )}
-      </Cartao>
+        {visao === 'pecas' && temRemovidos && <Caixa marcado={verRemovidos} onChange={setVerRemovidos}>Mostrar removidos do CAD</Caixa>}
+        <span className="ml-auto text-sm text-suave">
+          Peso total {pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg · custo estimado (biblioteca) {moeda(custoResumo)}
+          {semCusto > 0 && <span className="text-amber-600 dark:text-amber-400"> · {semCusto} sem preço</span>}
+        </span>
+        <button onClick={exportarCsv} disabled={visao === 'pecas' ? !linhas.length : !resumo.length} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-roxo-600 hover:bg-roxo-50 disabled:opacity-40 dark:text-roxo-100 dark:hover:bg-marinho-700"><Download size={15} /> Excel (CSV)</button>
+      </div>
+
+      {visao === 'compra' ? <ResumoCompra resumo={resumo} total={custoResumo} /> : BLOCOS.map((b) => (
+        <BlocoTabela key={b} bloco={b} linhas={linhas.filter((l) => l.bloco === b)} refs={refs} editavel={editavel}
+          onAdicionar={() => setEditando({ bloco: b })} onEditar={(p) => setEditando({ bloco: b, peca: p })} />
+      ))}
+      {editando && <PecaModal projeto={projeto} bloco={editando.bloco} peca={editando.peca} conjuntos={conjuntos} catalogo={catalogo} onFechar={() => setEditando(null)} />}
     </div>
   );
 }
 
-function DadosProjeto({ projeto }: { projeto: Projeto }) {
+function BlocoTabela({ bloco, linhas, refs, editavel, onAdicionar, onEditar }: { bloco: Bloco; linhas: LinhaEst[]; refs: RefsEng; editavel: boolean; onAdicionar: () => void; onEditar: (p: Peca) => void }) {
+  const th = 'px-3 py-2';
+  return (
+    <Cartao className="overflow-hidden p-0">
+      <div className="flex items-center justify-between gap-2 border-b border-borda px-4 py-3">
+        <div className="flex items-center gap-2 font-semibold">{NOME_BLOCO[bloco]} <Selo>{linhas.length}</Selo></div>
+        {editavel && <Botao tamanho="sm" variante="secundario" onClick={onAdicionar}><Plus size={14} /> Adicionar</Botao>}
+      </div>
+      {linhas.length === 0 ? <div className="px-4 py-6 text-center text-sm text-suave">Nenhum item. {editavel && 'Use "Adicionar" para lançar à mão ou importe do SolidWorks.'}</div> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-pagina text-left text-xs uppercase text-suave">
+              <tr>
+                <th className={th}>Código</th><th className={th}>Descrição</th>
+                {bloco !== 'comercial' && <><th className={th}>COD_OP</th><th className={th}>Material</th></>}
+                {bloco === 'chapa' && <><th className={`${th} text-right`}>Esp. (mm)</th><th className={`${th} text-right`}>Larg. (mm)</th></>}
+                {bloco !== 'comercial' && <th className={`${th} text-right`}>Compr. (mm)</th>}
+                {bloco === 'comercial' && <th className={th}>Item da biblioteca</th>}
+                <th className={`${th} text-right`}>Qtd/conj.</th><th className={`${th} text-right`}>Qtd total</th>
+                {bloco !== 'comercial' && <th className={`${th} text-right`}>Peso total</th>}
+                <th className={`${th} text-right`}>Custo</th>
+                {editavel && <th className={th} />}
+              </tr>
+            </thead>
+            <tbody>
+              {linhas.map((l) => {
+                const avisa = l.est.diferenca != null && l.est.diferenca > LIMITE_DIFERENCA;
+                return (
+                  <tr key={l.id} className={`border-t border-borda ${l.removido ? 'text-slate-400 line-through' : ''}`}>
+                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{l.codigo}</td>
+                    <td className="px-3 py-1.5">{l.descricao || <span className="text-suave">—</span>}<div className="text-[11px] text-suave no-underline">{l.removido ? 'Removido do CAD' : `Conjunto ${l.conjunto}`}</div></td>
+                    {bloco !== 'comercial' && (
+                      <>
+                        <td className="px-3 py-1.5"><div className="flex flex-wrap gap-0.5">{l.cod_op.map((o) => <span key={o} className="rounded bg-roxo-500 px-1 font-mono text-[10px] font-semibold text-white">{o}</span>)}</div></td>
+                        <td className="px-3 py-1.5">{rotuloMaterial(l) || <span className="text-amber-600 dark:text-amber-400">Sem material</span>}</td>
+                      </>
+                    )}
+                    {bloco === 'chapa' && <><td className="px-3 py-1.5 text-right tabular-nums">{mm(l.espessura)}</td><td className="px-3 py-1.5 text-right tabular-nums">{mm(l.largura)}</td></>}
+                    {bloco !== 'comercial' && <td className="px-3 py-1.5 text-right tabular-nums">{mm(l.comprimento)}</td>}
+                    {bloco === 'comercial' && <td className="px-3 py-1.5 text-xs">{l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) ?? '—' : <span className="text-suave">—</span>}</td>}
+                    <td className="px-3 py-1.5 text-right tabular-nums">{Number(l.quantidade).toLocaleString('pt-BR')}</td>
+                    <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{l.qtdTotal.toLocaleString('pt-BR')}</td>
+                    {bloco !== 'comercial' && (
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
+                        {avisa && <span title={`Peso do CAD ${Number(l.peso_unit).toLocaleString('pt-BR')} kg × biblioteca ${l.est.pesoBib?.toLocaleString('pt-BR')} kg por unidade (${Math.round(l.est.diferenca! * 100)}% de diferença): confira material ou medidas`}><AlertTriangle size={13} className="mr-1 inline text-amber-500" /></span>}
+                        {l.pesoTotal == null ? (l.est.pesoBib ? `${(l.est.pesoBib * l.qtdTotal).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} kg*` : '—') : `${l.pesoTotal.toLocaleString('pt-BR')} kg`}
+                      </td>
+                    )}
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{l.est.custoUnit == null ? '—' : moeda(l.est.custoUnit * l.qtdTotal)}</td>
+                    {editavel && (
+                      <td className="px-2 py-1.5 text-right">
+                        {!l.removido && <button title="Editar" onClick={() => onEditar(l)} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-roxo-600 dark:hover:bg-marinho-700"><Pencil size={14} /></button>}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {linhas.some((l) => l.pesoTotal == null && l.est.pesoBib) && <div className="border-t border-borda px-3 py-2 text-xs text-suave">* Peso calculado pela biblioteca (kg/m × comprimento): a peça não tem peso informado.</div>}
+        </div>
+      )}
+    </Cartao>
+  );
+}
+
+function ResumoCompra({ resumo, total }: { resumo: ReturnType<typeof resumoCompra>; total: number }) {
+  return (
+    <Cartao className="overflow-hidden p-0">
+      {resumo.length === 0 ? <Vazio>Nenhum item na lista de materiais.</Vazio> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-pagina text-left text-xs uppercase text-suave">
+              <tr><th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Material / item</th><th className="px-3 py-2 text-right">Quantidade</th><th className="px-3 py-2">Comprar</th><th className="px-3 py-2 text-right">Custo estimado</th></tr>
+            </thead>
+            <tbody>
+              {resumo.map((l) => (
+                <tr key={l.chave} className="border-t border-borda">
+                  <td className="px-3 py-1.5 text-suave">{l.grupo}</td>
+                  <td className="px-3 py-1.5">{l.descricao}</td>
+                  <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {l.unidade}</td>
+                  <td className={`px-3 py-1.5 ${l.grupo === 'Sem item' || l.compra.startsWith('Cadastre') || l.compra.startsWith('Informe') ? 'text-amber-600 dark:text-amber-400' : ''}`}>{l.compra}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{l.custo == null ? '—' : moeda(l.custo)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr className="border-t border-borda font-semibold"><td className="px-3 py-2" colSpan={4}>Total estimado</td><td className="px-3 py-2 text-right tabular-nums">{moeda(total)}</td></tr></tfoot>
+          </table>
+        </div>
+      )}
+    </Cartao>
+  );
+}
+
+// Número digitado com vírgula ou ponto; vazio = sem valor.
+const lerNumero = (s: string): number | null => {
+  const t = (s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s).trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
+};
+const textoNumero = (n: number | null | undefined) => (n == null ? '' : String(n).replace('.', ','));
+
+function PecaModal({ projeto, bloco, peca, conjuntos, catalogo, onFechar }: { projeto: Projeto; bloco: Bloco; peca?: Peca; conjuntos: Conjunto[]; catalogo: MaterialCatalogo[]; onFechar: () => void }) {
+  const qc = useQueryClient();
+  const ativos = conjuntos.filter((c) => !c.removido_cad_em).sort((a, b) => a.codigo.localeCompare(b.codigo));
+  const geral = ativos.find((c) => c.tipo === 'geral');
+  const [conjunto, setConjunto] = useState(peca?.conjunto_id ?? geral?.id ?? '');
+  const [descricao, setDescricao] = useState(peca?.descricao ?? '');
+  const [quantidade, setQuantidade] = useState(textoNumero(peca?.quantidade ?? 1));
+  const [codMat, setCodMat] = useState(peca?.cod_mat ?? '');
+  const [espessura, setEspessura] = useState(textoNumero(peca?.espessura));
+  const [largura, setLargura] = useState(textoNumero(peca?.largura));
+  const [comprimento, setComprimento] = useState(textoNumero(peca?.comprimento));
+  const [peso, setPeso] = useState(textoNumero(peca?.peso_unit));
+  const [ops, setOps] = useState<CodOp[]>(peca?.cod_op ?? OPS_PADRAO[bloco]);
+  const [erro, setErro] = useState('');
+  const [confirmaExcluir, setConfirmaExcluir] = useState(false);
+  const atualizar = () => { qc.invalidateQueries({ queryKey: ['eng', projeto.id] }); qc.invalidateQueries({ queryKey: ['painel_engenharia'] }); qc.invalidateQueries({ queryKey: ['projetos'] }); };
+
+  const salvar = useMutation({
+    mutationFn: async () => {
+      const q = lerNumero(quantidade);
+      if (!descricao.trim()) throw new Error('Informe a descrição.');
+      if (q == null || Number.isNaN(q) || q <= 0) throw new Error('A quantidade precisa ser maior que zero.');
+      const medidas = { espessura: lerNumero(espessura), largura: lerNumero(largura), comprimento: lerNumero(comprimento), peso_unit: lerNumero(peso) };
+      if (Object.values(medidas).some((v) => v != null && (Number.isNaN(v) || v <= 0))) throw new Error('Medidas e peso precisam ser números maiores que zero.');
+      if (bloco !== 'comercial' && !ops.length) throw new Error('Escolha ao menos uma operação (COD_OP).');
+      const mat = catalogo.find((c) => c.cod_mat === codMat);
+      const dados = {
+        descricao: descricao.trim(), quantidade: q,
+        cod_op: bloco === 'comercial' ? ['CM'] : ops,
+        cod_mat: bloco === 'comercial' ? null : mat?.cod_mat ?? null,
+        material: bloco === 'comercial' ? '' : mat?.nome ?? '',
+        espessura: bloco === 'chapa' ? medidas.espessura : null,
+        largura: bloco === 'chapa' ? medidas.largura : null,
+        comprimento: bloco === 'comercial' ? null : medidas.comprimento,
+        peso_unit: bloco === 'comercial' ? null : medidas.peso_unit,
+      };
+      if (peca) return atualizarPeca(peca.id, dados as Partial<Peca>);
+      if (!conjunto) throw new Error('Escolha o conjunto.');
+      await adicionarPeca(conjunto, dados as unknown as Partial<Peca>);
+    },
+    onSuccess: () => { atualizar(); onFechar(); },
+    onError: (e) => setErro(mensagemErro(e)),
+  });
+  const excluir = useMutation({ mutationFn: () => excluirItem('peca', peca!.id), onSuccess: () => { atualizar(); onFechar(); }, onError: (e) => setErro(mensagemErro(e)) });
+  const alternarOp = (o: CodOp) => setOps((x) => (x.includes(o) ? x.filter((y) => y !== o) : [...x, o]));
+
+  return (
+    <Modal aberto titulo={`${peca ? 'Editar' : 'Adicionar'} · ${NOME_BLOCO[bloco]}`} onFechar={onFechar} largura="max-w-xl">
+      <div className="space-y-3 text-sm">
+        {peca ? <div className="font-mono text-xs text-suave">{peca.codigo}</div> : (
+          <Campo rotulo="Conjunto">
+            <Selecao value={conjunto} onChange={(e) => setConjunto(e.target.value)}>
+              {ativos.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nome}</option>)}
+            </Selecao>
+          </Campo>
+        )}
+        <Campo rotulo={bloco === 'perfil' ? 'Descrição do perfil (ex.: Cantoneira 2" x 1/4")' : 'Descrição'}><Entrada value={descricao} onChange={(e) => setDescricao(e.target.value)} autoFocus /></Campo>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo rotulo="Quantidade no conjunto"><Entrada inputMode="decimal" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} /></Campo>
+          {bloco !== 'comercial' && (
+            <Campo rotulo="Material (COD_MAT)">
+              <Selecao value={codMat} onChange={(e) => setCodMat(e.target.value)}>
+                <option value="">Sem material</option>
+                {catalogo.map((c) => <option key={c.cod_mat} value={c.cod_mat}>{c.cod_mat} — {c.nome}</option>)}
+              </Selecao>
+            </Campo>
+          )}
+          {bloco === 'chapa' && (
+            <>
+              <Campo rotulo="Espessura (mm)"><Entrada inputMode="decimal" value={espessura} onChange={(e) => setEspessura(e.target.value)} /></Campo>
+              <Campo rotulo="Largura (mm)"><Entrada inputMode="decimal" value={largura} onChange={(e) => setLargura(e.target.value)} /></Campo>
+            </>
+          )}
+          {bloco !== 'comercial' && (
+            <>
+              <Campo rotulo="Comprimento (mm)"><Entrada inputMode="decimal" value={comprimento} onChange={(e) => setComprimento(e.target.value)} /></Campo>
+              <Campo rotulo="Peso unitário (kg, opcional)"><Entrada inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} /></Campo>
+            </>
+          )}
+        </div>
+        {bloco !== 'comercial' && (
+          <Campo rotulo="Operações (COD_OP)">
+            <div className="flex flex-wrap gap-1.5">
+              {COD_OPS.filter((o) => o !== 'CM').map((o) => (
+                <button key={o} type="button" onClick={() => alternarOp(o)}
+                  className={`rounded-md px-2 py-1 font-mono text-xs font-semibold ring-1 transition-colors duration-150 ${ops.includes(o) ? 'bg-roxo-500 text-white ring-roxo-500' : 'text-suave ring-borda hover:text-texto'}`}>{o}</button>
+              ))}
+            </div>
+          </Campo>
+        )}
+        {erro && <Aviso>{erro}</Aviso>}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <div>
+            {peca && (confirmaExcluir
+              ? <span className="inline-flex items-center gap-2"><span className="text-suave">Excluir este item?</span><Botao variante="secundario" tamanho="sm" onClick={() => excluir.mutate()} disabled={excluir.isPending}>Sim, excluir</Botao></span>
+              : <Botao variante="secundario" tamanho="sm" onClick={() => setConfirmaExcluir(true)}><Trash2 size={14} /> Excluir</Botao>)}
+          </div>
+          <div className="flex gap-2">
+            <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
+            <Botao onClick={() => salvar.mutate()} disabled={salvar.isPending}>Salvar</Botao>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// Responsável, prazo, observações, pausa (Chefe), dados do SolidWorks e histórico do projeto.
+function DadosModal({ projeto, onFechar }: { projeto: Projeto; onFechar: () => void }) {
   const { pode } = useAuth();
   const qc = useQueryClient();
   const editavel = pode('engenharia', 'editar');
+  const chefe = pode('engenharia', 'aprovar');
+  const { data: usuarios = [] } = useQuery({ queryKey: ['usuarios_ativos'], queryFn: listarUsuariosAtivos, staleTime: 5 * 60_000 });
+  const { data: eventos = [] } = useQuery({ queryKey: ['eng', projeto.id, 'eventos'], queryFn: () => listarEventos(projeto.id) });
   const [erro, setErro] = useState('');
-  const salvar = async (d: Partial<Projeto>) => {
+  const atualizar = () => { qc.invalidateQueries({ queryKey: ['eng', projeto.id] }); qc.invalidateQueries({ queryKey: ['projetos'] }); qc.invalidateQueries({ queryKey: ['painel_engenharia'] }); };
+  const salvar = async (d: Parameters<typeof atualizarProjeto>[1]) => {
     setErro('');
-    try { await atualizarProjeto(projeto.id, d); qc.invalidateQueries({ queryKey: ['eng', projeto.id] }); qc.invalidateQueries({ queryKey: ['projetos'] }); } catch (e) { setErro(mensagemErro(e)); }
+    try { await atualizarProjeto(projeto.id, d); atualizar(); } catch (e) { setErro(mensagemErro(e)); }
   };
+  const pausa = useMutation({ mutationFn: () => pausarProjeto(projeto.id, !projeto.pausado), onSuccess: atualizar, onError: (e) => setErro(mensagemErro(e)) });
+  const nome = (s: string | null) => (s ? NOME_STATUS_PROJETO[s as Projeto['status']] ?? s : '');
   return (
-    <Cartao className="max-w-2xl space-y-3">
-      {erro && <Aviso>{erro}</Aviso>}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Campo rotulo="Situação do projeto">
-          <Selecao value={projeto.status} disabled={!editavel} onChange={(e) => salvar({ status: e.target.value as Projeto['status'] })}>
-            {(Object.keys(NOME_STATUS_PROJETO) as Projeto['status'][]).map((s) => <option key={s} value={s}>{NOME_STATUS_PROJETO[s]}</option>)}
-          </Selecao>
+    <Modal aberto titulo={`Dados do projeto ${projeto.codigo}`} onFechar={onFechar} largura="max-w-2xl">
+      <div className="space-y-4 text-sm">
+        {erro && <Aviso>{erro}</Aviso>}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo rotulo="Responsável">
+            <Selecao value={projeto.responsavel_id ?? ''} disabled={!editavel} onChange={(e) => salvar({ responsavel_id: e.target.value || null })}>
+              <option value="">Sem responsável</option>
+              {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+            </Selecao>
+          </Campo>
+          <Campo rotulo="Prazo da Engenharia"><CampoData value={projeto.prazo} disabled={!editavel} onChange={(v) => salvar({ prazo: v || null })} /></Campo>
+        </div>
+        <Campo rotulo="Observações">
+          <AreaTexto defaultValue={projeto.observacoes} disabled={!editavel} rows={3} onBlur={(e) => e.target.value !== projeto.observacoes && salvar({ observacoes: e.target.value })} />
         </Campo>
-        <Campo rotulo="Prazo da Engenharia"><CampoData value={projeto.prazo} disabled={!editavel} onChange={(v) => salvar({ prazo: v || null })} /></Campo>
+        {chefe && projeto.status !== 'finalizado' && (
+          <div className="flex items-center justify-between gap-2 rounded-xl bg-pagina p-3">
+            <span>{projeto.pausado ? 'Projeto pausado.' : 'Pausar mantém o projeto na coluna, com o selo Pausado.'}</span>
+            <Botao variante="secundario" tamanho="sm" onClick={() => pausa.mutate()} disabled={pausa.isPending}>{projeto.pausado ? 'Retomar' : 'Pausar'}</Botao>
+          </div>
+        )}
+        {projeto.importado_cad_em && <DadosCad projeto={projeto} />}
+        <div>
+          <div className="mb-1 flex items-center gap-1.5 font-semibold"><History size={15} /> Histórico</div>
+          {eventos.length === 0 ? <div className="text-suave">Sem registros.</div> : (
+            <ul className="space-y-1">
+              {eventos.map((ev) => (
+                <li key={ev.id} className="flex flex-wrap gap-x-2">
+                  <span className="tabular-nums text-suave">{dataHoraBR(ev.criado_em)}</span>
+                  <span className="font-medium">
+                    {ev.tipo === 'criado' ? 'Projeto aberto' : ev.tipo === 'pausa' ? (ev.para === 'pausado' ? 'Pausado' : 'Retomado') : `${nome(ev.de)} → ${nome(ev.para)}`}
+                  </span>
+                  {ev.justificativa && <span>· {ev.justificativa}</span>}
+                  <span className="text-suave">· {ev.usuarios?.nome ?? 'Sistema'}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
-      <Campo rotulo="Observações">
-        <AreaTexto defaultValue={projeto.observacoes} disabled={!editavel} rows={5} onBlur={(e) => e.target.value !== projeto.observacoes && salvar({ observacoes: e.target.value })} />
-      </Campo>
-      {projeto.importado_cad_em && <DadosCad projeto={projeto} />}
-      <div className="text-sm text-suave">
-        Código do projeto = código da proposta (decisão 11). Proposta de origem: <Link to="/vendas/propostas" className="font-mono text-roxo-600 hover:underline">{projeto.codigo}</Link>
-      </div>
-    </Cartao>
+    </Modal>
   );
 }
 

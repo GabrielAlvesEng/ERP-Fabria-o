@@ -1,6 +1,8 @@
 # Área de Engenharia completa
 
-Versão 1, 22/10/2026. **Estado: aguardando aprovação do Gabriel.** Nada foi implementado ainda.
+Versão 1, 22/10/2026. **Estado: aprovado com as respostas da seção 6 (decisão 96).** Feitos: Dashboard, Kanban e, dentro do projeto, Kick-off, Árvore e Lista de materiais com cadastro manual. O restante fica para as próximas entregas.
+
+Respostas do Gabriel (22/10/2026): 1) o Gabriel é o Chefe; 2) só a Engenharia abre a área; 3) tirar Vendas do perfil Engenharia; 4) a critério do Claude (todos os conjuntos Liberados); 5) sempre a lista inteira; 6) sem tipo no nome do arquivo; 7) pode ser; 8) começar pelo Dashboard. Por enquanto só Dashboard, Kanban e, no projeto, Kick-off, Árvore (sem mudança) e Lista de materiais (manual); criar um projeto de exemplo.
 
 Pedido do Gabriel (22/10/2026): a Engenharia passa a ter Dashboard de projetos, aba Projetos em Kanban e uma área interna por projeto com Dados técnicos, Equipe e permissões, Árvore, Lista de materiais, Itens de corte, Detalhamentos, Tarefas e pendências, e Histórico e revisões.
 
