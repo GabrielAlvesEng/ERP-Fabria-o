@@ -33,6 +33,7 @@ export function App() {
   const { session, carregando } = useAuth();
   // Veio de um link de convite ou de nova senha: pede a senha antes de abrir o ERP.
   const [definirSenha, setDefinirSenha] = useState<'invite' | 'recovery' | null>(linkAuth.tipo);
+  const [linkCodigo, setLinkCodigo] = useState(linkAuth.tokenHash);
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((e) => { if (e === 'PASSWORD_RECOVERY') setDefinirSenha('recovery'); });
     return () => data.subscription.unsubscribe();
@@ -48,6 +49,7 @@ export function App() {
     );
   }
   if (carregando) return null;
+  if (linkCodigo) return <DefinirSenhaPage convite={linkCodigo.tipo === 'invite'} email={session?.user.email ?? ''} codigo={linkCodigo} onPronto={() => setLinkCodigo(null)} />;
   if (!session) return <LoginPage erroLink={linkAuth.erro} />;
   if (definirSenha) return <DefinirSenhaPage convite={definirSenha === 'invite'} email={session.user.email ?? ''} onPronto={() => setDefinirSenha(null)} />;
 

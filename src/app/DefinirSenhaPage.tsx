@@ -6,7 +6,9 @@ import { Marca } from './Layout';
 
 // Tela de definir senha (RH, entrega 4): aberta pelo link de convite que o RH manda, ou pelo link de nova senha.
 // A senha vai direto para o Supabase Auth; o ERP nunca a guarda.
-export function DefinirSenhaPage({ convite, email, onPronto }: { convite: boolean; email: string; onPronto: () => void }) {
+export function DefinirSenhaPage({ convite, email, codigo, onPronto }: {
+  convite: boolean; email: string; codigo?: { token: string; tipo: 'invite' | 'recovery' } | null; onPronto: () => void;
+}) {
   const [s1, setS1] = useState('');
   const [s2, setS2] = useState('');
   const [erro, setErro] = useState('');
@@ -18,6 +20,15 @@ export function DefinirSenhaPage({ convite, email, onPronto }: { convite: boolea
     if (s1.length < 8) return setErro('A senha precisa ter pelo menos 8 caracteres.');
     if (s1 !== s2) return setErro('As duas senhas não são iguais.');
     setSalvando(true);
+    // Link com código: só agora o código é usado (abre a sessão), e então a senha é gravada.
+    if (codigo) {
+      const { error: e1 } = await supabase.auth.verifyOtp({ token_hash: codigo.token, type: codigo.tipo });
+      if (e1) {
+        setSalvando(false);
+        return setErro('O link expirou ou já foi usado. Peça ao RH um link novo ou use "Esqueci minha senha" na tela de entrada.');
+      }
+      history.replaceState(null, '', window.location.pathname);
+    }
     const { error } = await supabase.auth.updateUser({ password: s1 });
     setSalvando(false);
     if (error) return setErro(error.message.includes('different from the old') ? 'A nova senha precisa ser diferente da anterior.' : mensagemErro(error));
@@ -31,7 +42,7 @@ export function DefinirSenhaPage({ convite, email, onPronto }: { convite: boolea
           <div className="pb-2"><Marca vertical /></div>
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-texto">{convite ? 'Bem-vindo ao ERP' : 'Nova senha'}</h1>
-            <p className="text-sm text-suave">{convite ? 'Escolha a senha do seu login' : 'Escolha uma nova senha para'} <b>{email}</b>.</p>
+            <p className="text-sm text-suave">{convite ? 'Escolha a senha do seu login' : 'Escolha uma nova senha'}{email && <> para <b>{email}</b></>}.</p>
           </div>
         </div>
         {erro && <Aviso>{erro}</Aviso>}

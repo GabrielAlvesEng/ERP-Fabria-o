@@ -7,7 +7,7 @@
 // (conferir_gestao_acesso, migration 39), chamadas como o próprio usuário logado.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
-const ORIGENS = ['https://gabrielalveseng.github.io', 'http://localhost:5173', 'http://localhost:4173'];
+const ORIGENS = ['https://gabrielalveseng.github.io', 'https://erp-fabriaco-brasil.netlify.app', 'http://localhost:5173', 'http://localhost:4173'];
 const cors = (origem: string | null) => ({
   'Access-Control-Allow-Origin': origem && ORIGENS.includes(origem) ? origem : ORIGENS[0],
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -39,6 +39,9 @@ Deno.serve(async (req) => {
     // O link volta para o próprio ERP, na tela de definir senha.
     const voltar = String(corpo.voltar ?? '');
     const redirectTo = ORIGENS.some((o) => voltar.startsWith(`${o}/`)) ? voltar : `${ORIGENS[0]}/ERP-Fabria-o/`;
+    // Link para o RH mandar à mão: abre a tela de definir senha do ERP e o código só é usado quando a pessoa salva
+    // (o antivírus do e-mail ou a prévia do WhatsApp abrem o link antes e gastariam um link direto do Supabase).
+    const linkErp = (hashed: string, tipo: 'invite' | 'recovery') => `${redirectTo}?token_hash=${encodeURIComponent(hashed)}&type=${tipo}`;
 
     // Link para a pessoa definir a senha, mandado por e-mail pelo Supabase Auth (SMTP configurado no painel).
     // Se o e-mail não sair, devolve o link para o RH mandar. Quem nunca entrou aparece como convite.
@@ -50,7 +53,7 @@ Deno.serve(async (req) => {
       if (!falhou) return { enviado: true, email, tipo };
       const { data, error } = await adm.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } });
       if (error) throw new Error(`Não foi possível gerar o link: ${error.message}.`);
-      return { enviado: false, motivo: falhou.message, link: data.properties.action_link, email, tipo };
+      return { enviado: false, motivo: falhou.message, link: linkErp(data.properties.hashed_token, 'recovery'), email, tipo };
     }
 
     if (corpo.acao === 'criar_login') {
@@ -79,10 +82,13 @@ Deno.serve(async (req) => {
       let r: Record<string, unknown> = { enviado: true, email, tipo: 'invite' };
       if (convite.error || !novo) {
         const { data: ja } = await sb.from('usuarios').select('id').ilike('email', email).maybeSingle();
-        const { data, error } = await adm.auth.admin.generateLink({ type: ja ? 'recovery' : 'invite', email, options: { data: { nome: ficha.nome }, redirectTo } });
+        const tipoLink = ja ? 'recovery' : 'invite';
+        const { data, error } = ja
+          ? await adm.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } })
+          : await adm.auth.admin.generateLink({ type: 'invite', email, options: { data: { nome: ficha.nome }, redirectTo } });
         if (error || !data.user) return resposta({ erro: `Não foi possível criar o login: ${error?.message ?? convite.error?.message ?? 'erro desconhecido'}.` }, 400);
         novo = data.user;
-        r = { enviado: false, motivo: convite.error?.message ?? '', link: data.properties.action_link, email, tipo: 'invite' };
+        r = { enviado: false, motivo: convite.error?.message ?? '', link: linkErp(data.properties.hashed_token, tipoLink), email, tipo: 'invite' };
       }
       const { error: e2 } = await sb.rpc('vincular_login_funcionario', { p_funcionario: funcionarioId, p_usuario: novo.id });
       if (e2) return resposta({ erro: `Login criado, mas não foi ligado à ficha: ${e2.message}. Clique em "Criar login" de novo.` }, 500);

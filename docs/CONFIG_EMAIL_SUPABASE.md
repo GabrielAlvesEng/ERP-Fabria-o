@@ -8,6 +8,8 @@ Tudo abaixo é feito pelo Gabriel no painel do Supabase, projeto `iobfyuscyzyjxm
 
 ## 1. SMTP (Authentication → Emails → SMTP Settings → Enable custom SMTP)
 
+Se aparecer o erro **535 authentication failed**, o servidor recusou o usuário ou a senha: confira se o usuário é o e-mail completo, redigite a senha e, se a caixa tiver verificação em duas etapas, use uma senha de aplicativo.
+
 **Opção A: Microsoft 365 (o e-mail da empresa).** Use uma caixa como `erp@fabriacobrasil.com.br` (ou a sua).
 
 | Campo | Valor |
@@ -25,6 +27,8 @@ No Microsoft 365, o envio por SMTP precisa estar ligado para essa caixa: Centro 
 
 ## 2. Textos em português (Authentication → Emails → Templates)
 
+Copie o link **exatamente** como abaixo (com `token_hash`), e não o `{{ .ConfirmationURL }}` padrão. O antivírus do e-mail da empresa abre os links antes da pessoa; com o link padrão ele "gasta" o link e a pessoa recebe "link inválido ou expirado". Com este formato, o link só é usado quando a pessoa salva a senha na tela do ERP.
+
 **Invite user**
 
 - Assunto: `Seu acesso ao ERP Fabriaço`
@@ -33,7 +37,7 @@ No Microsoft 365, o envio por SMTP precisa estar ligado para essa caixa: Centro 
 ```html
 <p>Olá!</p>
 <p>Seu login no <b>ERP Fabriaço</b> foi criado ({{ .Email }}).</p>
-<p><a href="{{ .ConfirmationURL }}">Clique aqui para escolher a sua senha</a>.</p>
+<p><a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=invite">Clique aqui para escolher a sua senha</a>.</p>
 <p>O link vale por pouco tempo e funciona uma vez. Se expirar, peça um novo ao RH.</p>
 ```
 
@@ -45,14 +49,14 @@ No Microsoft 365, o envio por SMTP precisa estar ligado para essa caixa: Centro 
 ```html
 <p>Olá!</p>
 <p>Recebemos um pedido para definir a senha do seu login no <b>ERP Fabriaço</b> ({{ .Email }}).</p>
-<p><a href="{{ .ConfirmationURL }}">Clique aqui para escolher a senha</a>.</p>
+<p><a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery">Clique aqui para escolher a senha</a>.</p>
 <p>O link vale por pouco tempo e funciona uma vez. Se você não pediu, ignore este e-mail.</p>
 ```
 
 ## 3. Endereço de volta (Authentication → URL Configuration)
 
-- Site URL: `https://gabrielalveseng.github.io/ERP-Fabria-o/`
-- Redirect URLs: adicionar `https://gabrielalveseng.github.io/ERP-Fabria-o/**` (e `http://localhost:5173/**` para testes).
+- Site URL: o endereço que a equipe usa (hoje `https://erp-fabriaco-brasil.netlify.app/`).
+- Redirect URLs: adicionar `https://erp-fabriaco-brasil.netlify.app/**` e `https://gabrielalveseng.github.io/ERP-Fabria-o/**` (e `http://localhost:5173/**` para testes).
 
 Sem isso, o link do e-mail pode abrir uma página errada em vez da tela "Definir senha".
 
