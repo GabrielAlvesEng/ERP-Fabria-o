@@ -7,7 +7,7 @@ import geist700 from '@fontsource/geist-sans/files/geist-sans-latin-700-normal.w
 import { moeda } from '@/shared/lib/formato';
 import {
   aPartirDe, blocos, INICIO_PRAZO_PADRAO, CONFIDENCIALIDADE_COMERCIAL, CONFIDENCIALIDADE_TECNICA, GARANTIA_ATENDIMENTO, GARANTIA_COBRE, GARANTIA_NAO_SE_APLICA, marcadorCartao, numerar,
-  resumoTecnica, substituir, VALIDADE_CONDICOES, type Cartao, type DadosEmpresaFabriaco, type Documento, type Etapa, type Secao, type Trecho, type Variaveis,
+  resumoTecnica, sincronizarEscopo, substituir, VALIDADE_CONDICOES, type Cartao, type DadosEmpresaFabriaco, type Documento, type Etapa, type Secao, type Trecho, type Variaveis,
 } from './modelo';
 import { MAPA_SP } from './mapaSP';
 import { dividirTexto, larguraTexto } from './fluxo';
@@ -746,9 +746,10 @@ const resumirTexto = (t: string, max: number) => { const l = t.replace(/\s+/g, '
 // Sobre nós e Dados da Empresa são obrigatórios na técnica (decisão 71): saem sempre, sem card no editor.
 const DADOS_EMPRESA: Secao = { id: 'dados', titulo: 'Dados da Empresa', ativo: true, tipo: 'dados_empresas' };
 
-export function DocumentoPdf({ doc, dados: d, empresa, imagens = {}, tecnica }: {
+export function DocumentoPdf({ doc: original, dados: d, empresa, imagens = {}, tecnica }: {
   doc: Documento; dados: DadosProposta; empresa: DadosEmpresaFabriaco; imagens?: Record<string, string>; tecnica?: Documento | null;
 }) {
+  const doc = sincronizarEscopo(original, d.itens); // itens do Escopo = itens dos Custos (decisão 74)
   const comercial = doc.tipo === 'comercial';
   const v: Variaveis = { cliente: d.cliente.nome, local: d.cliente.local, validade_dias: String(d.validadeDias || 30), codigo: `${d.codigo}-R${d.revisao}` };
   return (

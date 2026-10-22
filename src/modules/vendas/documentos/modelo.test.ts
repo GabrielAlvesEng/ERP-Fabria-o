@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, substituir, trechos } from './modelo';
+import { aplicarTextosIA, blocos, completarDocumento, documentoPadrao, imagensDoDocumento, marcadorCartao, resumoTecnica, VERSAO_DOCUMENTO, nomeArquivo, numerar, sincronizarEscopo, substituir, trechos } from './modelo';
 
 describe('documentos da proposta', () => {
   it('lê negrito', () => {
@@ -115,3 +115,15 @@ describe('documentos da proposta', () => {
     expect(substituir('- Proposta técnica {codigo}', { cliente: '', local: '', validade_dias: '', codigo: '26-07-001' })).toBe('- Proposta técnica 26-07-001');
   });
 });
+
+describe('sincronizarEscopo (decisão 74)', () => {
+  it('usa os nomes e a ordem dos itens dos Custos, mantendo texto e imagens da posição', () => {
+    const doc = documentoPadrao('tecnica');
+    const esc = doc.secoes.find((s) => s.id === 'escopo')!;
+    if (esc.tipo === 'cartoes') esc.cartoes = [{ titulo: 'Antigo', texto: 'Texto A', imagens: [{ caminho: 'x.png', legenda: '' }] }, { titulo: 'Sobra', texto: 'Texto sobra' }, { titulo: 'Outra', texto: '' }];
+    const r = sincronizarEscopo(doc, [{ descricao: 'Plataforma' }, { descricao: 'Escada' }]).secoes.find((s) => s.id === 'escopo')!;
+    expect(r.tipo === 'cartoes' && r.cartoes).toEqual([{ titulo: 'Plataforma', texto: 'Texto A', imagens: [{ caminho: 'x.png', legenda: '' }] }, { titulo: 'Escada', texto: 'Texto sobra' }]);
+    expect(sincronizarEscopo(doc, [])).toBe(doc);
+  });
+});
+

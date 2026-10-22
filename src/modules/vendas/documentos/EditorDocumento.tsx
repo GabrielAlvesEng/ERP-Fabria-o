@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Lock, Plus, Trash2 } f
 import { AreaTexto, Botao, Caixa, Campo, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
 import {
-  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_FIXAS, marcadorCartao, numerar,
+  INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_FIXAS, marcadorCartao, numerar, sincronizarEscopo,
   type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type LinhaMatriz, type Marca3, type Secao,
 } from './modelo';
 import { TextoFormatado } from './TextoFormatado';
@@ -28,6 +28,8 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
   capaDados?: { titulo: string; descricao: string }; // decisão 72: título e subtítulo da capa vêm da aba Dados
 }) {
   const [aberta, setAberta] = useState<string | null>(null);
+  doc = sincronizarEscopo(doc, itens); // decisão 74: Escopo com os itens (e nomes) da aba Custos
+  const escopoDosCustos = doc.tipo === 'tecnica' && itens.length > 0;
   const numeros = Object.fromEntries(numerar(doc.secoes).map((n) => [n.secao.id, n.numero]));
   const setSecao = (i: number, s: Secao) => onChange({ ...doc, secoes: doc.secoes.map((x, j) => (j === i ? s : x)) });
   const mover = (i: number, d: -1 | 1) => {
@@ -95,7 +97,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
               {aberta === s.id ? 'Fechar' : fixa ? 'Ver' : 'Editar'}
             </button>
           </div>
-          {aberta === s.id && <div className="border-t border-borda p-3">{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} valores={valores} />}</div>}
+          {aberta === s.id && <div className="border-t border-borda p-3">{fixa ? <SecaoFixa s={s} /> : <CorpoSecao s={s} onChange={(n) => setSecao(i, n)} itens={itens} imagens={imagens} valores={valores} escopoDosCustos={escopoDosCustos} />}</div>}
         </div>
         );
       })}
@@ -113,11 +115,13 @@ function SecaoFixa({ s }: { s: Secao }) {
   return <p className="text-sm text-suave">{textos[s.id] ?? textos[s.tipo === 'sobre' ? 'sobre' : s.tipo === 'dados_empresas' ? 'dados' : 'confidencialidade']}</p>;
 }
 
-function CorpoSecao({ s, onChange, itens, imagens, valores }: { s: Secao; onChange: (s: Secao) => void; itens: ItemValor[]; imagens?: Imagens; valores?: AcoesValor }) {
+function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: { s: Secao; onChange: (s: Secao) => void; itens: ItemValor[]; imagens?: Imagens; valores?: AcoesValor; escopoDosCustos?: boolean }) {
   switch (s.tipo) {
     case 'texto':
       return <TextoFormatado rows={Math.min(18, Math.max(5, s.texto.split('\n').length + 2))} value={s.texto} placeholder={s.dica} limite={LIMITES_TEXTO[s.id]} onChange={(v) => onChange({ ...s, texto: v })} />;
     case 'cartoes': {
+      // Escopo da técnica (decisão 74): os itens são os da aba Custos; o nome não muda aqui e não se adiciona nem remove item.
+      const fixo = s.id === 'escopo';
       const setCartao = (i: number, c: Cartao) => onChange({ ...s, cartoes: s.cartoes.map((x, j) => (j === i ? c : x)) });
       const setFiguras = (i: number, c: Cartao, l: Figura[]) => setCartao(i, { ...c, imagens: l.length ? l : undefined });
       return (
@@ -126,12 +130,12 @@ function CorpoSecao({ s, onChange, itens, imagens, valores }: { s: Secao; onChan
           {s.destaque !== undefined && <Rotulo texto="Destaque"><TextoFormatado rows={2} value={s.destaque} onChange={(v) => onChange({ ...s, destaque: v })} /></Rotulo>}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-medium text-suave">Itens{imagens ? ' · cada item pode ter suas imagens, que saem em cards ao lado do texto' : ''}</span>
-            <div className="flex rounded-lg bg-superficie p-0.5 text-xs ring-1 ring-borda">
+            {!fixo && <div className="flex rounded-lg bg-superficie p-0.5 text-xs ring-1 ring-borda">
               {(['letra', 'numero'] as const).map((m) => (
                 <button key={m} type="button" onClick={() => onChange({ ...s, marcador: m })}
                   className={`rounded-md px-2.5 py-1 ${s.marcador === m ? 'bg-roxo-600 font-semibold text-white' : 'text-suave'}`}>{m === 'letra' ? 'A, B, C' : '01, 02, 03'}</button>
               ))}
-            </div>
+            </div>}
           </div>
           {s.cartoes.map((c, i) => {
             const figs = c.imagens ?? [];
@@ -139,8 +143,9 @@ function CorpoSecao({ s, onChange, itens, imagens, valores }: { s: Secao; onChan
               <div key={i} className="space-y-1.5 rounded-lg bg-pagina p-2 ring-1 ring-borda">
                 <div className="flex items-center gap-2">
                   <span className="w-6 shrink-0 text-center text-xs font-bold text-roxo-600 dark:text-roxo-100">{marcadorCartao(s.marcador, i)}</span>
-                  <Entrada value={c.titulo} onChange={(e) => setCartao(i, { ...c, titulo: e.target.value })} placeholder="Título" />
-                  <button type="button" onClick={() => onChange({ ...s, cartoes: s.cartoes.filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Remover item"><Trash2 size={14} /></button>
+                  {fixo ? <span className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1.5 text-sm font-semibold">{c.titulo || 'Item sem nome nos Custos'} <Lock size={11} className="shrink-0 text-suave" /></span>
+                    : <Entrada value={c.titulo} onChange={(e) => setCartao(i, { ...c, titulo: e.target.value })} placeholder="Título" />}
+                  {!(fixo && escopoDosCustos) && <button type="button" onClick={() => onChange({ ...s, cartoes: s.cartoes.filter((_, j) => j !== i) })} className="rounded p-1 text-suave hover:text-red-600" title="Remover item"><Trash2 size={14} /></button>}
                 </div>
                 <TextoFormatado rows={4} value={c.texto} onChange={(v) => setCartao(i, { ...c, texto: v })} placeholder="Descrição" />
                 {imagens && (
@@ -160,7 +165,8 @@ function CorpoSecao({ s, onChange, itens, imagens, valores }: { s: Secao; onChan
               </div>
             );
           })}
-          <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, cartoes: [...s.cartoes, { titulo: '', texto: '' }] })}><Plus size={14} /> Adicionar item</Botao>
+          {fixo ? <p className="text-xs text-suave">{escopoDosCustos ? 'Os itens e os nomes vêm da aba Custos. Para criar, renomear ou tirar um item, use os Custos.' : 'Nenhum item nos Custos desta revisão. Crie os itens na aba Custos para eles aparecerem aqui.'}</p>
+            : <Botao type="button" variante="secundario" tamanho="sm" onClick={() => onChange({ ...s, cartoes: [...s.cartoes, { titulo: '', texto: '' }] })}><Plus size={14} /> Adicionar item</Botao>}
           {imagens && (s.figuras ?? []).length > 0 && (
             <div className="space-y-2 rounded-lg bg-pagina p-2 ring-1 ring-borda">
               <div className="text-xs font-medium text-suave">Imagens gerais da seção (modelo antigo, saem depois dos itens). Prefira colocar as imagens em cada item.</div>

@@ -206,6 +206,9 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - O **título da capa** (técnica e comercial) é sempre o Título do fornecimento da aba Dados. O **subtítulo** é a Descrição da aba Dados, numa linha corrida de até 280 caracteres. Os campos de título e subtítulo saíram do editor. A 2ª linha do título continua, como complemento opcional. Documento antigo sem descrição em Dados ainda mostra o subtítulo que tinha.
     - O campo **Condições comerciais** saiu da aba Dados e da Nova proposta. A coluna continua no banco com o que já estava gravado (nada foi apagado).
 73. **Comercial: Informações finais junto dos Valores quando cabem (22/10/2026)** (pedido do Gabriel): o bloco de encerramento (anexos, termo de confidencialidade e vendedor) vai na mesma página dos Valores se couber inteiro; se não couber, passa inteiro para a página seguinte. A comercial fica com 3 páginas no caso comum.
+74. **Itens das propostas iguais aos Custos e Custos fechados (22/10/2026)** (pedido do Gabriel):
+    - O nome dos itens nas duas propostas é obrigatoriamente o nome do item na aba Custos, sem edição na proposta. Na técnica, o **Escopo** tem um item para cada item dos Custos, na mesma ordem e com letras A, B, C. O texto e as imagens de cada item continuam editáveis. Para criar, renomear ou tirar item, só pelos Custos. Na comercial, a tabela de Valores já usava o nome dos Custos.
+    - A aba **Custos** abre com todas as seções fechadas.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

@@ -18,7 +18,7 @@ import {
   precoDoVeiculo, type Combustivel, type Referencias, type RefVeiculo,
 } from './api';
 import {
-  LINK_QUALP, SECOES, linkMapa, pesoChapa, pesoMateriais, reordenar, resumoItem, secoesVisiveis, totalLinha, totalSecao,
+  LINK_QUALP, linkMapa, pesoChapa, pesoMateriais, reordenar, resumoItem, secoesVisiveis, totalLinha,
   type Bloco, type Coluna, type CustoItem, type CustoLinha, type DefSecao, type GrupoMaterial, type Secao,
 } from './regras';
 import { precosPerfil } from '@/modules/biblioteca/regras';
@@ -150,8 +150,8 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onRecarre
 }) {
   const [it, setIt] = useState(item);
   useEffect(() => setIt(item), [item]);
-  const [abertas, setAbertas] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(SECOES.map((s) => [s.id, s.id === 'materiais' || totalSecao(linhas, s.id) > 0])));
+  // Decisão 74: os Custos abrem com todas as seções fechadas.
+  const [abertas, setAbertas] = useState<Record<string, boolean>>({});
   // kg/m dos perfis da biblioteca (pelo item escolhido ou pela descrição), para o peso da galvanização e zincagem.
   const kgPorMetro = useMemo(() => {
     const porId = new Map(listas.refs.perfis.filter((x) => x.kg_m).map((x) => [x.id, Number(x.kg_m)]));

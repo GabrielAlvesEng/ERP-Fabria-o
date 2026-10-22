@@ -333,3 +333,15 @@ export function aplicarTextosIA(doc: Documento, t: TextosIA): Documento {
 export const imagensDoDocumento = (d: Documento): string[] =>
   [d.capa.imagem, ...d.secoes.flatMap((s) => (s.tipo === 'cartoes'
     ? [...(s.figuras ?? []), ...s.cartoes.flatMap((c) => c.imagens ?? [])].map((f) => f.caminho) : []))].filter((c): c is string => Boolean(c));
+
+// Decisão 74: os itens do Escopo da técnica são os itens da aba Custos, na mesma ordem e com o mesmo nome (sem edição).
+// Cada item guarda o texto e as imagens que já tinha na posição; sem itens nos Custos, o Escopo fica como está.
+export function sincronizarEscopo(doc: Documento, itens: { descricao: string }[]): Documento {
+  if (doc.tipo !== 'tecnica' || !itens.length) return doc;
+  return {
+    ...doc,
+    secoes: doc.secoes.map((s) => (s.id === 'escopo' && s.tipo === 'cartoes'
+      ? { ...s, marcador: 'letra' as const, cartoes: itens.map((it, i) => ({ ...(s.cartoes[i] ?? { texto: '' }), titulo: it.descricao })) }
+      : s)),
+  };
+}
