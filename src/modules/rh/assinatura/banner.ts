@@ -69,8 +69,8 @@ function cobrir(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number,
   ctx.drawImage(img, (img.naturalWidth - sw) / 2, Math.max(0, (img.naturalHeight - sh) * 0.25), sw, sh, x, y, w, h);
 }
 
-// Desenho corporativo (decisão 89, revisão): painel da marca à esquerda, dados ao centro, foto em painel
-// inteiro à direita com corte inclinado e faixa escura com o lema embaixo.
+// Desenho corporativo (decisão 89, revisões): painel da marca à esquerda, dados ao centro, foto em bolha
+// à direita e faixa escura com o lema embaixo.
 const RODAPE = 440;
 
 export async function desenharBanner(canvas: HTMLCanvasElement, d: DadosAssinatura, foto: HTMLImageElement | null, escala = 1): Promise<void> {
@@ -113,30 +113,42 @@ export async function desenharBanner(canvas: HTMLCanvasElement, d: DadosAssinatu
     espacado(ctx, t, 170 - w / 2, y, 3);
   }
 
-  // Painel da foto (ou das iniciais), com faixa roxa no corte.
-  const painelFoto: [number, number][] = [[888, 0], [LARGURA, 0], [LARGURA, RODAPE], [836, RODAPE]];
+  // Foto em bolha à direita (ou as iniciais), com anel roxo e halo lavanda.
+  const fx = 1052;
+  const fy = RODAPE / 2;
+  const r = 118;
+  ctx.fillStyle = COR.lavandaClara;
+  ctx.beginPath();
+  ctx.arc(fx + 10, fy + 8, r + 26, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = COR.roxo;
+  ctx.beginPath();
+  ctx.arc(fx, fy, r + 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(fx, fy, r + 4, 0, Math.PI * 2);
+  ctx.fill();
   ctx.save();
-  poligono(ctx, painelFoto);
+  ctx.beginPath();
+  ctx.arc(fx, fy, r, 0, Math.PI * 2);
   ctx.clip();
-  if (foto) cobrir(ctx, foto, 836, 0, LARGURA - 836, RODAPE);
+  if (foto) cobrir(ctx, foto, fx - r, fy - r, r * 2, r * 2);
   else {
-    ctx.fillStyle = COR.lavandaClara;
-    ctx.fillRect(836, 0, LARGURA - 836, RODAPE);
+    ctx.fillStyle = COR.roxoEscuro;
+    ctx.fillRect(fx - r, fy - r, r * 2, r * 2);
     const ini = d.nome.trim().split(/\s+/).filter(Boolean);
-    ctx.fillStyle = COR.roxo;
-    ctx.font = `600 96px ${FONTE}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `600 84px ${FONTE}`;
     ctx.textAlign = 'center';
-    ctx.fillText(((ini[0]?.[0] ?? '') + (ini.length > 1 ? ini[ini.length - 1][0] : '')).toUpperCase(), 1030, RODAPE / 2);
+    ctx.fillText(((ini[0]?.[0] ?? '') + (ini.length > 1 ? ini[ini.length - 1][0] : '')).toUpperCase(), fx, fy + 4);
     ctx.textAlign = 'left';
   }
   ctx.restore();
-  poligono(ctx, [[874, 0], [888, 0], [836, RODAPE], [822, RODAPE]]);
-  ctx.fillStyle = COR.roxo;
-  ctx.fill();
 
   // Nome (primeiro nome em negrito roxo), função e contatos.
   const x0 = 404;
-  const limite = 800;
+  const limite = 880;
   const [primeiro, resto] = dividirNome(d.nome);
   const tam = caber(ctx, 700, 38, limite - x0, `${primeiro} ${resto}`, 20);
   ctx.font = `700 ${tam}px ${FONTE}`;
