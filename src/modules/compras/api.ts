@@ -9,7 +9,7 @@ function ok<T>(r: { data: T | null; error: unknown }): T {
 }
 
 export interface Fornecedor {
-  id: string; nome: string; cnpj: string; cidade: string; contato: string; telefone: string; email: string;
+  id: string; nome: string; razao_social: string; cnpj: string; endereco: string; cidade: string; contato: string; telefone: string; email: string;
   categorias: string; condicao_pagamento: 'antecipado' | 'apos_recebimento' | 'a_combinar'; observacoes: string; ativo: boolean;
 }
 export interface Requisicao {

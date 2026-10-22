@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Search } from 'lucide-react';
+import { Loader2, Pencil, Plus, Search } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { formatarCNPJ, mensagemErro } from '@/shared/lib/formato';
+import { consultarCNPJ } from '@/shared/lib/cnpj';
+import { apenasDigitos, cnpjValido, formatarCNPJ, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Entrada, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import { listarFornecedores, salvarFornecedor, type Fornecedor } from './api';
 import { ROTULO_PAGAMENTO } from './regras';
@@ -47,21 +48,59 @@ export function FornecedoresPage() {
           </table>
         </div>
       )}
-      {editando && <EditarFornecedor f={editando} onFechar={() => setEditando(null)} />}
+      {editando && <EditarFornecedor f={editando} todos={lista} onFechar={() => setEditando(null)} />}
     </>
   );
 }
 
-function EditarFornecedor({ f, onFechar }: { f: Partial<Fornecedor>; onFechar: () => void }) {
+function EditarFornecedor({ f, todos, onFechar }: { f: Partial<Fornecedor>; todos: Fornecedor[]; onFechar: () => void }) {
   const qc = useQueryClient();
-  const [d, setD] = useState<Partial<Fornecedor>>(f);
+  const [d, setD] = useState<Partial<Fornecedor>>({ ...f, cnpj: formatarCNPJ(f.cnpj) });
   const [erro, setErro] = useState('');
+  const [infoCnpj, setInfoCnpj] = useState('');
+  const [consultando, setConsultando] = useState(false);
+  const [ultimoConsultado, setUltimoConsultado] = useState(apenasDigitos(f.cnpj ?? ''));
   const set = <K extends keyof Fornecedor>(k: K, v: Fornecedor[K]) => setD((x) => ({ ...x, [k]: v }));
+
+  // Decisão 102: mesmo comportamento do cadastro de empresas. CNPJ completo e válido busca na Receita e preenche só o que está vazio.
+  async function aoMudarCnpj(valor: string) {
+    const dig = apenasDigitos(valor).slice(0, 14);
+    set('cnpj', dig.length === 14 ? formatarCNPJ(dig) : valor);
+    setInfoCnpj('');
+    if (dig.length !== 14 || dig === ultimoConsultado) return;
+    if (!cnpjValido(dig)) return setInfoCnpj('CNPJ inválido.');
+    const dup = todos.find((x) => apenasDigitos(x.cnpj) === dig && x.id !== f.id);
+    if (dup) return setInfoCnpj(`Já existe o fornecedor ${dup.nome} com este CNPJ${dup.ativo ? '' : ' (inativo)'}.`);
+    setUltimoConsultado(dig);
+    setConsultando(true);
+    try {
+      const r = await consultarCNPJ(dig);
+      const endereco = [[r.logradouro, r.numero].filter(Boolean).join(', '), r.complemento, r.bairro, r.cep && `CEP ${r.cep}`].filter(Boolean).join(' · ');
+      const vindo: Partial<Fornecedor> = {
+        nome: r.nome_fantasia || r.razao_social, razao_social: r.razao_social, endereco,
+        cidade: [r.cidade, r.uf].filter(Boolean).join('/'), telefone: r.telefones.split(/[,;/]/)[0]?.trim() ?? '', email: r.emails.split(/[,;\s]/)[0]?.trim() ?? '',
+      };
+      setD((ant) => {
+        const novo = { ...ant };
+        (Object.keys(vindo) as (keyof typeof vindo)[]).forEach((k) => { if (!String(novo[k] ?? '').trim() && vindo[k]) (novo as Record<string, unknown>)[k] = vindo[k]; });
+        return novo;
+      });
+      setInfoCnpj(`Dados preenchidos pela Receita Federal${r.situacao ? ` · situação: ${r.situacao}` : ''}. Confira antes de salvar.`);
+    } catch (e) {
+      setUltimoConsultado('');
+      setInfoCnpj(mensagemErro(e));
+    } finally {
+      setConsultando(false);
+    }
+  }
+
   async function salvar() {
     if ((d.nome ?? '').trim().length < 2) return setErro('Informe o nome.');
+    const dig = apenasDigitos(d.cnpj ?? '');
+    if (dig && !cnpjValido(dig)) return setErro('CNPJ inválido.');
     try {
-      const { id, nome, cnpj, cidade, contato, telefone, email, categorias, condicao_pagamento, observacoes, ativo } = d;
-      await salvarFornecedor({ id, nome: nome!.trim(), cnpj: cnpj ?? '', cidade: cidade ?? '', contato: contato ?? '', telefone: telefone ?? '', email: email ?? '', categorias: categorias ?? '', condicao_pagamento: condicao_pagamento ?? 'a_combinar', observacoes: observacoes ?? '', ativo: ativo ?? true });
+      const { id, nome, razao_social, endereco, cidade, contato, telefone, email, categorias, condicao_pagamento, observacoes, ativo } = d;
+      await salvarFornecedor({ id, nome: nome!.trim(), razao_social: razao_social ?? '', cnpj: dig ? formatarCNPJ(dig) : '', endereco: endereco ?? '', cidade: cidade ?? '', contato: contato ?? '', telefone: telefone ?? '', email: email ?? '', categorias: categorias ?? '', condicao_pagamento: condicao_pagamento ?? 'a_combinar', observacoes: observacoes ?? '', ativo: ativo ?? true });
       await qc.invalidateQueries({ queryKey: ['compras', 'fornecedores'] });
       await qc.invalidateQueries({ queryKey: ['bib', 'fornecedores'] });
       onFechar();
@@ -70,9 +109,17 @@ function EditarFornecedor({ f, onFechar }: { f: Partial<Fornecedor>; onFechar: (
   return (
     <Modal aberto titulo={f.id ? 'Editar fornecedor' : 'Novo fornecedor'} onFechar={onFechar}>
       <div className="space-y-3">
+        <Campo rotulo="CNPJ (preenche os dados automaticamente)">
+          <div className="relative">
+            <Entrada value={d.cnpj ?? ''} onChange={(e) => aoMudarCnpj(e.target.value)} placeholder="00.000.000/0000-00" inputMode="numeric" autoFocus={!f.id} />
+            {consultando && <Loader2 size={16} className="absolute right-3 top-2.5 animate-spin text-roxo-500" />}
+          </div>
+        </Campo>
+        {infoCnpj && <Aviso tipo={infoCnpj.startsWith('Dados') ? 'info' : 'erro'}>{infoCnpj}</Aviso>}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Campo rotulo="Nome"><Entrada value={d.nome ?? ''} onChange={(e) => set('nome', e.target.value)} autoFocus /></Campo>
-          <Campo rotulo="CNPJ"><Entrada value={d.cnpj ?? ''} onChange={(e) => set('cnpj', e.target.value)} onBlur={(e) => set('cnpj', formatarCNPJ(e.target.value))} /></Campo>
+          <Campo rotulo="Nome"><Entrada value={d.nome ?? ''} onChange={(e) => set('nome', e.target.value)} /></Campo>
+          <Campo rotulo="Razão social"><Entrada value={d.razao_social ?? ''} onChange={(e) => set('razao_social', e.target.value)} /></Campo>
+          <Campo rotulo="Endereço" className="sm:col-span-2"><Entrada value={d.endereco ?? ''} onChange={(e) => set('endereco', e.target.value)} /></Campo>
           <Campo rotulo="Cidade"><Entrada value={d.cidade ?? ''} onChange={(e) => set('cidade', e.target.value)} /></Campo>
           <Campo rotulo="Contato"><Entrada value={d.contato ?? ''} onChange={(e) => set('contato', e.target.value)} /></Campo>
           <Campo rotulo="Telefone"><Entrada value={d.telefone ?? ''} onChange={(e) => set('telefone', e.target.value)} /></Campo>

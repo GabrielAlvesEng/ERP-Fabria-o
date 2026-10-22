@@ -38,7 +38,7 @@ export function imprimirOrdem(p: Pedido, r: Requisicao, itens: ItemRequisicao[],
 </style></head><body>
 <header><img src="${logo}" alt="Fabriaço"><div><h1>ORDEM DE COMPRA ${esc(p.codigo)}</h1><div class="sub">Emitida em ${dataBR(p.emitido_em)} · Requisição ${esc(r.codigo)}</div></div></header>
 <div class="blocos">
-  <div class="bloco"><b>Fornecedor</b>${esc(f?.nome)}${f?.cnpj ? `<br>CNPJ ${esc(formatarCNPJ(f.cnpj))}` : ''}${f?.contato ? `<br>A/C ${esc(f.contato)}` : ''}${f?.telefone ? `<br>${esc(f.telefone)}` : ''}${f?.email ? `<br>${esc(f.email)}` : ''}${f?.cidade ? `<br>${esc(f.cidade)}` : ''}</div>
+  <div class="bloco"><b>Fornecedor</b>${esc(f?.nome)}${f?.razao_social && f.razao_social !== f.nome ? `<br>${esc(f.razao_social)}` : ''}${f?.cnpj ? `<br>CNPJ ${esc(formatarCNPJ(f.cnpj))}` : ''}${f?.contato ? `<br>A/C ${esc(f.contato)}` : ''}${f?.telefone ? `<br>${esc(f.telefone)}` : ''}${f?.email ? `<br>${esc(f.email)}` : ''}${f?.endereco ? `<br>${esc(f.endereco)}` : ''}${f?.cidade ? `<br>${esc(f.cidade)}` : ''}</div>
   <div class="bloco"><b>Comprador</b>Fabriaço Brasil · Montagens Industriais e Caldeiraria<br>Mococa/SP${r.projeto_codigo ? `<br>Projeto ${esc(r.projeto_codigo)} · ${esc(r.projeto_titulo)}` : `<br>Setor: ${esc(r.setor)}`}</div>
 </div>
 <table><thead><tr><th>#</th><th>Descrição</th><th class="d">Qtd.</th><th>Un.</th><th class="d">Unitário</th><th class="d">Total</th></tr></thead><tbody>${linhas}</tbody></table>

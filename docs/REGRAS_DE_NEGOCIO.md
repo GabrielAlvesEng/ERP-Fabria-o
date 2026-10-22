@@ -253,6 +253,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Permissões: perfil novo **Compras** (ler, criar, editar); o perfil Financeiro ganhou `compras.ler`. Aprovar é `financeiro.editar`.
    - Fica para depois: recebimento com conferência e estoque (Almoxarifado), pagamento (Financeiro), anexos, compra dividida entre fornecedores, envio por e-mail. Perguntas abertas no item 7 do planejamento.
    - Migration `20261022000057_compras.sql`.
+102. **Fornecedor preenchido pelo CNPJ (22/10/2026)** (pedido do Gabriel: "igual ao cadastro das empresas"): em Compras → Fornecedores, ao digitar um CNPJ completo e válido, o ERP busca na Receita (mesma consulta do cadastro de empresas) e preenche só os campos vazios: nome (fantasia), razão social, endereço, cidade/UF, telefone e e-mail. Avisa CNPJ inválido ou já cadastrado em outro fornecedor. Fornecedores ganharam razão social e endereço, que também saem no PDF da ordem de compra. Migration `20261022000058_fornecedores_cnpj.sql`.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
