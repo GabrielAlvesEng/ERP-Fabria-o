@@ -66,7 +66,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
             </div>
           )}
           {doc.tipo === 'comercial' && (
-            <p className="text-xs text-suave sm:col-span-2">A comercial tem 4 páginas fixas: capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (itens da aba Custos, com o valor digitado na seção Valores ou o calculado) e encerramento (anexos, sigilo e o vendedor). Garantia e prazo vêm da proposta técnica; frete, da aba Dados.</p>
+            <p className="text-xs text-suave sm:col-span-2">A comercial tem capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (itens da aba Custos, com o valor digitado na seção Valores ou o calculado) e encerramento (anexos, sigilo e o vendedor, na página dos valores quando cabe). Garantia e prazo vêm da proposta técnica; frete, da aba Dados.</p>
           )}
         </div>
       </div>

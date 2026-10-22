@@ -627,6 +627,39 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
   const total = d.itens.reduce((a, i) => a + i.valor, 0);
   const revisoes = d.revisoes?.length ? d.revisoes : [{ numero: d.revisao, descricao: d.revisao ? `Revisão ${d.revisao}` : 'Emissão inicial', emissao: d.emissao }];
   const vend = d.vendedor;
+  // Decisão 73: as Informações finais vão na página dos Valores quando cabem inteiras; se não cabem,
+  // o bloco (wrap={false}) passa inteiro para a página seguinte, que repete a moldura.
+  const encerramento = (
+    <View wrap={false} style={{ marginTop: valores ? 26 : 0 }}>
+      <TituloPagina rotulo="Encerramento" titulo="Informações finais" />
+      {anexo ? (
+        <View wrap={false} style={{ marginBottom: 12 }}>
+          <Text style={[s.kicker, { marginBottom: 5 }]}>{anexo.titulo.toUpperCase()}</Text>
+          {/* Decisão 70: a proposta técnica da revisão e os anexos comerciais da aba Arquivos, em cards. */}
+          <ListaAnexos arquivos={[{ nome: `Proposta técnica ${d.codigo}-R${d.revisao}.pdf`, detalhe: 'Proposta técnica' }, ...(d.anexos?.comerciais ?? [])]} />
+        </View>
+      ) : null}
+      {sigilo ? (
+        <View wrap={false} style={{ marginBottom: 12 }}>
+          <Text style={[s.kicker, { marginBottom: 5 }]}>TERMO DE CONFIDENCIALIDADE</Text>
+          <Confidencialidade texto={CONFIDENCIALIDADE_COMERCIAL} v={v} />
+        </View>
+      ) : null}
+      <View wrap={false} style={{ backgroundColor: C.navy, borderRadius: 10, padding: 18, flexDirection: 'row', alignItems: 'center' }}>
+        <Image src={`${MARCA}icone.png`} style={{ width: 40, height: 40, marginRight: 14 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 7, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.4, marginBottom: 4 }}>NEGOCIAÇÃO · VENDEDOR RESPONSÁVEL</Text>
+          <Text style={{ fontSize: 15, fontWeight: 700, color: '#ffffff' }}>{vend?.nome || d.preparadoPor || empresa.responsavel}</Text>
+          <Text style={{ fontSize: 8, color: '#c7cbe0', marginTop: 2 }}>{vend?.cargo || 'Comercial'} · Fabriaço Brasil</Text>
+        </View>
+        <View style={{ borderLeftWidth: 0.5, borderLeftColor: '#3a4263', paddingLeft: 14 }}>
+          <Text style={{ fontSize: 8, color: '#ffffff', marginBottom: 3 }}>{vend?.telefone || empresa.telefone}</Text>
+          <Text style={{ fontSize: 8, color: '#ffffff', marginBottom: 3 }}>{vend?.email || empresa.email}</Text>
+          <Text style={{ fontSize: 8, color: '#c7cbe0' }}>{empresa.site}</Text>
+        </View>
+      </View>
+    </View>
+  );
   return (
     <>
       <Page size="A4" style={s.pagina}>
@@ -693,39 +726,16 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
             </View>
             <Text style={{ fontSize: 20, fontWeight: 700, color: '#ffffff' }}>{moeda(total)}</Text>
           </View>
+          {encerramento}
         </Page>
       ) : null}
 
-      <Page size="A4" style={s.pagina}>
-        <Moldura d={d} comercial empresa={empresa} />
-        <TituloPagina rotulo="Encerramento" titulo="Informações finais" />
-        {anexo ? (
-          <View wrap={false} style={{ marginBottom: 12 }}>
-            <Text style={[s.kicker, { marginBottom: 5 }]}>{anexo.titulo.toUpperCase()}</Text>
-            {/* Decisão 70: a proposta técnica da revisão e os anexos comerciais da aba Arquivos, em cards. */}
-            <ListaAnexos arquivos={[{ nome: `Proposta técnica ${d.codigo}-R${d.revisao}.pdf`, detalhe: 'Proposta técnica' }, ...(d.anexos?.comerciais ?? [])]} />
-          </View>
-        ) : null}
-        {sigilo ? (
-          <View wrap={false} style={{ marginBottom: 12 }}>
-            <Text style={[s.kicker, { marginBottom: 5 }]}>TERMO DE CONFIDENCIALIDADE</Text>
-            <Confidencialidade texto={CONFIDENCIALIDADE_COMERCIAL} v={v} />
-          </View>
-        ) : null}
-        <View wrap={false} style={{ backgroundColor: C.navy, borderRadius: 10, padding: 18, flexDirection: 'row', alignItems: 'center' }}>
-          <Image src={`${MARCA}icone.png`} style={{ width: 40, height: 40, marginRight: 14 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 7, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.4, marginBottom: 4 }}>NEGOCIAÇÃO · VENDEDOR RESPONSÁVEL</Text>
-            <Text style={{ fontSize: 15, fontWeight: 700, color: '#ffffff' }}>{vend?.nome || d.preparadoPor || empresa.responsavel}</Text>
-            <Text style={{ fontSize: 8, color: '#c7cbe0', marginTop: 2 }}>{vend?.cargo || 'Comercial'} · Fabriaço Brasil</Text>
-          </View>
-          <View style={{ borderLeftWidth: 0.5, borderLeftColor: '#3a4263', paddingLeft: 14 }}>
-            <Text style={{ fontSize: 8, color: '#ffffff', marginBottom: 3 }}>{vend?.telefone || empresa.telefone}</Text>
-            <Text style={{ fontSize: 8, color: '#ffffff', marginBottom: 3 }}>{vend?.email || empresa.email}</Text>
-            <Text style={{ fontSize: 8, color: '#c7cbe0' }}>{empresa.site}</Text>
-          </View>
-        </View>
-      </Page>
+      {valores ? null : (
+        <Page size="A4" style={s.pagina}>
+          <Moldura d={d} comercial empresa={empresa} />
+          {encerramento}
+        </Page>
+      )}
     </>
   );
 }

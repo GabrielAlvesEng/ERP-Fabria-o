@@ -205,6 +205,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - Na seção Valores da comercial, o valor que os custos dão para cada item aparece como **sugestão**, já preenchida e editável. "Usar a sugestão" volta para ele.
     - O **título da capa** (técnica e comercial) é sempre o Título do fornecimento da aba Dados. O **subtítulo** é a Descrição da aba Dados, numa linha corrida de até 280 caracteres. Os campos de título e subtítulo saíram do editor. A 2ª linha do título continua, como complemento opcional. Documento antigo sem descrição em Dados ainda mostra o subtítulo que tinha.
     - O campo **Condições comerciais** saiu da aba Dados e da Nova proposta. A coluna continua no banco com o que já estava gravado (nada foi apagado).
+73. **Comercial: Informações finais junto dos Valores quando cabem (22/10/2026)** (pedido do Gabriel): o bloco de encerramento (anexos, termo de confidencialidade e vendedor) vai na mesma página dos Valores se couber inteiro; se não couber, passa inteiro para a página seguinte. A comercial fica com 3 páginas no caso comum.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
