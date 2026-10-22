@@ -39,7 +39,7 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   useEffect(() => {
     if (!salvos || !padroes) return;
     // Documento salvo numa versão antiga do modelo é convertido com os padrões atuais (decisão 67).
-    setDocs({ tecnica: fixarSecoesDoModelo(completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), padroes.tecnica), comercial: completarDocumento(salvos.comercial, 'comercial', padroes.comercial) });
+    setDocs({ tecnica: fixarSecoesDoModelo(completarDocumento(salvos.tecnica, 'tecnica', padroes.tecnica), padroes.tecnica), comercial: fixarSecoesDoModelo(completarDocumento(salvos.comercial, 'comercial', padroes.comercial), padroes.comercial) });
   }, [salvos, padroes]);
   const doc = docs[tipo];
 

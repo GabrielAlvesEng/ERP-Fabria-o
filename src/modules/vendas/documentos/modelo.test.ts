@@ -143,3 +143,18 @@ describe('fixarSecoesDoModelo (decisão 75)', () => {
   });
 });
 
+describe('fixarSecoesDoModelo na comercial (decisão 76)', () => {
+  it('visão geral, impostos, anexo e confidencialidade vêm do modelo; pagamento e valores continuam da proposta', () => {
+    const modelo = documentoPadrao('comercial');
+    const imp = modelo.secoes.find((s) => s.id === 'impostos')!;
+    if (imp.tipo === 'impostos') imp.ncm = '7308.90.10';
+    const doc = documentoPadrao('comercial');
+    doc.secoes = doc.secoes.map((s) => (s.id === 'impostos' ? { ...s, ativo: false } : s.tipo === 'pagamento' ? { ...s, condicao: '30 DDL' } : s));
+    const r = fixarSecoesDoModelo(doc, modelo);
+    const i = r.secoes.find((s) => s.id === 'impostos')!;
+    expect(i.ativo && i.tipo === 'impostos' && i.ncm).toBe('7308.90.10');
+    const p = r.secoes.find((s) => s.tipo === 'pagamento')!;
+    expect(p.tipo === 'pagamento' && p.condicao).toBe('30 DDL');
+  });
+});
+

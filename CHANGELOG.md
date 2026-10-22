@@ -195,3 +195,4 @@
 - **Decisão 73:** comercial com as Informações finais na página dos Valores quando cabem (conferido: 1 item fica em 3 páginas; 9 itens empurram o encerramento inteiro para a 4ª).
 - **Decisão 74:** Escopo da técnica com os itens e nomes da aba Custos (sem edição do nome, sem adicionar ou remover item; texto e imagens mantidos por posição); Custos abrem com tudo fechado. 140 testes, typecheck e build ok; PDF conferido com 9 itens.
 - **Decisão 75:** Validade, Termo de Confidencialidade e Anexo fora do editor da técnica, sempre no PDF, com o texto do modelo (Administração → Modelos de proposta). 141 testes, typecheck e build ok.
+- **Decisão 76:** comercial com Visão geral, Impostos, Anexo e Confidencialidade fixos (só pelo modelo). 142 testes, typecheck e build ok.

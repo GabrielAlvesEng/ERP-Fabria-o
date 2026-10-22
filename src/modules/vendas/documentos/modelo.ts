@@ -346,18 +346,21 @@ export function sincronizarEscopo(doc: Documento, itens: { descricao: string }[]
   };
 }
 
-// Decisão 75: na técnica, Validade, Termo de Confidencialidade e Anexo são sempre fixos e sempre saem.
-// O texto vem do modelo (Administração → Modelos de proposta), não do documento da proposta.
-export const SECOES_DO_MODELO = ['validade', 'confidencialidade', 'anexo'];
+// Decisões 75 e 76: seções sempre fixas e sempre no PDF. O conteúdo vem do modelo
+// (Administração → Modelos de proposta), não do documento da proposta.
+export const SECOES_DO_MODELO: Record<TipoDocumento, string[]> = {
+  tecnica: ['validade', 'confidencialidade', 'anexo'],
+  comercial: ['visao', 'impostos', 'anexo', 'confidencialidade'],
+};
 export function fixarSecoesDoModelo(doc: Documento, modelo: Documento): Documento {
-  if (doc.tipo !== 'tecnica') return doc;
+  const ids = SECOES_DO_MODELO[doc.tipo];
   const secoes = doc.secoes.map((s) => {
-    if (!SECOES_DO_MODELO.includes(s.id)) return s;
+    if (!ids.includes(s.id)) return s;
     const m = modelo.secoes.find((x) => x.id === s.id && x.tipo === s.tipo);
     return { ...(m ?? s), ativo: true };
   });
   // Documento antigo sem alguma delas: entra a do modelo, no fim.
-  for (const id of SECOES_DO_MODELO) {
+  for (const id of ids) {
     const m = modelo.secoes.find((x) => x.id === id);
     if (m && !secoes.some((x) => x.id === id)) secoes.push({ ...m, ativo: true });
   }

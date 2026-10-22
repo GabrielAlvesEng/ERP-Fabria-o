@@ -210,6 +210,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - O nome dos itens nas duas propostas é obrigatoriamente o nome do item na aba Custos, sem edição na proposta. Na técnica, o **Escopo** tem um item para cada item dos Custos, na mesma ordem e com letras A, B, C. O texto e as imagens de cada item continuam editáveis. Para criar, renomear ou tirar item, só pelos Custos. Na comercial, a tabela de Valores já usava o nome dos Custos.
     - A aba **Custos** abre com todas as seções fechadas.
 75. **Validade, Confidencialidade e Anexo fixos na técnica (22/10/2026)** (pedido do Gabriel; *altera* a decisão 70, que deixava essas seções com "Ver" e checkbox): na proposta técnica elas saem do editor (sem edição e sem checkbox) e sempre aparecem no PDF. O texto vem do modelo em Administração → Modelos de proposta, que é o único lugar onde o Anexo é editado. A mudança no modelo vale também para as propostas em rascunho, quando o documento for aberto de novo.
+76. **Seções fixas na comercial (22/10/2026)** (pedido do Gabriel; mesma regra da decisão 75): Visão geral, Impostos (inclusive NCM e alíquotas), Anexo e Termo de Confidencialidade saem do editor da proposta comercial (sem edição e sem checkbox) e sempre aparecem no PDF. O conteúdo vem do modelo em Administração → Modelos de proposta. Continuam na proposta: Forma de pagamento e Valores.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

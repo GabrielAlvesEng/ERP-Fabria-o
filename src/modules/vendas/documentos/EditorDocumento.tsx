@@ -77,8 +77,8 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
       {doc.secoes.map((s, i) => {
         // Sobre nós e Dados da Empresa são obrigatórios na técnica (decisão 71): nem aparecem no editor.
         if (s.tipo === 'sobre' || s.tipo === 'dados_empresas') return null;
-        // Decisão 75: na proposta técnica, Validade, Confidencialidade e Anexo não aparecem (sempre saem, com o texto do modelo).
-        if (!modelo && doc.tipo === 'tecnica' && SECOES_DO_MODELO.includes(s.id)) return null;
+        // Decisões 75 e 76: seções do modelo não aparecem na proposta (sempre saem, com o conteúdo do modelo).
+        if (!modelo && SECOES_DO_MODELO[doc.tipo].includes(s.id)) return null;
         // Seções fixas (decisão 70): Conheça a Fabriaço, Dados da Empresa, Termo de Confidencialidade e Anexos. No modelo, o Anexo é editável.
         const fixa = (SECOES_FIXAS.includes(s.id) && !(modelo && s.id === 'anexo')) || s.tipo === 'confidencialidade';
         return (
