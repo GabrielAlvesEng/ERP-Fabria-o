@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, LogOut, Menu, Moon, ShieldCheck, Sun, X } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, LogOut, Menu, Moon, ShieldCheck, Sun, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
 import { RetornosSino } from '@/modules/vendas/RetornosSino';
+import { VencimentosSino } from '@/modules/rh/VencimentosSino';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { useMeuUsuario } from '@/modules/perfil/api';
 
@@ -12,6 +13,7 @@ import { useMeuUsuario } from '@/modules/perfil/api';
 const modulos = [
   { to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness, modulo: 'vendas' },
   { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia' },
+  { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh' },
   { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const },
 ];
 
@@ -57,6 +59,7 @@ export function Layout() {
           </div>
           <div className="flex items-center sm:gap-1">
             <RetornosSino />
+            <VencimentosSino />
             <button onClick={() => setTema(tema === 'claro' ? 'escuro' : 'claro')} className="rounded-lg p-2 text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700" aria-label="Alternar tema">
               {tema === 'claro' ? <Moon size={18} /> : <Sun size={18} />}
             </button>

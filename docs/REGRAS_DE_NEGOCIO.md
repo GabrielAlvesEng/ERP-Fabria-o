@@ -175,6 +175,17 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - **Vendedor comum** (quem não tem `rh.ler`) vê só o próprio cartão em Vendas → Vendedores ("Meus números"). Os nomes dos outros vendedores continuam aparecendo nas propostas e no filtro do Kanban.
     - **Pedro Vinicius e Guilherme Santos estavam sem perfil de acesso** (por isso não viam nada nem conseguiam importar a assinatura). Receberam o perfil **Comercial** (vendas: ler, criar, editar e aprovar; custos; engenharia: ler), o mesmo da decisão 21. *A confirmar pelo Gabriel.* Ainda não há tela para dar perfil a usuário: hoje isso é feito no banco.
 
+69. **Módulo RH (22/10/2026)** (`docs/PLANEJAMENTO_RH.md` versão 2; *altera* a ordem do Roadmap: o RH vem antes de seguir com a Engenharia). Respostas do Gabriel ao planejamento:
+    - "Senhas" é só o gerenciamento dos logins do ERP: o RH cria, desativa e manda o link de senha; o ERP nunca guarda nem mostra senhas.
+    - Salário e dados bancários ficam só no Financeiro. Holerites depois, com o Financeiro.
+    - ART fica fora do RH (ART de obra/serviço, entra depois na Engenharia).
+    - Cada cliente define a validade da sua integração.
+    - Aviso de vencimento 30 dias antes, só para o RH.
+    - O funcionário pode ver a própria ficha.
+    - Documento ou integração vencidos **impedem** a pessoa de ser agendada para ir àquele cliente naquele dia (conferido na data do serviço, quando a Agenda existir).
+    - Carga inicial: Gabriel Alves (Engenheiro/CEO), Guilherme Santos Silva (Projetista Mecânico), Pedro Vinicius da Silva Pereira e Caio Henrique Alves da Silva (Desenhistas Mecânicos), Fabiano Alves da Silva (Administrador Geral/Dono), todos no setor Engenharia.
+    - **Logins pelo RH (entrega 4, 22/10/2026):** quem tem `rh.critica` cria o login (gera um **link de convite**, que o RH copia ou manda por e-mail, e a pessoa escolhe a própria senha), gera link de nova senha, desativa ou reativa, escolhe perfis e faz ajustes individuais (Padrão/Concede/Nega). Proteções no banco: ninguém muda o próprio acesso por ali; só quem tem acesso total mexe em quem tem acesso total ou dá esse perfil; ninguém dá permissão que não tem; o último usuário ativo com acesso total não pode ser desativado, desligado nem perder o perfil. Funcionário **desligado perde o login na hora**. Tudo registrado na auditoria. *Recomendação minha, aguardando confirmação do Gabriel.*
+
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:

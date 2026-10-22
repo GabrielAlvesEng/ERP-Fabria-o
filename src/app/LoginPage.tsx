@@ -3,10 +3,11 @@ import { useState, type FormEvent } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { Aviso, Botao, Campo, Entrada } from '@/shared/ui';
 
-export function LoginPage() {
+export function LoginPage({ erroLink }: { erroLink?: string | null }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [erro, setErro] = useState('');
+  // Link de convite ou de nova senha vencido ou já usado: o RH gera outro.
+  const [erro, setErro] = useState(erroLink ? 'O link expirou ou já foi usado. Peça ao RH um link novo ou use "Esqueci minha senha".' : '');
   const [aviso, setAviso] = useState('');
   const [enviando, setEnviando] = useState(false);
 

@@ -123,3 +123,38 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `vendedores` (usuario_id PK → usuarios, nome, cargo, telefone, observacoes, ativo). Lê quem tem `vendas.ler` ou `rh.ler`; grava quem tem `rh.editar`.
 - `propostas.responsavel_id` é o vendedor. O gatilho `validar_vendedor_proposta` aceita só vendedor ativo: na criação, se não for vendedor, deixa a proposta sem vendedor; numa troca, recusa.
 - Permissões novas `rh.ler` e `rh.editar`, mais o perfil RH. A Administração tem acesso total.
+
+## RH: cadastro (`20261022000036_rh_cadastro.sql`, decisão 69)
+
+- `setores` (nome único sem diferenciar maiúsculas, ativo) e `funcoes` (setor_id, nome único no setor, descrição, ativo). Todos os logados leem; grava quem tem `rh.editar`. Nada é apagado: fica inativo.
+- `funcionarios`: nome completo, CPF (11 dígitos, único), RG, nascimento, telefone, e-mails pessoal e corporativo, endereço (cep, endereço, cidade, UF), contato de emergência, matrícula (única), `funcao_id` → funcoes (o setor vem da função), admissão, vínculo (CLT, PJ, Sócio, Temporário, Estágio ou vazio), situação (ativo, férias, afastado, desligado; desligado exige a data), `usuario_id` → usuarios (único, opcional: o login do ERP) e observações. Sem salário nem dados bancários (Financeiro).
+- Lê quem tem `rh.ler` ou o próprio funcionário (`usuario_id = auth.uid()`); grava quem tem `rh.editar`. Auditoria em todas as tabelas.
+- Gatilhos: `validar_funcao_funcionario` (função nova ou trocada precisa estar ativa); telefone e nascimento iguais à ficha e a `usuarios` (Meu perfil) nos dois sentidos (`funcionario_puxar_usuario`, `funcionario_para_usuario`, `usuario_para_funcionario`).
+- O vendedor (`vendedores.usuario_id`) chega à ficha pelo mesmo `usuario_id`; não há coluna nova em `vendedores`.
+- Permissão nova `rh.critica` (logins e perfis, entrega 4), dada ao perfil RH.
+- Carga: 7 setores padrão, 4 funções de Engenharia e os 5 funcionários da lista do Gabriel; Gabriel, Guilherme e Pedro ligados aos seus logins.
+
+## RH: documentos e vencimentos (`20261022000037_rh_documentos.sql`, decisão 69)
+
+- `tipos_documento` (nome único, categoria, tem_validade, validade_meses padrão, aviso_dias = 30, descrição, ativo). Carga inicial: ASO, CNH, RG, NR-10, NR-11, NR-12, NR-18, NR-33, NR-35 (validade padrão só onde a norma fixa a periodicidade).
+- `funcao_requisitos` (função × tipo) e `funcionario_requisitos` (requisitos individuais). Gravação por inclusão e remoção, com auditoria (`auditar_requisito`).
+- `funcionario_documentos` (tipo, número, emissão, validade, arquivo no espaço privado `rh` em `{id do funcionário}/…`, observações, `substituido_em`, `excluido_em`). O gatilho `validar_documento_funcionario` exige validade nos tipos que vencem, confere a pasta do arquivo, manda o anterior do mesmo tipo para o histórico e não deixa mudar um documento lançado (só observações e a exclusão). Excluir o atual reativa o anterior (`reativar_documento_anterior`).
+- Visão `situacao_requisitos` (security_invoker): por funcionário não desligado, cada requisito exigido (função + individual) e cada documento atual com validade, com a situação `em_dia`, `vencendo` (dentro do aviso), `vencido` ou `faltando`, na data de hoje em São Paulo.
+- Leitura: `rh.ler` ou o próprio funcionário (`eh_meu_funcionario`); gravação: `rh.editar`. Storage `rh`: lê o RH ou o dono da pasta; envia o RH, só em pasta de funcionário existente.
+
+## RH: integrações nos clientes (`20261022000038_rh_integracoes.sql`, decisão 69)
+
+- `empresa_integracao` (empresa_id PK → empresas, validade_meses definida pelo cliente, observações): cliente com linha aqui exige integração. `empresa_documentos_exigidos` (cliente × tipo de documento).
+- `funcionario_integracoes` (funcionário, cliente, realizada_em, validade, comprovante no espaço `rh` em `{id do funcionário}/integracoes/…`, observações, `substituido_em`, `excluido_em`), com as mesmas regras dos documentos: a nova manda a anterior do mesmo cliente para o histórico, lançada não muda, excluir a atual reativa a anterior.
+- Visão `situacao_integracoes` (security_invoker): integrações atuais com a situação de hoje (aviso 30 dias antes); o nome do cliente vem de `nome_empresa(id)`, para o funcionário ver as próprias sem ler o cadastro de empresas.
+- `liberacao_no_cliente(empresa, data)` e `funcionario_liberado(funcionário, empresa, data)` (security definer, só logados): liberado ou não na data e os motivos (férias/afastado, sem integração ou integração vencida, documento exigido pela função, individual ou pelo cliente faltando ou vencido na data). A Agenda vai usar para impedir o agendamento (resposta 8).
+- Política nova `empresas_ler_rh`: quem tem `rh.ler` lê o cadastro de empresas (para escolher o cliente).
+
+## RH: logins pelo RH (`20261022000039_rh_acessos.sql`, `20261022000040_rh_desligado_perde_acesso.sql`, `20261022000041_rh_acessos_funcoes.sql`, decisão 69)
+
+- Políticas `usuario_perfis_ler_rh` e `usuario_permissoes_ler_rh`: quem tem `rh.critica` lê perfis e ajustes de todos.
+- `conferir_gestao_acesso(usuário)`: exige `rh.critica`; quem não tem acesso total não muda a si mesmo nem quem tem acesso total.
+- `definir_perfis_usuario(usuário, perfis[])` e `definir_permissao_usuario(usuário, módulo, ação, concedida|null)` (security definer, com auditoria): trocam perfis e ajustes individuais; não dão acesso total nem permissão que quem chama não tem; não tiram o acesso total do último usuário ativo que o tem. **A migration 41 ainda não foi aplicada** (o Supabase pediu confirmação manual por ter `delete`; aguarda o Gabriel).
+- Gatilho `funcionarios_desligado_acesso`: ao mudar a situação para desligado, o usuário ligado fica inativo (protege o último com acesso total).
+- Edge Function `rh-acesso` (criar_login, link_senha, desativar, reativar): usa a service_role só no Supabase; o login é bloqueado no Auth (`ban_duration`) além de `usuarios.ativo`. O ERP gera links (`generateLink`), nunca vê senhas.
+
