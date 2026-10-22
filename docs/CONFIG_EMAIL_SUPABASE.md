@@ -10,6 +10,8 @@ Tudo abaixo é feito pelo Gabriel no painel do Supabase, projeto `iobfyuscyzyjxm
 
 Se aparecer o erro **535 authentication failed**, o servidor recusou o usuário ou a senha: confira se o usuário é o e-mail completo, redigite a senha e, se a caixa tiver verificação em duas etapas, use uma senha de aplicativo.
 
+**Locaweb (o e-mail atual da empresa, servidor `email.com.br`).** Host `smtps.email.com.br`, porta `465` (ou `smtp.email.com.br`, porta `587`), usuário e Sender email `contato@fabriacobrasil.com.br`, senha da caixa contato@, Sender name `ERP Fabriaço`.
+
 **Opção A: Microsoft 365 (o e-mail da empresa).** Use uma caixa como `erp@fabriacobrasil.com.br` (ou a sua).
 
 | Campo | Valor |
