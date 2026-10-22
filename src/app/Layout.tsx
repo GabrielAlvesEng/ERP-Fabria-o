@@ -10,12 +10,15 @@ import { Avatar } from '@/modules/perfil/Avatar';
 import { useMeuUsuario } from '@/modules/perfil/api';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
+// Decisão 78: o menu é dividido em Operacionais (a operação dos projetos: Vendas, Engenharia, Fabricação...)
+// e Administrativos (RH, Financeiro, Administração...). Módulos novos entram no grupo certo.
 const modulos = [
-  { to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness, modulo: 'vendas' },
-  { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia' },
-  { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh' },
-  { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const },
+  { to: '/vendas', rotulo: 'Vendas', icone: BriefcaseBusiness, modulo: 'vendas', grupo: 'operacional' },
+  { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia', grupo: 'operacional' },
+  { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh', grupo: 'administrativo' },
+  { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const, grupo: 'administrativo' },
 ];
+const GRUPOS = [['operacional', 'Módulos operacionais'], ['administrativo', 'Módulos administrativos']] as const;
 
 export function Layout() {
   const { session, sair, pode } = useAuth();
@@ -40,7 +43,6 @@ export function Layout() {
       {/* Sidebar clara com borda fina (redesign, decisão 51); no escuro, grafite. */}
       <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-borda bg-superficie md:flex">
         <div className="px-5 py-5"><Marca /></div>
-        <div className="px-5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-suave">Módulos</div>
         <ListaModulos menu={menu} />
         <Rodape email={session?.user.email} sair={sair} />
       </aside>
@@ -73,7 +75,6 @@ export function Layout() {
                 <Marca />
                 <button onClick={() => setGaveta(false)} className="rounded-lg p-2 text-suave hover:bg-pagina dark:hover:bg-marinho-700" aria-label="Fechar menu"><X size={20} /></button>
               </div>
-              <div className="px-5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-suave">Módulos</div>
               <ListaModulos menu={menu} grande />
               <Rodape email={session?.user.email} sair={sair} />
             </aside>
@@ -93,18 +94,27 @@ export function Layout() {
 
 function ListaModulos({ menu, grande = false }: { menu: typeof modulos; grande?: boolean }) {
   return (
-    <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">
-      {menu.map((m) => (
-        <NavLink
-          key={m.to}
-          to={m.to}
-          className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 ${grande ? 'py-3 text-[15px]' : 'py-2 text-sm'} transition-colors duration-150 ${isActive
-            ? 'bg-roxo-50 font-medium text-roxo-600 dark:bg-roxo-500/20 dark:text-roxo-100'
-            : 'text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700'}`}
-        >
-          <m.icone size={grande ? 20 : 18} /> {m.rotulo}
-        </NavLink>
-      ))}
+    <nav className="flex-1 overflow-y-auto px-3">
+      {GRUPOS.map(([grupo, titulo]) => {
+        const itens = menu.filter((m) => m.grupo === grupo);
+        if (!itens.length) return null;
+        return (
+          <div key={grupo} className="mb-4 space-y-0.5">
+            <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-suave">{titulo}</div>
+            {itens.map((m) => (
+              <NavLink
+                key={m.to}
+                to={m.to}
+                className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 ${grande ? 'py-3 text-[15px]' : 'py-2 text-sm'} transition-colors duration-150 ${isActive
+                  ? 'bg-roxo-50 font-medium text-roxo-600 dark:bg-roxo-500/20 dark:text-roxo-100'
+                  : 'text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700'}`}
+              >
+                <m.icone size={grande ? 20 : 18} /> {m.rotulo}
+              </NavLink>
+            ))}
+          </div>
+        );
+      })}
     </nav>
   );
 }
