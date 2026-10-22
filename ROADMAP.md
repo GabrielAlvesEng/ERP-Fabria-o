@@ -22,7 +22,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 | 0 | Base do projeto (estrutura, Supabase novo, login, permissões, tema) | A definir junto com o planejamento de Vendas |
 | 1 | **Vendas** (Empresas, Contatos, Propostas, Kanban, Kick-off) | **Em planejamento, aguardando aprovação** |
 | 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Em andamento** (decisões 33 e 96): Dashboard, Kanban de projetos e lista de materiais manual feitos em 22/10/2026, aguardando o teste do Gabriel. Planejamento completo em `docs/PLANEJAMENTO_ENGENHARIA.md`; as outras áreas do projeto vêm depois |
-| 3 | Compras e Financeiro (aprovação e pagamento) | Compras no menu, em construção (decisão 92); Financeiro no menu, em construção (decisão 93); planejamento não iniciado |
+| 3 | Compras e Financeiro (aprovação e pagamento) | Compras implementado e liberado (decisão 101), aguardando validação do Gabriel; Financeiro no menu, em construção (decisão 93); planejamento não iniciado |
 | 4 | Almoxarifado | Módulo criado no menu, vazio (decisão 94, 22/10/2026). Planejamento não iniciado |
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |
 | 6 | Fabricação e Qualidade | Não iniciado |

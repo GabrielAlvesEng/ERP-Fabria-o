@@ -1,8 +1,12 @@
 import { AbasModulo } from '@/shared/ui/AbasModulo';
-import { LayoutDashboard } from 'lucide-react';
+import { FileText, LayoutDashboard, Truck } from 'lucide-react';
 
-// Módulo Compras (decisão 92): por enquanto só a página inicial. As áreas entram aqui depois do planejamento aprovado.
-const abas = [{ to: '/compras', rotulo: 'Início', icone: LayoutDashboard, end: true }];
+// Abas do módulo Compras (decisão 101). A requisição abre dentro do Painel.
+const abas = [
+  { to: '/compras', rotulo: 'Painel', icone: LayoutDashboard, end: true },
+  { to: '/compras/ordens', rotulo: 'Ordens de compra', icone: FileText },
+  { to: '/compras/fornecedores', rotulo: 'Fornecedores', icone: Truck },
+];
 
 export function ComprasLayout() {
   return <AbasModulo abas={abas} />;

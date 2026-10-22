@@ -25,7 +25,10 @@ import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
 import { PredefinicoesPage } from '@/modules/admin/predefinicoes/PredefinicoesPage';
 import { PerfilPage } from '@/modules/perfil/PerfilPage';
 import { ComprasLayout } from '@/modules/compras/ComprasLayout';
-import { ComprasInicioPage } from '@/modules/compras/ComprasInicioPage';
+import { PainelCompras } from '@/modules/compras/PainelCompras';
+import { RequisicaoPage } from '@/modules/compras/RequisicaoPage';
+import { OrdensPage } from '@/modules/compras/OrdensPage';
+import { FornecedoresPage } from '@/modules/compras/FornecedoresPage';
 import { FinanceiroPage } from '@/modules/financeiro/FinanceiroPage';
 import { RhLayout } from '@/modules/rh/RhLayout';
 import { FuncionariosPage } from '@/modules/rh/FuncionariosPage';
@@ -78,7 +81,10 @@ export function App() {
             <Route path="projetos/:id" element={<ProjetoPage />} />
           </Route>
           <Route path="/compras" element={<ComprasLayout />}>
-            <Route index element={<ComprasInicioPage />} />
+            <Route index element={<PainelCompras />} />
+            <Route path="requisicoes/:id" element={<RequisicaoPage />} />
+            <Route path="ordens" element={<OrdensPage />} />
+            <Route path="fornecedores" element={<FornecedoresPage />} />
           </Route>
           <Route path="/almoxarifado" element={<AlmoxarifadoLayout />}>
             <Route index element={<AlmoxarifadoInicioPage />} />
