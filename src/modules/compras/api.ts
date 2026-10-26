@@ -27,9 +27,9 @@ export interface Cotacao {
   condicao_tipo: CondicaoTipo; condicao_dias: number[]; orcamento_caminho: string | null;
   validade: string | null; observacoes: string; criado_em: string;
   fornecedores?: { nome: string } | null;
-  compras_cotacao_precos: { item_id: string; valor_unit: number }[];
+  compras_cotacao_precos: { item_id: string; valor_unit: number; ipi: number }[];
 }
-export interface PedidoItem { pedido_id: string; item_id: string; quantidade: number; valor_unit: number; quantidade_recebida: number }
+export interface PedidoItem { pedido_id: string; item_id: string; quantidade: number; valor_unit: number; ipi: number; quantidade_recebida: number }
 export interface Pedido {
   id: string; codigo: string; requisicao_id: string | null; pacote_id: string | null; cotacao_id: string; fornecedor_id: string; valor_itens: number; frete: number;
   valor_total: number; previsao_entrega: string | null; status: StatusPedido; entregue_em: string | null; observacoes: string; emitido_em: string;
@@ -42,7 +42,7 @@ export interface Pedido {
 export interface Historico {
   pedido_id: string; item_id: string; bib_tipo: BibTipo | null; bib_id: string | null; grupo: GrupoItem; descricao: string; unidade: string;
   quantidade: number; valor_unit: number; quantidade_recebida: number; pedido_codigo: string; emitido_em: string; pedido_status: StatusPedido;
-  fornecedor_id: string; fornecedor_nome: string; requisicao_codigo: string; projeto_codigo: string; origem: Origem;
+  fornecedor_id: string; fornecedor_nome: string; requisicao_codigo: string; projeto_codigo: string; origem: Origem; ipi: number;
 }
 export interface Evento { id: string; tipo: string; de: string | null; para: string | null; justificativa: string; dados: Record<string, unknown>; criado_em: string; usuarios?: { nome: string } | null }
 export interface ProjetoCompras { id: string; codigo: string; titulo: string; cliente: string; status: string }
@@ -118,7 +118,7 @@ export async function removerItem(id: string): Promise<void> {
 
 // ---------- Cotações ----------
 export const listarCotacoes = async (pacote: string): Promise<Cotacao[]> =>
-  ok(await supabase.from('compras_cotacoes').select('*, fornecedores(nome), compras_cotacao_precos(item_id, valor_unit)').eq('pacote_id', pacote).order('criado_em'));
+  ok(await supabase.from('compras_cotacoes').select('*, fornecedores(nome), compras_cotacao_precos(item_id, valor_unit, ipi)').eq('pacote_id', pacote).order('criado_em'));
 export type DadosCotacao = Pick<Cotacao, 'fornecedor_id' | 'frete' | 'prazo_dias' | 'condicao_pagamento' | 'condicao_tipo' | 'condicao_dias' | 'validade' | 'observacoes'>;
 // Orçamento de um pacote de cotação (decisão 111). Os orçamentos antigos, por requisição, só aparecem para consulta.
 export async function salvarCotacao(pacote: string, id: string | null, d: DadosCotacao): Promise<string> {
@@ -128,9 +128,10 @@ export async function salvarCotacao(pacote: string, id: string | null, d: DadosC
 export async function removerCotacao(id: string): Promise<void> {
   ok(await supabase.from('compras_cotacoes').delete().eq('id', id));
 }
-export async function salvarPreco(cotacao: string, item: string, valor: number | null): Promise<void> {
+// Preço unitário sem IPI e o IPI % do item (decisão 113); valor vazio tira o preço.
+export async function salvarPreco(cotacao: string, item: string, valor: number | null, ipi = 0): Promise<void> {
   if (valor == null) ok(await supabase.from('compras_cotacao_precos').delete().eq('cotacao_id', cotacao).eq('item_id', item));
-  else ok(await supabase.from('compras_cotacao_precos').upsert({ cotacao_id: cotacao, item_id: item, valor_unit: valor }));
+  else ok(await supabase.from('compras_cotacao_precos').upsert({ cotacao_id: cotacao, item_id: item, valor_unit: valor, ipi }));
 }
 
 // Orçamento do fornecedor: espaço privado "compras", {cotação}/{arquivo}.

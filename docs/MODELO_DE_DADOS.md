@@ -183,13 +183,14 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - Funções: `enviar_comunicado`, `anexar_comunicado`, `marcar_comunicado_lido`, `dar_ciente_comunicado`, `cancelar_comunicado`, `comunicacao_meu_papel`, `comunicacao_pessoas` (sem dados pessoais), `comunicado_para_envio` e `registrar_envio_comunicado` (usadas pela Edge Function `comunicacao-envio`, como quem enviou), `registrar_aparelho`, `remover_aparelho`.
 - Permissão `comunicacao.critica` = "Comunicado geral". Perfil "Funcionário" sem permissões. Bucket privado `comunicacao` ({comunicado}/{arquivo}). `comunicados` e `comunicado_destinatarios` no Realtime.
 
-## Compras (decisões 101, 107 e 111, migrations 57, 66 e 71)
+## Compras (decisões 101, 107, 111 e 113, migrations 57, 66, 71 e 74)
 
 - `compras_requisicoes` (código RC-AA-NNN, título, projeto com cópia do código e título, setor, **origem** engenharia/almoxarifado/compras, precisa em, prioridade, solicitante, `engenharia_revisao`). Status: aberta, concluida, cancelada; só muda pelas funções.
 - `compras_requisicao_itens` (grupo, descrição, quantidade, unidade, observação, produto `bib_tipo` + `bib_id`, **status** a_comprar/comprado/recebido/cancelado, `cotacao_escolhida_id` = fornecedor escolhido).
 - `compras_cotacoes` (fornecedor, frete, prazo em dias, `condicao_tipo` + `condicao_dias`, detalhe do pagamento, validade, `orcamento_caminho`; uma por fornecedor), `compras_cotacao_precos` (preço unitário por item).
 - `compras_pedidos` (código OC-AA-NNN, requisição, cotação, fornecedor, valores, previsão, condição de pagamento copiada da cotação, orçamento, status aguardando_entrega/entregue_parcial/entregue/cancelada, motivo do cancelamento; várias por requisição), `compras_pedido_itens` (item, quantidade, preço, quantidade recebida), `compras_eventos` (histórico), `compras_contadores` (RC e OC por ano).
 - `compras_pacotes` (decisão 111: código CT-AA-NNN, título, observações, status aberto/comprado/cancelado, criado por). Item com `pacote_id` está "em cotação"; `compras_cotacoes.pacote_id` (orçamento do pacote, um por fornecedor; `requisicao_id` ou `pacote_id`, nunca os dois), `compras_pedidos.pacote_id` (a OC do pacote pode ter `requisicao_id` vazio quando junta várias solicitações), `compras_eventos.pacote_id`. Status do pacote e `pacote_id` do item só mudam pelas funções `compras_criar_pacote`, `compras_pacote_adicionar`, `compras_pacote_retirar`, `compras_cancelar_pacote`, `compras_gerar_pedido_pacote`.
+- IPI (decisão 113): `compras_cotacao_precos.ipi` e `compras_pedido_itens.ipi` (0 a 100 %); total do item = quantidade × valor_unit × (1 + ipi/100); `compras_pedidos.valor_itens` inclui o IPI.
 - View `compras_historico` (cada item de OC não cancelada com produto, fornecedor, data e preço): ficha do produto.
 - Espaço privado `compras` ({cotação}/{arquivo}): Compras grava; Compras e Financeiro leem.
 - Biblioteca (`bib_*`): Compras lê e edita; Almoxarifado lê.

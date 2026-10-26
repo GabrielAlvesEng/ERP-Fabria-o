@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Pencil, Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { moeda } from '@/shared/lib/formato';
-import { Aviso, Botao, Caixa, Campo, CampoEscolha, CampoNumero, Cartao, Entrada, EsqueletoTabela, Selecao } from '@/shared/ui';
-import { atualizar, inserir, listarMateriaisBase, listarPerfis, listarPesosPerfil, listarTipos, type Perfil } from '@/modules/biblioteca/api';
+import { Aviso, Botao, Caixa, Campo, CampoEscolha, CampoNumero, Entrada, Selecao } from '@/shared/ui';
+import { atualizar, inserir, listarMateriaisBase, listarPesosPerfil, listarTipos, type MaterialBase, type Perfil } from '@/modules/biblioteca/api';
 import {
   FORMATOS, NPS, SCHS, descricaoPerfil, kgPorMetro, kgPorMetroTabela, lerMedida, precosPerfil, tuboSch, type Formato, type ModoPreco,
 } from '@/modules/biblioteca/regras';
@@ -11,7 +11,6 @@ import { CHAVES, Tabela, linha, molduraNumero, td, th, useGravar } from './comum
 
 interface Form { id?: string; material: string; tipo_id: string; a: string; b: string; c: string; parede: string; kgManual: boolean; kg: number; modo: ModoPreco; valor: number }
 const vazio: Form = { material: '', tipo_id: '', a: '', b: '', c: '', parede: '', kgManual: false, kg: 0, modo: 'm', valor: 0 };
-const LIMITE = 300;
 
 // kg/m automático do formulário: fórmula (tubos, barras, cantoneiras, U e H), tabela SCH, ou base de pesos (W, I, U laminado).
 function kgAuto(formato: Formato | undefined, f: Form, dens: number | null | undefined, basePeso: number | null): number | null {
@@ -24,20 +23,22 @@ function kgAuto(formato: Formato | undefined, f: Form, dens: number | null | und
   return kgPorMetro(formato, { a: lerMedida(f.a), b: lerMedida(f.b), c: lerMedida(f.c), parede: lerMedida(f.parede) }, dens);
 }
 
-export function PerfisAba() {
+const doCadastro = (p: Perfil, materiais: MaterialBase[]): Form => ({
+  id: p.id, material: materiais.find((m) => m.cod_mat === p.cod_mat)?.nome ?? p.cod_mat ?? '', tipo_id: p.tipo_id, a: p.a_txt, b: p.b_txt, c: p.c_txt, parede: p.parede_txt,
+  kgManual: p.kg_m_manual, kg: Number(p.kg_m ?? 0), modo: p.preco_modo, valor: Number(p.valor),
+});
+
+// Cadastro de perfil (decisão 48; em Compras → Produtos desde a decisão 113): tipo e medidas, kg/m automático
+// (fórmula, tabela SCH ou base de pesos) ou digitado, preço por metro ou por kg.
+export function FormPerfil({ inicial, onSalvo }: { inicial?: Perfil | null; onSalvo: (descricao: string) => void }) {
   const { erro, setErro, gravar } = useGravar();
   const { data: materiais = [] } = useQuery({ queryKey: CHAVES.materiais, queryFn: listarMateriaisBase });
   const { data: tipos = [] } = useQuery({ queryKey: CHAVES.tipos, queryFn: listarTipos });
-  const { data: perfis = [], isLoading } = useQuery({ queryKey: CHAVES.perfis, queryFn: listarPerfis });
   const { data: pesos = [] } = useQuery({ queryKey: CHAVES.pesos, queryFn: listarPesosPerfil });
-  const [f, setF] = useState<Form>(vazio);
-  const [filtro, setFiltro] = useState({ busca: '', tipo: '', material: '' });
-  const [novoPeso, setNovoPeso] = useState({ tipo_id: '', bitola: '', kg: 0 });
+  const [f, setF] = useState<Form>(inicial ? doCadastro(inicial, materiais) : vazio);
 
   const tiposPerfil = tipos.filter((t) => t.grupo === 'Perfis' && t.ativo);
-  const tiposTabela = tiposPerfil.filter((t) => t.formato === 'tabela');
-  const nomeMat = (cod: string | null) => materiais.find((m) => m.cod_mat === cod)?.nome ?? '';
-  const porNome = (nome: string) => materiais.find((m) => m.nome.toLowerCase() === nome.trim().toLowerCase());
+  const porNome = (nome: string) => materiais.find((m) => m.nome.toLowerCase() === nome.trim().toLowerCase() || m.cod_mat === nome.trim());
   const opcoesMat = materiais.filter((m) => m.ativo).map((m) => ({ valor: m.nome, detalhe: m.categoria.replace(/^\d+ - /, '') }));
 
   const mat = porNome(f.material);
@@ -63,29 +64,13 @@ export function PerfisAba() {
       a_mm: sch ? sch.od : formato === 'tabela' ? null : lerMedida(f.a), b_mm: lerMedida(f.b), c_mm: lerMedida(f.c), parede_mm: sch ? sch.parede : lerMedida(f.parede),
       kg_m: kg > 0 ? kg : null, kg_m_manual: manual && kg > 0, preco_modo: f.modo, valor: f.valor, descricao,
     };
-    if (await gravar(() => (f.id ? atualizar('bib_perfis', { id: f.id }, dados) : inserir('bib_perfis', dados)))) setF(vazio);
+    if (await gravar(() => (f.id ? atualizar('bib_perfis', { id: f.id }, dados) : inserir('bib_perfis', dados)))) onSalvo(descricao);
   }
-
-  function editar(p: Perfil) {
-    setF({ id: p.id, material: nomeMat(p.cod_mat), tipo_id: p.tipo_id, a: p.a_txt, b: p.b_txt, c: p.c_txt, parede: p.parede_txt,
-      kgManual: p.kg_m_manual, kg: Number(p.kg_m ?? 0), modo: p.preco_modo, valor: Number(p.valor) });
-    document.getElementById('area-principal')?.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  const filtrados = useMemo(() => {
-    const t = filtro.busca.trim().toLowerCase();
-    return perfis.filter((p) => (!t || p.descricao.toLowerCase().includes(t)) && (!filtro.tipo || p.tipo_id === filtro.tipo) && (!filtro.material || p.cod_mat === filtro.material));
-  }, [perfis, filtro]);
-  const materiaisUsados = [...new Set(perfis.map((p) => p.cod_mat).filter(Boolean))] as string[];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {erro && <Aviso>{erro}</Aviso>}
-      <Cartao>
-        <div className="mb-3 flex items-center justify-between">
-          <span className="font-semibold">{f.id ? 'Editar perfil' : 'Novo perfil'}</span>
-          {f.id && <Botao variante="fantasma" onClick={() => setF(vazio)}><X size={14} /> Cancelar edição</Botao>}
-        </div>
+      <div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Campo rotulo="Material"><CampoEscolha celula={false} valor={f.material} opcoes={opcoesMat} placeholder="Ex.: AISI 304" onConfirmar={(v) => setF({ ...f, material: v })} /></Campo>
           <Campo rotulo="Tipo">
@@ -147,41 +132,23 @@ export function PerfisAba() {
           </span>
           <Botao onClick={salvar}><Plus size={15} /> {f.id ? 'Salvar alterações' : 'Cadastrar perfil'}</Botao>
         </div>
-      </Cartao>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Entrada className="max-w-xs" placeholder="Buscar perfil" value={filtro.busca} onChange={(e) => setFiltro({ ...filtro, busca: e.target.value })} />
-        <Selecao className="max-w-[200px]" value={filtro.tipo} onChange={(e) => setFiltro({ ...filtro, tipo: e.target.value })}>
-          <option value="">Todos os tipos</option>
-          {tiposPerfil.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-        </Selecao>
-        <Selecao className="max-w-[200px]" value={filtro.material} onChange={(e) => setFiltro({ ...filtro, material: e.target.value })}>
-          <option value="">Todos os materiais</option>
-          {materiaisUsados.map((c) => <option key={c} value={c}>{nomeMat(c)}</option>)}
-        </Selecao>
-        <span className="text-sm text-suave">{filtrados.length} perfil(is){filtrados.length > LIMITE ? `, mostrando ${LIMITE}: use a busca` : ''}</span>
       </div>
-      {isLoading ? <EsqueletoTabela /> : (
-        <Tabela cabecalho={<><th className={th}>Perfil</th><th className={`${th} text-right`}>kg/m</th><th className={th}>Preço</th><th className={`${th} w-32 text-right`}>Valor</th><th className={`${th} text-right`}>R$/m</th><th className={`${th} text-right`}>R$/kg</th><th className={th}>Ativo</th><th /></>}>
-          {filtrados.slice(0, LIMITE).map((p) => {
-            const pr = precosPerfil(p.preco_modo, Number(p.valor), p.kg_m == null ? null : Number(p.kg_m));
-            return (
-              <tr key={p.id} className={linha(p.ativo)}>
-                <td className="px-2 py-1">{p.descricao}</td>
-                <td className={`px-2 text-right tabular-nums ${p.kg_m == null ? 'text-amber-600' : ''}`}>{p.kg_m == null ? 'falta' : Number(p.kg_m).toLocaleString('pt-BR')}{p.kg_m_manual && <span className="ml-1 text-[10px] text-slate-400">manual</span>}</td>
-                <td className="px-2 text-xs text-suave">{p.preco_modo === 'm' ? 'por metro' : 'por kg'}</td>
-                <td className={td}><CampoNumero moeda valor={Number(p.valor)} casas={4} onConfirmar={(n) => gravar(() => atualizar('bib_perfis', { id: p.id }, { valor: n }))} /></td>
-                <td className="px-2 text-right tabular-nums">{pr.porMetro != null ? moeda(pr.porMetro) : '—'}</td>
-                <td className="px-2 text-right tabular-nums">{pr.porKg != null ? moeda(pr.porKg) : '—'}</td>
-                <td className="px-2"><Caixa marcado={p.ativo} onChange={(ativo) => gravar(() => atualizar('bib_perfis', { id: p.id }, { ativo }))} /></td>
-                <td className="px-1"><button onClick={() => editar(p)} className="rounded p-1 text-slate-400 hover:text-roxo-600" aria-label="Editar"><Pencil size={14} /></button></td>
-              </tr>
-            );
-          })}
-        </Tabela>
-      )}
 
-      <Cartao>
+    </div>
+  );
+}
+
+// Base de pesos dos perfis de catálogo (W, I, U laminados).
+export function PesosPerfil() {
+  const { erro, setErro, gravar } = useGravar();
+  const { data: tipos = [] } = useQuery({ queryKey: CHAVES.tipos, queryFn: listarTipos });
+  const { data: pesos = [] } = useQuery({ queryKey: CHAVES.pesos, queryFn: listarPesosPerfil });
+  const [novoPeso, setNovoPeso] = useState({ tipo_id: '', bitola: '', kg: 0 });
+  const tiposTabela = tipos.filter((t) => t.grupo === 'Perfis' && t.ativo && t.formato === 'tabela');
+  return (
+    <div className="space-y-3">
+      {erro && <Aviso>{erro}</Aviso>}
+      <div>
         <div className="mb-1 font-semibold">Base de pesos dos perfis de catálogo</div>
         <p className="mb-3 text-sm text-suave">kg/m em aço carbono (W, I e U laminados). Para outro material o ERP corrige pela densidade. Valores de mercado: confira antes de usar.</p>
         <Tabela cabecalho={<><th className={th}>Tipo</th><th className={th}>Bitola</th><th className={`${th} w-32 text-right`}>kg/m</th><th className={th}>Fonte</th><th className={th}>Ativo</th></>}>
@@ -209,7 +176,7 @@ export function PerfisAba() {
             if (await gravar(() => inserir('bib_pesos_perfil', { tipo_id: novoPeso.tipo_id, bitola: novoPeso.bitola.trim(), kg_m: novoPeso.kg, fonte: 'Cadastrado no ERP' }))) setNovoPeso({ tipo_id: '', bitola: '', kg: 0 });
           }}><Plus size={15} /> Adicionar bitola</Botao>
         </div>
-      </Cartao>
+      </div>
     </div>
   );
 }

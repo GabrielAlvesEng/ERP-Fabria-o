@@ -10,12 +10,12 @@ import {
 import type { GrupoItem } from '@/modules/biblioteca/regras';
 import { CHAVES, Tabela, linha, molduraNumero, td, th, useGravar } from './comum';
 
-const UNIDADES_ITEM: Record<GrupoItem, string[]> = {
+export const UNIDADES_ITEM: Record<GrupoItem, string[]> = {
   Comerciais: ['un', 'pç', 'm', 'kg', 'cj'],
   Fixadores: ['un', 'cento', 'milheiro', 'kg', 'cx'],
   Consumíveis: ['un', 'lata', 'litro', 'kg', 'cx', 'rolo', 'galão'],
 };
-const EXEMPLO: Record<GrupoItem, string> = {
+export const EXEMPLO: Record<GrupoItem, string> = {
   Comerciais: 'Curva RL 90° Ø1" x 1,5', Fixadores: 'Parafuso Allen Cabeça Cilíndrica M12 x 40', Consumíveis: 'Disco de corte 7" x 1,6 mm',
 };
 

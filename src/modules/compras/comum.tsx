@@ -50,23 +50,23 @@ export function Secao({ titulo, acoes, children }: { titulo: string; acoes?: Rea
 }
 
 // Preço unitário em reais; vazio tira o preço (fornecedor não cotou o item).
-export function PrecoCelula({ valor, onConfirmar }: { valor: number | undefined; onConfirmar: (v: number | null) => void }) {
+export function PrecoCelula({ valor, onConfirmar, placeholder = 'R$ —', rotulo, className = '' }: { valor: number | undefined; onConfirmar: (v: number | null) => void; placeholder?: string; rotulo?: string; className?: string }) {
   const mostrar = (v: number | undefined) => (v == null ? '' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
   const [texto, setTexto] = useState(mostrar(valor));
   const [focado, setFocado] = useState(false);
   const atual = focado ? texto : mostrar(valor);
   function confirmar() {
     setFocado(false);
-    const t = texto.replace(/R\$/i, '').trim();
+    const t = texto.replace(/R\$|%/gi, '').trim();
     if (!t) { if (valor != null) onConfirmar(null); return; }
     const n = Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
     if (Number.isNaN(n) || n < 0) return;
     if (n !== valor) onConfirmar(n);
   }
   return (
-    <input inputMode="decimal" value={atual} placeholder="R$ —" onFocus={(e) => { setFocado(true); setTexto(mostrar(valor)); const el = e.target; requestAnimationFrame(() => el.select()); }}
+    <input inputMode="decimal" value={atual} placeholder={placeholder} aria-label={rotulo} title={rotulo} onFocus={(e) => { setFocado(true); setTexto(mostrar(valor)); const el = e.target; requestAnimationFrame(() => el.select()); }}
       onChange={(e) => setTexto(e.target.value)} onBlur={confirmar} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-      className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none placeholder:text-slate-400 hover:border-slate-300 focus:border-roxo-500 focus:bg-superficie dark:hover:border-marinho-500" />
+      className={`w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none placeholder:text-slate-400 hover:border-slate-300 focus:border-roxo-500 focus:bg-superficie dark:hover:border-marinho-500 ${className}`} />
   );
 }
 
@@ -175,7 +175,7 @@ export function OrdemCartao({ p, fornecedor, podeEditar, agir, cancelar: cancela
       </div>
       <ul className="mt-2 text-xs text-suave">
         {pi.map((x) => (
-          <li key={x.item_id}>{nome(x.item_id)?.descricao ?? 'Item'}{nome(x.item_id) && <span className="text-[11px]"> ({rotuloDestino(nome(x.item_id)!.compras_requisicoes)})</span>}: {Number(x.quantidade).toLocaleString('pt-BR')} {nome(x.item_id)?.unidade} × {moeda(x.valor_unit)}
+          <li key={x.item_id}>{nome(x.item_id)?.descricao ?? 'Item'}{nome(x.item_id) && <span className="text-[11px]"> ({rotuloDestino(nome(x.item_id)!.compras_requisicoes)})</span>}: {Number(x.quantidade).toLocaleString('pt-BR')} {nome(x.item_id)?.unidade} × {moeda(x.valor_unit)}{Number(x.ipi) > 0 && ` + IPI ${Number(x.ipi).toLocaleString('pt-BR')}%`}
             {Number(x.quantidade_recebida) > 0 && <span className={Number(x.quantidade_recebida) >= Number(x.quantidade) ? 'text-petroleo-600' : 'text-amber-600'}> · recebido {Number(x.quantidade_recebida).toLocaleString('pt-BR')}</span>}
           </li>
         ))}

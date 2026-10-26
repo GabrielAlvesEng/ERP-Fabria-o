@@ -10,12 +10,16 @@ import {
   listarFornecedores, listarPacotes, obterPacote, pedidosDoPacote, removerCotacao, retirarDoPacote, salvarCotacao, salvarPreco,
   type Cotacao, type Fornecedor, type ItemComSolicitacao, type Pedido,
 } from './api';
-import { ROTULO_ITEM, ROTULO_PACOTE, descreverCondicao, melhorCotacao, menoresPrecos, rotuloDestino, totalCotacao, type StatusPacote } from './regras';
+import { ROTULO_ITEM, ROTULO_PACOTE, descreverCondicao, melhorCotacao, menoresPrecos, rotuloDestino, totalCotacao, valorComIpi, type StatusPacote } from './regras';
 import { COR_ITEM, CotacaoModal, Historico, Justificar, OrdemCartao, PrecoCelula, Secao, type Cor } from './comum';
 import { imprimirPedidoCotacao } from './ordemPdf';
 
 const COR_PACOTE: Record<StatusPacote, Cor> = { aberto: 'azul', comprado: 'verde', cancelado: 'vermelho' };
-const precosDe = (c: Cotacao) => ({ id: c.id, frete: Number(c.frete), precos: Object.fromEntries(c.compras_cotacao_precos.map((p) => [p.item_id, Number(p.valor_unit)])) });
+const precosDe = (c: Cotacao) => ({
+  id: c.id, frete: Number(c.frete),
+  precos: Object.fromEntries(c.compras_cotacao_precos.map((p) => [p.item_id, Number(p.valor_unit)])),
+  ipis: Object.fromEntries(c.compras_cotacao_precos.map((p) => [p.item_id, Number(p.ipi ?? 0)])),
+});
 
 // Compras → Cotações (decisão 111): os pacotes de cotação. Cada pacote é um conjunto de itens que o comprador quer comprar
 // de um único fornecedor.
@@ -201,7 +205,8 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, 
   const melhor = cotacoes.length > 1 ? melhorCotacao(cs, its) : null;
   const comprouDe = new Set(pedidos.filter((p) => p.status !== 'cancelada').map((p) => p.cotacao_id));
   const linhas: [string, (c: Cotacao, n: number) => ReactNode][] = [
-    ['Itens', (_c, n) => { const t = totalCotacao(cs[n], its); return <>{moeda(t.itens)}{t.faltam > 0 && <span className="block text-[11px] text-amber-600">sem preço em {t.faltam}</span>}</>; }],
+    ['Itens com IPI', (_c, n) => { const t = totalCotacao(cs[n], its); return <>{moeda(t.itens)}{t.faltam > 0 && <span className="block text-[11px] text-amber-600">sem preço em {t.faltam}</span>}</>; }],
+    ['IPI incluído', (_c, n) => moeda(totalCotacao(cs[n], its).ipi)],
     ['Frete', (c) => moeda(c.frete)],
     ['Total', (_c, n) => <b>{moeda(totalCotacao(cs[n], its).total)}</b>],
     ['Prazo', (c) => (c.prazo_dias != null ? `${c.prazo_dias} dia(s)` : '—')],
@@ -210,12 +215,12 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, 
   ];
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm" style={{ minWidth: 320 + cotacoes.length * 180 }}>
+      <table className="w-full text-sm" style={{ minWidth: 320 + cotacoes.length * 210 }}>
         <thead>
           <tr className="align-bottom text-left text-xs text-suave">
             <th className="px-2 py-2">Item</th>
             {cotacoes.map((c) => (
-              <th key={c.id} className={`w-[180px] px-2 py-2 ${melhor === c.id ? 'bg-petroleo-50 dark:bg-petroleo-600/20' : ''}`}>
+              <th key={c.id} className={`w-[210px] px-2 py-2 ${melhor === c.id ? 'bg-petroleo-50 dark:bg-petroleo-600/20' : ''}`}>
                 <div className="flex items-start justify-between gap-1">
                   <span className="text-sm font-semibold text-texto">{c.fornecedores?.nome}{melhor === c.id && <span className="block text-[11px] font-normal text-petroleo-600 dark:text-petroleo-100">menor total</span>}</span>
                   <span className="flex shrink-0">
@@ -237,11 +242,19 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, 
               <td className="px-2 py-1.5">{i.descricao}<span className="block text-xs text-suave">{Number(i.quantidade).toLocaleString('pt-BR')} {i.unidade} · {i.grupo}</span></td>
               {cotacoes.map((c, n) => {
                 const v = cs[n].precos[i.id];
-                const menor = v != null && menores[i.id] === v && cotacoes.length > 1;
+                const ipi = cs[n].ipis[i.id] ?? 0;
+                const menor = v != null && menores[i.id] === v * (1 + ipi / 100) && cotacoes.length > 1;
                 return (
                   <td key={c.id} className={`px-1 py-1 ${menor ? 'bg-petroleo-50 dark:bg-petroleo-600/20' : ''}`}>
-                    {podeCotar ? <PrecoCelula valor={v} onConfirmar={(x) => agir(() => salvarPreco(c.id, i.id, x))} /> : <span className="block px-2 text-right tabular-nums">{v == null ? '—' : moeda(v)}</span>}
-                    {v != null && <span className="block px-2 text-right text-[11px] text-suave tabular-nums">{moeda(Math.round(v * Number(i.quantidade) * 100) / 100)}</span>}
+                    {podeCotar ? (
+                      <div className="flex items-center gap-1">
+                        <PrecoCelula valor={v} rotulo="Preço unitário sem IPI" onConfirmar={(x) => agir(() => salvarPreco(c.id, i.id, x, ipi))} />
+                        <PrecoCelula valor={v == null ? undefined : ipi} placeholder="IPI %" rotulo="IPI %" className="!w-14 shrink-0 text-xs"
+                          onConfirmar={(x) => (v == null ? undefined : (x ?? 0) <= 100 && agir(() => salvarPreco(c.id, i.id, v, x ?? 0)))} />
+                        <span className="text-[11px] text-suave">%</span>
+                      </div>
+                    ) : <span className="block px-2 text-right tabular-nums">{v == null ? '—' : moeda(v)}{ipi > 0 && <span className="text-xs text-suave"> + {ipi.toLocaleString('pt-BR')}%</span>}</span>}
+                    {v != null && <span className="block px-2 text-right text-[11px] text-suave tabular-nums">{moeda(valorComIpi(Number(i.quantidade), v, ipi))}{ipi > 0 && ` com IPI ${ipi.toLocaleString('pt-BR')}%`}</span>}
                   </td>
                 );
               })}

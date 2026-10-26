@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agruparAComprar, agruparLista, descreverCondicao, fichasDeProdutos, lerDias, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
+import { valorComIpi, agruparAComprar, agruparLista, descreverCondicao, fichasDeProdutos, lerDias, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -13,7 +13,7 @@ describe('cotações', () => {
   const c3 = { id: 'c3', frete: 0, precos: { a: 1 } };
 
   it('soma itens × quantidade e o frete, e conta os preços que faltam', () => {
-    expect(totalCotacao(c1, itens)).toEqual({ itens: 325, total: 375, faltam: 0 });
+    expect(totalCotacao(c1, itens)).toEqual({ itens: 325, ipi: 0, total: 375, faltam: 0 });
     expect(totalCotacao(c3, itens).faltam).toBe(1);
   });
   it('menor preço por item e melhor cotação completa', () => {
@@ -86,5 +86,16 @@ describe('À comprar e pacotes (decisão 111)', () => {
       { grupo: 'Chapas' as const, descricao: 'A36 1/4', compras_requisicoes: req('26-01-002', 'engenharia', 'urgente') },
     ]);
     expect(g.map((x) => [x.grupo, x.itens.map((i) => i.descricao)])).toEqual([['Chapas', ['A36 1/4', 'Inox 3mm', 'Inox 2mm']], ['Perfis', ['W150']]]);
+  });
+});
+
+describe('IPI no orçamento (decisão 113)', () => {
+  it('soma o IPI no item e no total, e compara o preço com IPI', () => {
+    expect(valorComIpi(10, 20, 5)).toBe(210);
+    const itens = [{ id: 'a', quantidade: 10 }, { id: 'b', quantidade: 2 }];
+    const x = { id: 'x', frete: 30, precos: { a: 20, b: 100 }, ipis: { a: 5 } };
+    expect(totalCotacao(x, itens)).toEqual({ itens: 410, ipi: 10, total: 440, faltam: 0 });
+    const y = { id: 'y', frete: 0, precos: { a: 20.5, b: 100 }, ipis: {} };
+    expect(menoresPrecos([x, y], itens).a).toBe(20.5);
   });
 });

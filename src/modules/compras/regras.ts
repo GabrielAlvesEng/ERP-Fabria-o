@@ -43,27 +43,36 @@ export function pedidoAtrasado(p: { status: StatusPedido; previsao_entrega: stri
 // ---------- Comparação de cotações ----------
 
 export interface ItemCotado { id: string; quantidade: number }
-export interface CotacaoComPrecos { id: string; frete: number; precos: Record<string, number | undefined> }
-export interface TotalCotacao { itens: number; total: number; faltam: number }
+export interface CotacaoComPrecos { id: string; frete: number; precos: Record<string, number | undefined>; ipis?: Record<string, number | undefined> }
+export interface TotalCotacao { itens: number; ipi: number; total: number; faltam: number }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+// Valor de um item com IPI (decisão 113): quantidade × unitário × (1 + IPI%), em centavos.
+export function valorComIpi(quantidade: number, unit: number, ipi = 0): number {
+  return r2(quantidade * unit * (1 + (Number(ipi) || 0) / 100));
+}
+
+// "itens" é o total dos itens já com IPI; "ipi" é só a parte do IPI dentro dele.
 export function totalCotacao(c: CotacaoComPrecos, itens: ItemCotado[]): TotalCotacao {
   let soma = 0;
+  let ipi = 0;
   let faltam = 0;
   for (const i of itens) {
     const v = c.precos[i.id];
-    if (v == null) faltam++;
-    else soma += r2(i.quantidade * v);
+    if (v == null) { faltam++; continue; }
+    const com = valorComIpi(i.quantidade, v, c.ipis?.[i.id]);
+    soma += com;
+    ipi += com - r2(i.quantidade * v);
   }
-  return { itens: r2(soma), total: r2(soma + Number(c.frete || 0)), faltam };
+  return { itens: r2(soma), ipi: r2(ipi), total: r2(soma + Number(c.frete || 0)), faltam };
 }
 
-// Menor preço unitário de cada item entre as cotações (para pintar de verde na comparação).
+// Menor preço unitário (com IPI) de cada item entre as cotações (para pintar de verde na comparação).
 export function menoresPrecos(cotacoes: CotacaoComPrecos[], itens: ItemCotado[]): Record<string, number> {
   const m: Record<string, number> = {};
   for (const i of itens) {
-    const vs = cotacoes.map((c) => c.precos[i.id]).filter((v): v is number => v != null);
+    const vs = cotacoes.map((c) => (c.precos[i.id] == null ? null : c.precos[i.id]! * (1 + (c.ipis?.[i.id] ?? 0) / 100))).filter((v): v is number => v != null);
     if (vs.length) m[i.id] = Math.min(...vs);
   }
   return m;
