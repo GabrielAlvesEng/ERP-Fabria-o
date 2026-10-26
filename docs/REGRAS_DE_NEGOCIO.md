@@ -324,6 +324,9 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - A OC de um pacote pode juntar itens de várias solicitações; cancelar a OC devolve os itens para o À comprar (fora do pacote). A solicitação mostra cada item com a situação ("Em cotação CT-…" com link) e as OCs que levaram os itens dela. A comparação por solicitação e o "fornecedor por item" da 107 saem da tela; os orçamentos antigos por solicitação ficam no banco.
    - Pagamento padrão do orçamento (107) no pacote: "A combinar" quando todos os itens são do Almoxarifado; senão, Antecipado.
    - Migration `20261026000071_compras_pacotes.sql`, aplicada pelo Gabriel no SQL Editor em 26/10/2026 e testada no banco com o usuário dele numa transação desfeita (pacote, bloqueio de mudança fora do fluxo, retirar item, OC do pacote, conta a pagar, lista do Almoxarifado, cancelamento devolvendo os itens). Ajusta também `alm_ocs_a_receber` (decisão 108) para OCs com várias solicitações (destino calculado por item).
+112. **Financeiro: conta a pagar de OC com várias solicitações (26/10/2026)** (consequência da decisão 111, sem mudar regra aprovada):
+   - Quando a OC vem de um pacote de cotação e junta várias solicitações, a conta a pagar mostra o projeto (ou os códigos dos projetos separados por vírgula, com "Vários projetos") e a descrição "CT-AA-NNN · título do pacote (solicitações)". Antes ficava em branco.
+   - Migration `20261026000072_financeiro_oc_pacote.sql` (gatilho na gravação dos itens da OC). **Ainda não aplicada:** o conector do Supabase estava fora do ar; aplicar e testar quando voltar, ou o Gabriel cola no SQL Editor.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
