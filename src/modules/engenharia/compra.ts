@@ -23,8 +23,8 @@ function somar(itens: Pick<ItemSolicitado, 'grupo' | 'descricao' | 'unidade' | '
   return m;
 }
 
-export interface PlanoEnvio {
-  itens: LinhaImportada[];        // o que vai na nova requisição
+export interface PlanoEnvio<T extends LinhaImportada = LinhaImportada> {
+  itens: T[];        // o que vai na nova requisição
   substitui: Solicitacao[];        // requisições abertas/em cotação que serão canceladas
   reducoes: string[];              // o que já foi comprado e saiu ou diminuiu na lista
   comparacao: Comparacao[];        // era × agora por item, contra as revisões vivas (pedido do Gabriel, Compras v2 item 4)
@@ -46,7 +46,7 @@ export function textoMudanca(c: Pick<Comparacao, 'era' | 'agora' | 'unidade'>, r
 
 // Lista atual × o que já está com Compras e não pode mais ser trocado (já tem item comprado, ou concluída):
 // vai só o que falta. Sem nada travado, vai a lista inteira.
-export function planoEnvio(atual: LinhaImportada[], solicitacoes: Solicitacao[]): PlanoEnvio {
+export function planoEnvio<T extends LinhaImportada>(atual: T[], solicitacoes: Solicitacao[]): PlanoEnvio<T> {
   const vivas = solicitacoes.filter((s) => s.status !== 'cancelada');
   const travadas = vivas.filter((s) => !SUBSTITUIVEL.includes(s.status));
   const base = somar(travadas.flatMap((s) => s.itens));
@@ -58,7 +58,7 @@ export function planoEnvio(atual: LinhaImportada[], solicitacoes: Solicitacao[])
     chave: l.chave, grupo: l.grupo, descricao: l.descricao, unidade: l.unidade, era: enviado.has(chave(l)) ? r3(enviado.get(chave(l))!) : null, agora: r3(doAtual.get(chave(l)) ?? 0),
   })) : [];
   const mudanca = new Map(comparacao.map((c) => [chave(c), textoMudanca(c, proximaRevisao)]));
-  const itens: LinhaImportada[] = [];
+  const itens: T[] = [];
   for (const l of atual) {
     const q = r3(l.quantidade - (base.get(chave(l)) ?? 0));
     const notas = [mudanca.get(chave(l)), l.observacoes, base.has(chave(l)) ? `complemento: já pedidos ${r3(base.get(chave(l))!)} ${l.unidade}` : ''];
@@ -86,3 +86,28 @@ export function mudouDesde(atual: LinhaImportada[], solicitacoes: Solicitacao[])
 }
 
 export { agruparLista };
+
+// Itens da revisão (decisão 113) → linhas para Compras. Itens iguais (grupo, descrição e unidade) somam numa linha;
+// observações juntam, e o primeiro link e a primeira imagem valem.
+export interface ItemRevisao {
+  grupo: GrupoItem; descricao: string; quantidade: number; unidade: string; observacoes: string;
+  bib_tipo: LinhaImportada['bib_tipo']; bib_id: string | null; link: string; imagem: string | null;
+}
+export type LinhaRevisao = LinhaImportada & { link: string; imagem: string | null };
+export function linhasDaRevisao(itens: ItemRevisao[]): LinhaRevisao[] {
+  const m = new Map<string, LinhaRevisao>();
+  for (const i of itens) {
+    const k = chave({ grupo: i.grupo, descricao: i.descricao, unidade: i.unidade.trim() || 'un' });
+    const atual = m.get(k);
+    if (!atual) {
+      m.set(k, { chave: k, grupo: i.grupo, descricao: i.descricao.trim(), quantidade: Number(i.quantidade), unidade: i.unidade.trim() || 'un',
+        observacoes: i.observacoes.trim(), bib_tipo: i.bib_tipo, bib_id: i.bib_id, link: i.link, imagem: i.imagem });
+      continue;
+    }
+    atual.quantidade = r3(atual.quantidade + Number(i.quantidade));
+    if (i.observacoes.trim() && !atual.observacoes.includes(i.observacoes.trim())) atual.observacoes = [atual.observacoes, i.observacoes.trim()].filter(Boolean).join(' · ');
+    atual.link ||= i.link;
+    atual.imagem ||= i.imagem;
+  }
+  return [...m.values()];
+}

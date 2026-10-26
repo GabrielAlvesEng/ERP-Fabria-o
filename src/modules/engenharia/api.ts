@@ -4,7 +4,7 @@ import type { ColunaProjeto, Conjunto, MaterialCatalogo, PainelProjeto, Peca, Pr
 import type { RefsEng } from './biblioteca';
 import type { EventoMes, ItemMes } from './indicadores';
 import type { Solicitacao } from './compra';
-import type { LinhaImportada } from '@/modules/compras/regras';
+import type { BibTipo, GrupoItem, LinhaImportada } from '@/modules/compras/regras';
 
 function ok<T>(r: { data: T | null; error: unknown }): T {
   if (r.error) throw r.error;
@@ -139,6 +139,61 @@ export async function listarSolicitacoes(projetoId: string): Promise<Solicitacao
 export async function solicitarCompra(projetoId: string, itens: LinhaImportada[], necessarioEm: string | null, prioridade: 'normal' | 'urgente', observacoes: string) {
   const r = ok(await supabase.rpc('engenharia_solicitar_compra', {
     p_projeto: projetoId, p_itens: itens.map(({ grupo, descricao, quantidade, unidade, observacoes: o, bib_tipo, bib_id }) => ({ grupo, descricao, quantidade, unidade, observacoes: o, bib_tipo, bib_id })),
+    p_necessario_em: necessarioEm, p_prioridade: prioridade, p_observacoes: observacoes,
+  })) as { id: string; codigo: string; revisao: number; substituidas: string[] }[];
+  return r[0];
+}
+
+// Lista de materiais por revisão (decisão 113): rascunho → enviada (vira RC em Compras).
+export interface ListaRevisao {
+  id: string; projeto_id: string; revisao: number; status: 'rascunho' | 'enviada' | 'descartada'; requisicao_id: string | null;
+  criado_em: string; enviada_em: string | null; enviada: { nome: string } | null;
+}
+export interface ItemLista {
+  id: string; lista_id: string; ordem: number; grupo: GrupoItem; descricao: string; quantidade: number; unidade: string;
+  bib_tipo: BibTipo | null; bib_id: string | null; observacoes: string; link: string; imagem: string | null;
+}
+
+export async function listarListas(projetoId: string): Promise<ListaRevisao[]> {
+  return ok(await supabase.from('eng_listas').select('*, enviada:usuarios!eng_listas_enviada_por_fkey(nome)')
+    .eq('projeto_id', projetoId).neq('status', 'descartada').order('revisao', { ascending: false }));
+}
+export async function listarItensLista(listaId: string): Promise<ItemLista[]> {
+  return ok(await supabase.from('eng_lista_itens').select('*').eq('lista_id', listaId).is('excluido_em', null).order('ordem').order('criado_em'));
+}
+export async function novaRevisao(projetoId: string, copiar: boolean): Promise<string> {
+  return ok(await supabase.rpc('eng_nova_revisao', { p_projeto: projetoId, p_copiar: copiar })) as string;
+}
+export async function descartarRascunho(listaId: string): Promise<void> {
+  ok(await supabase.rpc('eng_descartar_rascunho', { p_lista: listaId }));
+}
+export async function incluirItemLista(d: Omit<ItemLista, 'id' | 'imagem'>): Promise<void> {
+  ok(await supabase.from('eng_lista_itens').insert(d));
+}
+export async function atualizarItemLista(id: string, d: Partial<Omit<ItemLista, 'id' | 'lista_id'>>): Promise<void> {
+  ok(await supabase.from('eng_lista_itens').update(d).eq('id', id));
+}
+export async function excluirItemLista(id: string): Promise<void> {
+  ok(await supabase.from('eng_lista_itens').update({ excluido_em: new Date().toISOString() }).eq('id', id));
+}
+// Imagem de referência para o comprador: pasta = id da revisão em rascunho.
+export async function enviarImagemRef(listaId: string, itemId: string, arquivo: File): Promise<void> {
+  const nome = arquivo.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_');
+  const caminho = `${listaId}/${itemId}_${Date.now()}_${nome}`;
+  const { error } = await supabase.storage.from('engenharia').upload(caminho, arquivo, { contentType: arquivo.type });
+  if (error) throw error;
+  await atualizarItemLista(itemId, { imagem: caminho });
+}
+export async function urlImagemRef(caminho: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('engenharia').createSignedUrl(caminho, 3600);
+  if (error) throw error;
+  return data.signedUrl;
+}
+export type LinhaEnvio = LinhaImportada & { link: string; imagem: string | null };
+export async function enviarLista(listaId: string, itens: LinhaEnvio[], necessarioEm: string | null, prioridade: 'normal' | 'urgente', observacoes: string) {
+  const r = ok(await supabase.rpc('eng_enviar_lista', {
+    p_lista: listaId,
+    p_itens: itens.map(({ grupo, descricao, quantidade, unidade, observacoes: o, bib_tipo, bib_id, link, imagem }) => ({ grupo, descricao, quantidade, unidade, observacoes: o, bib_tipo, bib_id, link, imagem })),
     p_necessario_em: necessarioEm, p_prioridade: prioridade, p_observacoes: observacoes,
   })) as { id: string; codigo: string; revisao: number; substituidas: string[] }[];
   return r[0];

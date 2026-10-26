@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mudouDesde, planoEnvio, type Solicitacao } from './compra';
+import { linhasDaRevisao, mudouDesde, planoEnvio, type ItemRevisao, type Solicitacao } from './compra';
 import type { LinhaImportada } from '@/modules/compras/regras';
 
 const l = (descricao: string, quantidade: number, grupo: LinhaImportada['grupo'] = 'Chapas', unidade = 'kg'): LinhaImportada => ({ chave: descricao, grupo, descricao, quantidade, unidade, observacoes: '', bib_tipo: null, bib_id: null });
@@ -45,5 +45,17 @@ describe('solicitação de compra da Engenharia (decisão 103)', () => {
     expect(mudouDesde([l('Chapa 6,35', 100)], [s(0, 'aberta', [l('Chapa 6,35', 100)])])).toBe(false);
     expect(mudouDesde([l('Chapa 6,35', 101)], [s(0, 'aberta', [l('Chapa 6,35', 100)])])).toBe(true);
     expect(mudouDesde([l('Chapa 6,35', 101)], [])).toBe(false);
+  });
+});
+
+describe('itens da revisão em rascunho (decisão 113)', () => {
+  const it0 = (descricao: string, quantidade: number, extra: Partial<ItemRevisao> = {}): ItemRevisao => ({ grupo: 'Comerciais', descricao, quantidade, unidade: 'un', observacoes: '', bib_tipo: null, bib_id: null, link: '', imagem: null, ...extra });
+  it('itens iguais somam numa linha, guardando link, imagem e observações', () => {
+    const r = linhasDaRevisao([it0('Motor 2cv', 1, { link: 'https://a' }), it0('motor 2cv ', 2, { observacoes: 'WEG', imagem: 'x.png' }), it0('Rodízio', 4)]);
+    expect(r.map((l) => [l.descricao, l.quantidade, l.link, l.imagem, l.observacoes])).toEqual([['Motor 2cv', 3, 'https://a', 'x.png', 'WEG'], ['Rodízio', 4, '', null, '']]);
+  });
+  it('a revisão passa pelo mesmo plano de envio (era × agora) e leva o link junto', () => {
+    const p = planoEnvio(linhasDaRevisao([it0('Motor 2cv', 2, { link: 'https://a' })]), [s(0, 'aberta', [{ ...l('Motor 2cv', 1, 'Comerciais', 'un') }])]);
+    expect(p.itens.map((i) => [i.quantidade, i.observacoes, i.link])).toEqual([[2, 'era 1 un, agora 2 un', 'https://a']]);
   });
 });

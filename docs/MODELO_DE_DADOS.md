@@ -217,3 +217,10 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `engenharia_solicitacoes(projeto)`: revisões enviadas com status e itens, sem valores (exige `engenharia.ler`).
 - Recebimento (decisão 108, migration `20261026000067`): `alm_recebimentos` (OC, fornecedor, data, observação, quem), `alm_recebimento_itens` (item da requisição, aceito, rejeitado, motivo, destino estoque/projeto/setor), `alm_reservas` (material do projeto reservado até a entrega). Funções `alm_ocs_a_receber`, `alm_receber_oc` (chama `compras_registrar_entrega` só com o aceito), `alm_entregar_reserva`, `alm_recebimento_disponivel`.
 - Solicitações (decisão 110, migration `20261026000070`): `alm_solicitar_itens` (itens do cadastro ou digitados → `compras_solicitar` com origem `almoxarifado`; liga em `alm_solicitacoes` o que já é item de estoque) e `alm_minhas_solicitacoes` (pedidos de origem Almoxarifado com situação, OC e recebido por item).
+
+## Engenharia: lista de materiais por revisão (`20261026000074_engenharia_listas_revisao.sql`, decisão 113)
+- `eng_listas` (projeto, revisão, status rascunho/enviada/descartada, requisição de Compras, criado/enviado por e quando): uma por revisão; só um rascunho por projeto. Só as funções gravam.
+- `eng_lista_itens` (revisão, ordem, grupo, descrição, quantidade, unidade, bib_tipo/bib_id do cadastro ou nulos, observação, link, imagem, excluído em): editáveis por `engenharia.editar` só enquanto a revisão é rascunho (RLS + gatilho `eng_item_antes`); exclusão lógica.
+- `compras_requisicao_itens.referencia_link` e `referencia_imagem`: a referência que veio da Engenharia.
+- Funções: `eng_nova_revisao(projeto, copiar)`, `eng_descartar_rascunho(lista)`, `eng_enviar_lista(lista, itens, necessário em, prioridade, observações)`.
+- Espaço privado `engenharia` (imagens de referência, pasta = id da revisão): envia quem tem `engenharia.editar` em rascunho; leem `engenharia.ler` e `compras.ler`.
