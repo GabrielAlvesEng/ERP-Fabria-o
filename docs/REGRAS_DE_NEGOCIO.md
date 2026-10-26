@@ -262,7 +262,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Aviso de estoque baixo no topo, para quem tem o Almoxarifado. Painel com o que está acabando, retiradas e consumo do mês por destino e por funcionário.
    - Permissões: perfil novo **Almoxarifado** (ler, criar, editar); o perfil Compras ganhou `almoxarifado.ler`. Criar = retirada, devolução e pedido de compra; editar = incluir produto, mínimo e local, ajuste e estorno.
    - Fica para depois: recebimento das ordens de compra com conferência e reserva para projeto (entra com o Compras v2), ficha de EPI, importação de planilha de estoque inicial.
-   - Migrations `20261022000061_almoxarifado_estoque.sql`, `20261022000062_almoxarifado_retirada_setor.sql` e `20261022000063_almoxarifado_solicitar_compra.sql`.
+   - Migrations `20261022000061_almoxarifado_estoque.sql`, `20261022000062_almoxarifado_retirada_setor.sql` , `20261022000063_almoxarifado_solicitar_compra.sql` e `20261022000064_almoxarifado_compras_abertas_v2.sql`.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
