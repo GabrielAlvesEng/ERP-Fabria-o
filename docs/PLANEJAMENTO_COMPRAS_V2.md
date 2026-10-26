@@ -62,3 +62,12 @@ O cartão mostra o item, a solicitação, o pedido (ou "Estoque"), a quantidade 
 2. **Produtos:** uso a Biblioteca de Materiais como cadastro de produtos (recomendado) ou faço um cadastro separado só de Compras?
 3. **Recebimento:** quem marca "Recebido": Compras ou o Almoxarifado ao conferir a entrega? Recomendo o Almoxarifado, quando o módulo dele estiver liberado; até lá, Compras.
 4. **Engenharia:** a lista enviada pela Engenharia trava (nova revisão para mudar), como no planejamento da Engenharia, ou pode ser enviada mais de uma vez livremente? Recomendo travar e enviar diferenças como nova solicitação.
+
+## 6. Respostas do Gabriel (26/10/2026)
+
+1. Pode ir direto para o Financeiro pagar.
+2. Compras é a única que cadastra e organiza a biblioteca; ela sai da Administração e vira a biblioteca geral de onde todos puxam.
+3. Quem marca recebido é o Almoxarifado.
+4. Depois de enviada pela Engenharia a lista trava, mas pode haver revisão; na nova revisão fica descrito quanto era e quanto é agora.
+
+Sobre o planejamento v1: Fabricação ainda não tem acesso; sem aprovação por enquanto; o comprador escolhe os itens de cada fornecedor e gera a OC, e o item sai da cotação; um orçamento basta; por enquanto só o Gabriel tem o perfil Compras.

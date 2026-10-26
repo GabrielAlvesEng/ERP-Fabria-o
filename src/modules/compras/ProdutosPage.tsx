@@ -4,21 +4,22 @@ import { dataBR, moeda } from '@/shared/lib/formato';
 import { Cabecalho, Entrada, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import { ChapasAba } from '@/modules/admin/predefinicoes/ChapasAba';
 import { PerfisAba } from '@/modules/admin/predefinicoes/PerfisAba';
-import { ItensAba } from '@/modules/admin/predefinicoes/OutrasAbas';
+import { ItensAba, MateriaisBaseAba, RevisarAba } from '@/modules/admin/predefinicoes/OutrasAbas';
 import { FixadoresAba } from '@/modules/admin/predefinicoes/FixadoresAba';
 import { SubAbas } from '@/modules/admin/predefinicoes/comum';
 import { listarHistorico, listarProdutos, type Historico } from './api';
 import { GRUPOS, ROTULO_ORIGEM, fichasDeProdutos, type FichaProduto } from './regras';
 
-const ABAS = ['Produtos e última compra', 'Chapas', 'Perfis', 'Itens comerciais', 'Fixadores', 'Consumíveis'] as const;
+const ABAS = ['Produtos e última compra', 'Chapas', 'Perfis', 'Itens comerciais', 'Fixadores', 'Consumíveis', 'Materiais e densidades', 'A revisar'] as const;
 
-// Compras → Produtos (decisão 103): o cadastro é a Biblioteca de Materiais (o mesmo item da Engenharia e das propostas).
-// Compras cadastra e edita antes de comprar; a primeira aba mostra a ficha de cada produto com o histórico de compras.
+// Compras → Produtos (decisão 107): a Biblioteca de Materiais, a biblioteca geral de onde todos os setores puxam
+// (Engenharia, propostas, Almoxarifado). Só Compras cadastra e organiza; a primeira aba mostra a ficha de cada produto
+// com o histórico de compras.
 export function ProdutosPage() {
   const [aba, setAba] = useState<(typeof ABAS)[number]>(ABAS[0]);
   return (
     <>
-      <Cabecalho titulo="Produtos" subtitulo="Tudo o que é comprado. O cadastro é a Biblioteca de Materiais, a mesma usada pela Engenharia e pelas propostas." />
+      <Cabecalho titulo="Produtos" subtitulo="A biblioteca geral de materiais: só Compras cadastra e organiza, e a Engenharia, as propostas e o Almoxarifado usam os mesmos itens." />
       <SubAbas abas={ABAS} ativa={aba} onTrocar={setAba} />
       <div key={aba} className="entrar">
         {aba === 'Produtos e última compra' && <Fichas />}
@@ -27,6 +28,8 @@ export function ProdutosPage() {
         {aba === 'Itens comerciais' && <ItensAba grupo="Comerciais" />}
         {aba === 'Fixadores' && <FixadoresAba />}
         {aba === 'Consumíveis' && <ItensAba grupo="Consumíveis" />}
+        {aba === 'Materiais e densidades' && <MateriaisBaseAba />}
+        {aba === 'A revisar' && <RevisarAba />}
       </div>
     </>
   );

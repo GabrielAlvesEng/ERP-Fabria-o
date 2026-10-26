@@ -5,11 +5,11 @@ import { ArrowLeft, Ban, FileDown, ListPlus, Paperclip, Pencil, Plus, Send, Spar
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
 import {
-  AreaTexto, Aviso, Botao, Caixa, Campo, CampoArquivo, CampoCelula, CampoData, CampoEscolha, CampoNumero, Cartao, Entrada, EsqueletoDetalhe, Modal, Selecao, Selo, Vazio,
+  AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoCelula, CampoData, CampoEscolha, CampoNumero, Cartao, Entrada, EsqueletoDetalhe, Modal, Selecao, Selo, Vazio,
 } from '@/shared/ui';
 import {
   abrirArquivo, adicionarItens, anexarOrcamento, atualizarItem, atualizarPedido, atualizarRequisicao, cancelar, cancelarPedido, gerarPedidos, listarCotacoes,
-  listarEventos, listarFornecedores, listarItens, listarProdutos, obterRequisicao, pedidosDaRequisicao, registrarEntrega, removerCotacao, removerItem,
+  listarEventos, listarFornecedores, listarItens, listarProdutos, obterRequisicao, pedidosDaRequisicao, removerCotacao, removerItem,
   salvarCotacao, salvarPreco, situacaoPagamento, type Cotacao, type DadosCotacao, type Fornecedor, type ItemRequisicao, type Pedido, type Produto, type Requisicao,
 } from './api';
 import {
@@ -25,7 +25,7 @@ const COR_ITEM: Record<StatusItem, Cor> = { a_comprar: 'cinza', comprado: 'roxo'
 const PAGAMENTO: Record<string, [string, Cor]> = { a_pagar: ['A pagar', 'amarelo'], paga_parcial: ['Paga em parte', 'azul'], paga: ['Paga', 'verde'], cancelada: ['Conta cancelada', 'cinza'] };
 
 // Compras → solicitação (decisões 101 e 103): itens ligados aos produtos, cotações com orçamento anexado,
-// comparação com o fornecedor escolhido por item, uma ordem de compra por fornecedor e a entrega por item.
+// comparação com o fornecedor escolhido por item e uma ordem de compra por fornecedor. O recebimento é do Almoxarifado.
 export function RequisicaoPage() {
   const { id = '' } = useParams();
   const { pode } = useAuth();
@@ -38,7 +38,7 @@ export function RequisicaoPage() {
   const { data: fornecedores = [] } = useQuery({ queryKey: ['compras', 'fornecedores'], queryFn: listarFornecedores });
   const { data: produtos = [] } = useQuery({ queryKey: ['compras', 'produtos'], queryFn: listarProdutos });
   const [erro, setErro] = useState('');
-  const [modal, setModal] = useState<null | 'importar' | 'cancelar' | 'gerar' | { cotacao: Cotacao | null } | { entrega: Pedido } | { cancelarOc: Pedido }>(null);
+  const [modal, setModal] = useState<null | 'importar' | 'cancelar' | 'gerar' | { cotacao: Cotacao | null } | { cancelarOc: Pedido }>(null);
 
   const atualizar = () => qc.invalidateQueries({ queryKey: ['compras'] });
   async function agir(f: () => Promise<unknown>) {
@@ -104,7 +104,7 @@ export function RequisicaoPage() {
           <div className="space-y-3">
             {pedidos.map((p) => (
               <OrdemCartao key={p.id} p={p} r={r} itens={itens} fornecedor={fornecedores.find((f) => f.id === p.fornecedor_id)} podeEditar={pode('compras', 'editar')} agir={agir}
-                entrega={() => setModal({ entrega: p })} cancelar={() => setModal({ cancelarOc: p })} />
+                cancelar={() => setModal({ cancelarOc: p })} />
             ))}
           </div>
         </Secao>
@@ -129,9 +129,6 @@ export function RequisicaoPage() {
       )}
       {modal === 'cancelar' && <Justificar titulo="Cancelar requisição" rotulo="Motivo do cancelamento" botao="Cancelar requisição" onFechar={() => setModal(null)} onConfirmar={(t) => agir(() => cancelar(r.id, t))} />}
       {modal === 'gerar' && <GerarOrdens itens={itens} cotacoes={cotacoes} onFechar={() => setModal(null)} onConfirmar={(obs) => agir(() => gerarPedidos(r.id, obs))} />}
-      {modal && typeof modal === 'object' && 'entrega' in modal && (
-        <Entrega p={modal.entrega} itens={itens} onFechar={() => setModal(null)} onConfirmar={(data, its, obs) => agir(() => registrarEntrega(modal.entrega.id, data, its, obs))} />
-      )}
       {modal && typeof modal === 'object' && 'cancelarOc' in modal && (
         <Justificar titulo={`Cancelar ${modal.cancelarOc.codigo}`} rotulo="Motivo (os itens voltam para à comprar e o Financeiro é avisado)" botao="Cancelar ordem de compra"
           onFechar={() => setModal(null)} onConfirmar={(t) => agir(() => cancelarPedido(modal.cancelarOc.id, t))} />
@@ -151,7 +148,7 @@ function descreverEvento(e: { tipo: string; de: string | null; para: string | nu
   if (e.tipo === 'criada') return 'criou a requisição';
   if (e.tipo === 'cotacao') return `lançou o orçamento de ${e.dados.fornecedor ?? 'um fornecedor'}`;
   if (e.tipo === 'pedido') return `gerou a ordem de compra ${e.dados.codigo} para ${e.dados.fornecedor ?? 'o fornecedor'} (${moeda(Number(e.dados.total))})`;
-  if (e.tipo === 'entrega') return `registrou ${e.para === 'entregue' ? 'a entrega total' : 'uma entrega parcial'} da ${e.dados.codigo ?? 'ordem'} em ${dataBR(String(e.dados.data))}`;
+  if (e.tipo === 'entrega') return `recebeu ${e.para === 'entregue' ? 'tudo' : 'parte'} da ${e.dados.codigo ?? 'ordem'} em ${dataBR(String(e.dados.data))}`;
   if (e.tipo === 'cancelamento') return `cancelou a ordem de compra ${e.dados.codigo}`;
   if (e.dados?.origem) return `enviou a solicitação pela ${ROTULO_ORIGEM[e.dados.origem as keyof typeof ROTULO_ORIGEM] ?? e.dados.origem} (${e.dados.itens} item(ns))`;
   if (e.para === 'cancelada') return 'cancelou a requisição';
@@ -228,7 +225,7 @@ function Itens({ itens, produtos, podeItens, agir }: { itens: ItemRequisicao[]; 
 }
 
 // Planilha de comparação item × fornecedor: menor preço em verde; o comprador escolhe o fornecedor de cada item
-// (o ERP sugere o menor) e gera uma ordem de compra por fornecedor (decisão 103).
+// (o ERP sugere o menor) e gera uma ordem de compra por fornecedor (decisão 107). Item com OC sai da planilha.
 function Comparacao({ itens, cotacoes, podeCotar, agir, editar, gerar }: {
   itens: ItemRequisicao[]; cotacoes: Cotacao[]; podeCotar: boolean; agir: (f: () => Promise<unknown>) => Promise<boolean>; editar: (c: Cotacao) => void; gerar: () => void;
 }) {
@@ -243,6 +240,7 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, editar, gerar }: {
     await agir(() => Promise.all(abertos.filter((i) => s[i.id] && s[i.id] !== i.cotacao_escolhida_id).map((i) => atualizarItem(i.id, { cotacao_escolhida_id: s[i.id] }))));
   }
   const escolher = (i: ItemRequisicao, c: string | null) => agir(() => atualizarItem(i.id, { cotacao_escolhida_id: c }));
+  if (!abertos.length) return <Vazio>Todos os itens já estão em ordem de compra. Veja as ordens abaixo.</Vazio>;
 
   return (
     <>
@@ -278,25 +276,24 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, editar, gerar }: {
             </tr>
           </thead>
           <tbody className="divide-y divide-borda">
-            {itens.filter((i) => i.status !== 'cancelado').map((i) => {
-              const aberto = i.status === 'a_comprar';
+            {abertos.map((i) => {
               const comPreco = cotacoes.filter((_c, n) => cs[n].precos[i.id] != null);
               return (
-                <tr key={i.id} className={aberto ? '' : 'opacity-60'}>
-                  <td className="px-2 py-1.5">{i.descricao}<span className="block text-xs text-suave">{Number(i.quantidade).toLocaleString('pt-BR')} {i.unidade}{!aberto && ` · ${ROTULO_ITEM[i.status]}`}</span></td>
+                <tr key={i.id}>
+                  <td className="px-2 py-1.5">{i.descricao}<span className="block text-xs text-suave">{Number(i.quantidade).toLocaleString('pt-BR')} {i.unidade}</span></td>
                   {cotacoes.map((c, n) => {
                     const v = cs[n].precos[i.id];
-                    const menor = aberto && v != null && menores[i.id] === v && cotacoes.length > 1;
+                    const menor = v != null && menores[i.id] === v && cotacoes.length > 1;
                     const escolhido = i.cotacao_escolhida_id === c.id;
                     return (
                       <td key={c.id} className={`px-1 py-1 ${menor ? 'bg-petroleo-50 dark:bg-petroleo-600/20' : ''} ${escolhido ? 'ring-2 ring-inset ring-roxo-400' : ''}`}>
-                        {podeCotar && aberto ? <PrecoCelula valor={v} onConfirmar={(x) => agir(() => salvarPreco(c.id, i.id, x))} /> : <span className="block px-2 text-right tabular-nums">{v == null ? '—' : moeda(v)}</span>}
+                        {podeCotar ? <PrecoCelula valor={v} onConfirmar={(x) => agir(() => salvarPreco(c.id, i.id, x))} /> : <span className="block px-2 text-right tabular-nums">{v == null ? '—' : moeda(v)}</span>}
                         {v != null && <span className="block px-2 text-right text-[11px] text-suave tabular-nums">{moeda(Math.round(v * Number(i.quantidade) * 100) / 100)}</span>}
                       </td>
                     );
                   })}
                   <td className="px-1 py-1">
-                    {podeCotar && aberto ? (
+                    {podeCotar ? (
                       <Selecao compacto value={i.cotacao_escolhida_id ?? ''} onChange={(e) => escolher(i, e.target.value || null)}>
                         <option value="">{comPreco.length ? 'Escolha…' : 'Sem preço'}</option>
                         {comPreco.map((c) => <option key={c.id} value={c.id}>{c.fornecedores?.nome}</option>)}
@@ -450,9 +447,9 @@ function GerarOrdens({ itens, cotacoes, onFechar, onConfirmar }: { itens: ItemRe
   );
 }
 
-function OrdemCartao({ p, r, itens, fornecedor, podeEditar, agir, entrega, cancelar: cancelarOc }: {
+function OrdemCartao({ p, r, itens, fornecedor, podeEditar, agir, cancelar: cancelarOc }: {
   p: Pedido; r: Requisicao; itens: ItemRequisicao[]; fornecedor: Fornecedor | undefined; podeEditar: boolean;
-  agir: (f: () => Promise<unknown>) => Promise<boolean>; entrega: () => void; cancelar: () => void;
+  agir: (f: () => Promise<unknown>) => Promise<boolean>; cancelar: () => void;
 }) {
   const { data: pagamento } = useQuery({ queryKey: ['compras', 'pagamento', p.id], queryFn: () => situacaoPagamento(p.id), enabled: p.status !== 'cancelada' });
   const atrasado = pedidoAtrasado(p, hojeISO());
@@ -475,7 +472,7 @@ function OrdemCartao({ p, r, itens, fornecedor, podeEditar, agir, entrega, cance
         <div className="flex flex-wrap gap-2">
           {p.orcamento_caminho && <Botao tamanho="sm" variante="secundario" onClick={() => agir(() => abrirArquivo(p.orcamento_caminho!))}><Paperclip size={14} /> Orçamento</Botao>}
           <Botao tamanho="sm" variante="secundario" onClick={() => imprimirOrdem(p, r, itens, fornecedor)}><FileDown size={14} /> PDF</Botao>
-          {aberta && podeEditar && <Botao tamanho="sm" onClick={entrega}><Truck size={14} /> Registrar entrega</Botao>}
+          {aberta && <span className="inline-flex items-center gap-1 self-center text-xs text-suave"><Truck size={14} /> Recebimento pelo Almoxarifado</span>}
           {p.status === 'aguardando_entrega' && podeEditar && <Botao tamanho="sm" variante="secundario" onClick={cancelarOc}><Ban size={14} /> Cancelar</Botao>}
         </div>
       </div>
@@ -504,50 +501,6 @@ function Justificar({ titulo, rotulo, botao, onFechar, onConfirmar }: { titulo: 
       <div className="mt-4 flex justify-end gap-2">
         <Botao variante="secundario" onClick={onFechar}>Voltar</Botao>
         <Botao variante="perigo" disabled={t.trim().length < 3} onClick={async () => { if (await onConfirmar(t.trim())) onFechar(); }}>{botao}</Botao>
-      </div>
-    </Modal>
-  );
-}
-
-// Entrega: tudo o que falta, ou a quantidade que chegou de cada item.
-function Entrega({ p, itens, onFechar, onConfirmar }: {
-  p: Pedido; itens: ItemRequisicao[]; onFechar: () => void; onConfirmar: (data: string, itens: { item_id: string; quantidade: number }[] | null, obs: string) => Promise<boolean>;
-}) {
-  const pi = p.compras_pedido_itens ?? [];
-  const falta = (x: (typeof pi)[number]) => Math.max(0, Number(x.quantidade) - Number(x.quantidade_recebida));
-  const [total, setTotal] = useState(true);
-  const [qtd, setQtd] = useState<Record<string, number>>(() => Object.fromEntries(pi.map((x) => [x.item_id, falta(x)])));
-  const [data, setData] = useState(hojeISO());
-  const [obs, setObs] = useState('');
-  const parcial = pi.filter((x) => falta(x) > 0).map((x) => ({ item_id: x.item_id, quantidade: Math.min(qtd[x.item_id] ?? 0, falta(x)) })).filter((x) => x.quantidade > 0);
-  return (
-    <Modal aberto titulo={`Registrar entrega · ${p.codigo}`} onFechar={onFechar}>
-      <div className="space-y-3">
-        <Caixa marcado={total} onChange={setTotal}>Chegou tudo o que falta</Caixa>
-        {!total && (
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-suave"><tr><th className="py-1">Item</th><th className="py-1 text-right">Falta</th><th className="w-32 py-1 text-right">Chegou</th></tr></thead>
-            <tbody className="divide-y divide-borda">
-              {pi.filter((x) => falta(x) > 0).map((x) => {
-                const i = itens.find((y) => y.id === x.item_id);
-                return (
-                  <tr key={x.item_id}>
-                    <td className="py-1">{i?.descricao}</td>
-                    <td className="py-1 text-right tabular-nums">{falta(x).toLocaleString('pt-BR')} {i?.unidade}</td>
-                    <td className="py-1"><div className="rounded-lg border border-slate-300 dark:border-marinho-500"><CampoNumero valor={qtd[x.item_id] ?? 0} casas={3} onConfirmar={(n) => setQtd((q) => ({ ...q, [x.item_id]: Math.max(0, n) }))} /></div></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-        <Campo rotulo="Data"><CampoData value={data} onChange={setData} /></Campo>
-        <Campo rotulo="Observação"><AreaTexto rows={2} value={obs} onChange={(e) => setObs(e.target.value)} /></Campo>
-        <p className="text-xs text-suave">Quando o Almoxarifado estiver liberado, a conferência do recebimento passa a ser dele.</p>
-        <div className="flex justify-end gap-2">
-          <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
-          <Botao disabled={!data || (!total && !parcial.length)} onClick={async () => { if (await onConfirmar(data, total ? null : parcial, obs)) onFechar(); }}><Truck size={15} /> Registrar</Botao>
-        </div>
       </div>
     </Modal>
   );

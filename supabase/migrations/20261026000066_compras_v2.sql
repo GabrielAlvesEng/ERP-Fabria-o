@@ -5,16 +5,21 @@
 -- Financeiro pagar; *altera* a decisão 3 na parte da aprovação); Kanban por item.
 set lock_timeout = '10s';
 
--- 1) Biblioteca = cadastro de produtos: Compras edita; Compras e Almoxarifado leem. ---------------------------------
+-- 1) Biblioteca = cadastro de produtos, só de Compras (Gabriel, 26/10/2026: "Compras é a única que cadastra e organiza a
+-- biblioteca"; sai da Administração). Todos os setores que usam continuam lendo. ---------------------------------------
 do $$
 declare t text;
 begin
   foreach t in array array['bib_tipos','bib_pesos_perfil','bib_chapa_precos','bib_chapas','bib_perfis','bib_itens','bib_fixador_tipos','bib_fixador_materiais','bib_fixador_tipo_materiais'] loop
     execute format('alter policy %I on public.%I using (tem_permissao(''custos'',''ler'') or tem_permissao(''engenharia'',''ler'') or tem_permissao(''compras'',''ler'') or tem_permissao(''almoxarifado'',''ler'') or tem_permissao(''admin'',''editar''))', t || '_ler', t);
-    execute format('alter policy %I on public.%I with check (tem_permissao(''admin'',''editar'') or tem_permissao(''compras'',''editar''))', t || '_criar', t);
-    execute format('alter policy %I on public.%I using (tem_permissao(''admin'',''editar'') or tem_permissao(''compras'',''editar'')) with check (tem_permissao(''admin'',''editar'') or tem_permissao(''compras'',''editar''))', t || '_editar', t);
+    execute format('alter policy %I on public.%I with check (tem_permissao(''compras'',''editar''))', t || '_criar', t);
+    execute format('alter policy %I on public.%I using (tem_permissao(''compras'',''editar'')) with check (tem_permissao(''compras'',''editar''))', t || '_editar', t);
   end loop;
 end $$;
+-- Materiais e densidades (COD_MAT) também passam para Compras; a lista antiga "A revisar" fica visível para Compras.
+alter policy catalogo_materiais_admin on public.catalogo_materiais using (tem_permissao('compras', 'editar')) with check (tem_permissao('compras', 'editar'));
+alter policy catalogo_materiais_admin on public.catalogo_materiais rename to catalogo_materiais_compras;
+alter policy ref_materiais_ler on public.ref_materiais using (tem_permissao('custos', 'ler') or tem_permissao('compras', 'ler'));
 
 -- 2) Fluxo antigo (aprovação e uma OC por requisição) sai. As tabelas estavam vazias. ------------------------------
 drop function if exists public.compras_enviar_aprovacao(uuid, uuid);
@@ -226,12 +231,12 @@ begin
 end;
 $$;
 
--- Entrega (Compras ou o recebimento do Almoxarifado): p_itens = [{item_id, quantidade}] do que chegou; vazio = tudo o que falta.
+-- Recebimento: só o Almoxarifado marca (Gabriel, 26/10/2026). p_itens = [{item_id, quantidade}] do que chegou; vazio = tudo o que falta.
 create or replace function public.compras_registrar_entrega(p_pedido uuid, p_data date, p_itens jsonb default null, p_observacao text default '') returns void
 language plpgsql security definer set search_path = public as $$
 declare o compras_pedidos; i jsonb; v_status text;
 begin
-  if not (tem_permissao('compras', 'editar') or tem_permissao('almoxarifado', 'editar')) then raise exception 'Sem permissão para registrar entrega.'; end if;
+  if not tem_permissao('almoxarifado', 'editar') then raise exception 'Só o Almoxarifado registra o recebimento.'; end if;
   select * into o from compras_pedidos where id = p_pedido for update;
   if not found then raise exception 'Ordem de compra não encontrada.'; end if;
   if o.status in ('entregue', 'cancelada') then raise exception 'Esta ordem de compra já foi %.', case o.status when 'entregue' then 'entregue' else 'cancelada' end; end if;

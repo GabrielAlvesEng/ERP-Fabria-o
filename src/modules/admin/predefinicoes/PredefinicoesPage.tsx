@@ -1,41 +1,24 @@
 import { useState } from 'react';
-import { Cabecalho } from '@/shared/ui';
-import { ChapasAba } from './ChapasAba';
-import { PerfisAba } from './PerfisAba';
-import { FornecedoresAba, ItensAba, MaoObraAba, MaquinarioAba, MateriaisBaseAba, RevisarAba } from './OutrasAbas';
-import { FixadoresAba } from './FixadoresAba';
+import { Link } from 'react-router-dom';
+import { Aviso, Cabecalho } from '@/shared/ui';
+import { FornecedoresAba, MaoObraAba, MaquinarioAba } from './OutrasAbas';
 import { SubAbas } from './comum';
 
-const ABAS = ['Materiais', 'Fornecedores', 'Mão de obra', 'Maquinário'] as const;
-const ABAS_MATERIAIS = ['Chapas', 'Perfis', 'Itens comerciais', 'Fixadores', 'Consumíveis', 'Materiais e densidades', 'A revisar'] as const;
+const ABAS = ['Fornecedores', 'Mão de obra', 'Maquinário'] as const;
 
-// Administração → Predefinições (decisões 48 e 49): Biblioteca de Materiais, Fornecedores, Mão de obra e Maquinário.
-// Comercial lê (usa nas propostas); só a Administração grava (RLS no banco).
+// Administração → Predefinições (decisões 48, 49 e 107): Fornecedores, Mão de obra e Maquinário.
+// A Biblioteca de Materiais saiu daqui: quem cadastra e organiza é Compras (Compras → Produtos).
 export function PredefinicoesPage() {
-  const [aba, setAba] = useState<(typeof ABAS)[number]>('Materiais');
-  const [sub, setSub] = useState<(typeof ABAS_MATERIAIS)[number]>('Chapas');
+  const [aba, setAba] = useState<(typeof ABAS)[number]>('Fornecedores');
   return (
     <>
-      <Cabecalho titulo="Predefinições" subtitulo="Tabelas usadas nas propostas e, depois, na Engenharia e em Compras. Mudar aqui não altera custos já lançados." />
+      <Cabecalho titulo="Predefinições" subtitulo="Tabelas usadas nas propostas. Mudar aqui não altera custos já lançados." />
+      <div className="mb-4"><Aviso tipo="info">A Biblioteca de Materiais (chapas, perfis, itens comerciais, fixadores, consumíveis e densidades) agora fica em <Link to="/compras/produtos" className="font-medium underline">Compras → Produtos</Link>. Só Compras cadastra e organiza; os outros setores continuam usando.</Aviso></div>
       <SubAbas abas={ABAS} ativa={aba} onTrocar={setAba} />
       <div key={aba} className="entrar">
-      {aba === 'Materiais' && (
-        <>
-          <SubAbas abas={ABAS_MATERIAIS} ativa={sub} onTrocar={setSub} />
-          <div key={sub} className="entrar">
-          {sub === 'Chapas' && <ChapasAba />}
-          {sub === 'Perfis' && <PerfisAba />}
-          {sub === 'Itens comerciais' && <ItensAba grupo="Comerciais" />}
-          {sub === 'Fixadores' && <FixadoresAba />}
-          {sub === 'Consumíveis' && <ItensAba grupo="Consumíveis" />}
-          {sub === 'Materiais e densidades' && <MateriaisBaseAba />}
-          {sub === 'A revisar' && <RevisarAba />}
-          </div>
-        </>
-      )}
-      {aba === 'Fornecedores' && <FornecedoresAba />}
-      {aba === 'Mão de obra' && <MaoObraAba />}
-      {aba === 'Maquinário' && <MaquinarioAba />}
+        {aba === 'Fornecedores' && <FornecedoresAba />}
+        {aba === 'Mão de obra' && <MaoObraAba />}
+        {aba === 'Maquinário' && <MaquinarioAba />}
       </div>
     </>
   );

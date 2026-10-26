@@ -140,9 +140,6 @@ export async function abrirArquivo(caminho: string): Promise<void> {
 export async function gerarPedidos(req: string, observacoes: string): Promise<string[]> {
   return ok(await supabase.rpc('compras_gerar_pedidos', { p_req: req, p_observacoes: observacoes })) as string[];
 }
-export async function registrarEntrega(pedido: string, data: string, itens: { item_id: string; quantidade: number }[] | null, observacao: string): Promise<void> {
-  ok(await supabase.rpc('compras_registrar_entrega', { p_pedido: pedido, p_data: data, p_itens: itens, p_observacao: observacao }));
-}
 export async function cancelarPedido(pedido: string, motivo: string): Promise<void> {
   ok(await supabase.rpc('compras_cancelar_pedido', { p_pedido: pedido, p_motivo: motivo }));
 }
