@@ -31,7 +31,11 @@ import { PainelCompras } from '@/modules/compras/PainelCompras';
 import { RequisicaoPage } from '@/modules/compras/RequisicaoPage';
 import { OrdensPage } from '@/modules/compras/OrdensPage';
 import { FornecedoresPage } from '@/modules/compras/FornecedoresPage';
-import { FinanceiroPage } from '@/modules/financeiro/FinanceiroPage';
+import { FinanceiroLayout } from '@/modules/financeiro/FinanceiroLayout';
+import { PainelFinanceiro } from '@/modules/financeiro/PainelFinanceiro';
+import { ContasPage as ContasPagarPage } from '@/modules/financeiro/ContasPage';
+import { ContaPage as ContaPagarPage } from '@/modules/financeiro/ContaPage';
+import { FornecedoresPagamentoPage } from '@/modules/financeiro/FornecedoresPagamentoPage';
 import { RhLayout } from '@/modules/rh/RhLayout';
 import { FuncionariosPage } from '@/modules/rh/FuncionariosPage';
 import { FuncionarioPage } from '@/modules/rh/FuncionarioPage';
@@ -105,7 +109,12 @@ export function App() {
             <Route index element={<CaixaEntradaPage />} />
             <Route path="enviados" element={<EnviadosPage />} />
           </Route>
-          <Route path="/financeiro" element={<FinanceiroPage />} />
+          <Route path="/financeiro" element={<FinanceiroLayout />}>
+            <Route index element={<PainelFinanceiro />} />
+            <Route path="contas" element={<ContasPagarPage />} />
+            <Route path="contas/:id" element={<ContaPagarPage />} />
+            <Route path="fornecedores" element={<FornecedoresPagamentoPage />} />
+          </Route>
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<SenhasPage />} />

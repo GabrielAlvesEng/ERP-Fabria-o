@@ -197,3 +197,11 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `alm_retiradas` (código RT-AA-NNN, funcionário com cópia do nome, destino projeto ou setor, observação), `alm_contadores`.
 - `alm_solicitacoes` (item do estoque → requisição de Compras).
 - Funções: `alm_estoque`, `alm_produtos`, `alm_adicionar_item`, `alm_ajustar`, `alm_registrar_retirada`, `alm_devolver`, `alm_estornar`, `alm_solicitar_compra` (usa `compras_solicitar` quando existir), `alm_compras_abertas`, `alm_funcionarios`, `alm_projetos`, `alm_setores`.
+
+## Financeiro: contas a pagar (decisão 105, migration 65)
+
+- `fin_contas_pagar` (uma por OC: `pedido_id` único, cópias de código, fornecedor e projeto, valor, `condicao_tipo` + `condicao_dias`, emissão, entrega, status aberta/paga/cancelada). Criada e atualizada só pelos gatilhos `fin_pedido_criado` e `fin_pedido_alterado` em `compras_pedidos` (lêem as colunas do Compras v2 por `to_jsonb`).
+- `fin_parcelas` (número, vencimento, valor, pago, pago_em, `ativa`; parcela refeita fica inativa). `fin_pagamentos` (parcela, data, valor, forma, comprovante, quem lançou; estorno marca `estornado_em` e motivo). `fin_anexos` (orçamento no bucket `compras`; boleto, NF e outros no bucket privado `financeiro`, pasta = id da conta). `fin_eventos` (histórico).
+- `fornecedores_pagamento` (banco, agência, conta, titular, PIX, prazo após o recebimento), separada de `fornecedores` para só o Financeiro ler.
+- Funções: `fin_definir_parcelas`, `fin_alterar_vencimento`, `fin_registrar_pagamento`, `fin_estornar_pagamento` (financeiro.critica), `fin_anexar`, `fin_remover_anexo`, `compras_situacao_pagamento`. A situação pela data (vencida, hoje, em breve) é calculada na tela (`src/modules/financeiro/regras.ts`).
+

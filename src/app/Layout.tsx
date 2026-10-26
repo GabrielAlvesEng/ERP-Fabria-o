@@ -7,6 +7,7 @@ import { aplicarTema, lerTema, type Tema } from './tema';
 import { RetornosSino } from '@/modules/vendas/RetornosSino';
 import { VencimentosSino } from '@/modules/rh/VencimentosSino';
 import { EstoqueSino } from '@/modules/almoxarifado/EstoqueSino';
+import { VencimentosFinanceiroSino } from '@/modules/financeiro/VencimentosSino';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { useMeuUsuario } from '@/modules/perfil/api';
 import { PresencaVendas, useVendasAoVivo } from '@/modules/vendas/aoVivo';
@@ -92,6 +93,7 @@ export function Layout() {
             <RetornosSino />
             <VencimentosSino />
             <EstoqueSino bloqueado={BLOQUEADOS.has('/almoxarifado')} />
+            <VencimentosFinanceiroSino bloqueado={BLOQUEADOS.has('/financeiro')} />
             <button onClick={() => setTema(tema === 'claro' ? 'escuro' : 'claro')} className="rounded-lg p-2 text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700" aria-label="Alternar tema">
               {tema === 'claro' ? <Moon size={18} /> : <Sun size={18} />}
             </button>

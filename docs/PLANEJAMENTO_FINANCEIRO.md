@@ -32,7 +32,7 @@ Financeiro: conta a pagar criada → A pagar → Vence em breve → Vencida
   - A combinar: fica sem data e aparece em destaque ("definir vencimento") até o Financeiro preencher.
 - **Pagar:** o Financeiro registra data, valor pago, forma (PIX, boleto, transferência, cartão, dinheiro) e anexa o comprovante. Pode pagar parcial. Quando tudo está pago, a conta fica "Paga" e Compras vê na OC que ela foi paga.
 - **Boleto/NF do fornecedor:** o Financeiro (ou Compras) anexa o boleto e a NF do fornecedor na conta, junto do orçamento.
-- **Cancelar:** se Compras cancelar a OC antes de pagar, a conta é cancelada com motivo. Conta paga não se cancela; estornar um pagamento lançado errado é ação crítica (pede senha, como nas exclusões).
+- **Cancelar:** se Compras cancelar a OC antes de pagar, a conta é cancelada com motivo. Conta paga não se cancela; estornar um pagamento lançado errado é ação crítica (permissão própria e motivo; ver decisão 105 sobre a senha).
 - **Histórico:** cada passo (criada, vencimento alterado, pagamento, anexo, cancelamento) fica registrado com quem e quando.
 
 ### 2.2 Avisos de vencimento
