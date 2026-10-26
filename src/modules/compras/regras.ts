@@ -15,19 +15,8 @@ export const GRUPOS: GrupoItem[] = ['Chapas', 'Perfis', 'Comerciais', 'Fixadores
 export const UNIDADES = ['un', 'pç', 'kg', 'm', 'm²', 'barra', 'chapa', 'cx', 'L', 'h', 'serviço'];
 export const SETORES = ['Engenharia', 'Almoxarifado', 'Fabricação', 'Montagem em campo', 'Manutenção', 'Qualidade', 'Administrativo', 'Outro'];
 
-// Kanban por item (decisão 103): "em cotação" = à comprar com algum preço lançado.
-export type EtapaItem = 'a_comprar' | 'em_cotacao' | 'comprado' | 'recebido';
-export const ETAPAS: { etapa: EtapaItem; rotulo: string }[] = [
-  { etapa: 'a_comprar', rotulo: 'À comprar' },
-  { etapa: 'em_cotacao', rotulo: 'Em cotação' },
-  { etapa: 'comprado', rotulo: 'Comprado' },
-  { etapa: 'recebido', rotulo: 'Recebido' },
-];
-export function etapaDoItem(status: StatusItem, temPreco: boolean): EtapaItem | null {
-  if (status === 'cancelado') return null;
-  if (status === 'a_comprar') return temPreco ? 'em_cotacao' : 'a_comprar';
-  return status;
-}
+export type StatusPacote = 'aberto' | 'comprado' | 'cancelado';
+export const ROTULO_PACOTE: Record<StatusPacote, string> = { aberto: 'Em cotação', comprado: 'Comprado', cancelado: 'Cancelado' };
 
 export const ROTULO_STATUS: Record<StatusRequisicao, string> = { aberta: 'Aberta', concluida: 'Concluída', cancelada: 'Cancelada' };
 export const ROTULO_ITEM: Record<StatusItem, string> = { a_comprar: 'À comprar', comprado: 'Comprado', recebido: 'Recebido', cancelado: 'Cancelado' };
@@ -80,20 +69,6 @@ export function menoresPrecos(cotacoes: CotacaoComPrecos[], itens: ItemCotado[])
   return m;
 }
 
-// Sugestão de escolha: para cada item, a cotação com o menor preço unitário.
-export function sugerirEscolhas(cotacoes: CotacaoComPrecos[], itens: ItemCotado[]): Record<string, string> {
-  const r: Record<string, string> = {};
-  for (const i of itens) {
-    let melhor: { id: string; v: number } | null = null;
-    for (const c of cotacoes) {
-      const v = c.precos[i.id];
-      if (v != null && (!melhor || v < melhor.v)) melhor = { id: c.id, v };
-    }
-    if (melhor) r[i.id] = melhor.id;
-  }
-  return r;
-}
-
 // Cotação completa (todos os itens com preço) de menor total.
 export function melhorCotacao(cotacoes: CotacaoComPrecos[], itens: ItemCotado[]): string | null {
   let melhor: { id: string; total: number } | null = null;
@@ -103,6 +78,41 @@ export function melhorCotacao(cotacoes: CotacaoComPrecos[], itens: ItemCotado[])
     if (!melhor || t.total < melhor.total) melhor = { id: c.id, total: t.total };
   }
   return melhor?.id ?? null;
+}
+
+// ---------- À comprar (decisão 111) ----------
+// Para quem é o item: pedido (projeto da Engenharia), estoque (Almoxarifado) ou o setor que pediu.
+export type Destino = 'pedido' | 'estoque' | 'setor';
+export const ROTULO_DESTINO: Record<Destino, string> = { pedido: 'Pedido (Engenharia)', estoque: 'Estoque (Almoxarifado)', setor: 'Setor' };
+export function destinoDe(r: { projeto_codigo: string; origem: Origem }): Destino {
+  if (r.projeto_codigo) return 'pedido';
+  return r.origem === 'almoxarifado' ? 'estoque' : 'setor';
+}
+export function rotuloDestino(r: { projeto_codigo: string; origem: Origem; setor: string }): string {
+  const d = destinoDe(r);
+  return d === 'pedido' ? `Pedido ${r.projeto_codigo}` : d === 'estoque' ? 'Estoque' : r.setor || 'Setor';
+}
+
+// Agrupa os itens por categoria (na ordem de GRUPOS) e, dentro dela, pedido antes de estoque, urgente e data primeiro.
+// A categoria só organiza a tela: o comprador junta itens de categorias diferentes no mesmo pacote.
+export interface ItemParaAgrupar {
+  grupo: GrupoItem; descricao: string;
+  compras_requisicoes: { projeto_codigo: string; origem: Origem; prioridade: 'normal' | 'urgente'; necessario_em: string | null };
+}
+export function agruparAComprar<T extends ItemParaAgrupar>(itens: T[]): { grupo: GrupoItem; itens: T[] }[] {
+  const ordemDestino: Destino[] = ['pedido', 'estoque', 'setor'];
+  const chave = (i: T) => [
+    ordemDestino.indexOf(destinoDe(i.compras_requisicoes)),
+    i.compras_requisicoes.prioridade === 'urgente' ? 0 : 1,
+    i.compras_requisicoes.necessario_em ?? '9999',
+  ] as const;
+  return GRUPOS.map((grupo) => ({
+    grupo,
+    itens: itens.filter((i) => i.grupo === grupo).sort((a, b) => {
+      const [x, y] = [chave(a), chave(b)];
+      return x[0] - y[0] || x[1] - y[1] || x[2].localeCompare(y[2]) || a.descricao.localeCompare(b.descricao);
+    }),
+  })).filter((g) => g.itens.length);
 }
 
 // ---------- Importar a lista de materiais do projeto ----------

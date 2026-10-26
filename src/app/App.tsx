@@ -29,7 +29,8 @@ import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
 import { PredefinicoesPage } from '@/modules/admin/predefinicoes/PredefinicoesPage';
 import { PerfilPage } from '@/modules/perfil/PerfilPage';
 import { ComprasLayout } from '@/modules/compras/ComprasLayout';
-import { PainelCompras } from '@/modules/compras/PainelCompras';
+import { AComprarPage } from '@/modules/compras/AComprarPage';
+import { CotacoesPage, PacotePage } from '@/modules/compras/CotacoesPage';
 import { RequisicaoPage } from '@/modules/compras/RequisicaoPage';
 import { OrdensPage } from '@/modules/compras/OrdensPage';
 import { FornecedoresPage } from '@/modules/compras/FornecedoresPage';
@@ -95,7 +96,9 @@ export function App() {
             <Route path="projetos/:id" element={<ProjetoPage />} />
           </Route>
           <Route path="/compras" element={<ComprasLayout />}>
-            <Route index element={<PainelCompras />} />
+            <Route index element={<AComprarPage />} />
+            <Route path="cotacoes" element={<CotacoesPage />} />
+            <Route path="cotacoes/:id" element={<PacotePage />} />
             <Route path="requisicoes/:id" element={<RequisicaoPage />} />
             <Route path="ordens" element={<OrdensPage />} />
             <Route path="produtos" element={<ProdutosPage />} />

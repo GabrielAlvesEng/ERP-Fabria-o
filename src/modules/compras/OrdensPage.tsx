@@ -6,7 +6,7 @@ import { Cabecalho, EsqueletoTabela, Selecao, Selo, Vazio } from '@/shared/ui';
 import { listarPedidos } from './api';
 import { ROTULO_PEDIDO, pedidoAtrasado } from './regras';
 
-// Compras → Ordens de compra (decisões 101 e 103): uma por fornecedor; daqui vão para o Financeiro pagar.
+// Compras → Ordens de compra (decisões 107 e 111): uma por pacote de cotação (ou por fornecedor, nas antigas); daqui vão para o Financeiro pagar.
 export function OrdensPage() {
   const { data: pedidos = [], isLoading } = useQuery({ queryKey: ['compras', 'pedidos'], queryFn: listarPedidos });
   const [filtro, setFiltro] = useState<'abertas' | 'atrasadas' | 'entregues' | 'canceladas' | 'todas'>('abertas');
@@ -23,7 +23,7 @@ export function OrdensPage() {
         <div className="overflow-x-auto rounded-xl ring-1 ring-borda">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-pagina text-left text-xs text-suave"><tr>
-              <th className="px-3 py-2">Ordem</th><th className="px-3 py-2">Fornecedor</th><th className="px-3 py-2">Requisição / projeto</th>
+              <th className="px-3 py-2">Ordem</th><th className="px-3 py-2">Fornecedor</th><th className="px-3 py-2">Cotação / solicitação</th>
               <th className="px-3 py-2">Emitida</th><th className="px-3 py-2">Previsão</th><th className="px-3 py-2 text-right">Valor</th><th className="px-3 py-2">Situação</th>
             </tr></thead>
             <tbody className="divide-y divide-borda">
@@ -31,9 +31,10 @@ export function OrdensPage() {
                 const atrasado = pedidoAtrasado(p, hoje);
                 return (
                   <tr key={p.id} className="hover:bg-pagina">
-                    <td className="px-3 py-2"><Link to={`/compras/requisicoes/${p.requisicao_id}`} className="font-mono font-medium text-roxo-600 hover:underline dark:text-roxo-100">{p.codigo}</Link></td>
+                    <td className="px-3 py-2"><Link to={p.pacote_id ? `/compras/cotacoes/${p.pacote_id}` : `/compras/requisicoes/${p.requisicao_id}`} className="font-mono font-medium text-roxo-600 hover:underline dark:text-roxo-100">{p.codigo}</Link></td>
                     <td className="px-3 py-2">{p.fornecedores?.nome}</td>
-                    <td className="px-3 py-2">{p.compras_requisicoes?.titulo}<span className="block text-xs text-suave">{p.compras_requisicoes?.codigo}{p.compras_requisicoes?.projeto_codigo ? ` · ${p.compras_requisicoes.projeto_codigo}` : p.compras_requisicoes?.origem === 'almoxarifado' ? ' · Estoque' : ''}</span></td>
+                    <td className="px-3 py-2">{p.compras_pacotes ? <>{p.compras_pacotes.titulo}<span className="block text-xs text-suave">Cotação {p.compras_pacotes.codigo}{p.compras_requisicoes ? ` · ${p.compras_requisicoes.codigo}${p.compras_requisicoes.projeto_codigo ? ` · ${p.compras_requisicoes.projeto_codigo}` : ''}` : ' · várias solicitações'}</span></>
+                      : <>{p.compras_requisicoes?.titulo}<span className="block text-xs text-suave">{p.compras_requisicoes?.codigo}{p.compras_requisicoes?.projeto_codigo ? ` · ${p.compras_requisicoes.projeto_codigo}` : p.compras_requisicoes?.origem === 'almoxarifado' ? ' · Estoque' : ''}</span></>}</td>
                     <td className="px-3 py-2">{dataBR(p.emitido_em)}</td>
                     <td className={`px-3 py-2 ${atrasado ? 'font-medium text-red-600' : ''}`}>{dataBR(p.previsao_entrega)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{moeda(p.valor_total)}</td>

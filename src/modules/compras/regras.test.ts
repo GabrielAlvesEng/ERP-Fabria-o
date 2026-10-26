@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agruparLista, descreverCondicao, etapaDoItem, fichasDeProdutos, lerDias, melhorCotacao, menoresPrecos, pedidoAtrasado, sugerirEscolhas, totalCotacao, type PecaProjeto } from './regras';
+import { agruparAComprar, agruparLista, descreverCondicao, fichasDeProdutos, lerDias, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -49,17 +49,6 @@ describe('lista de materiais do projeto', () => {
 });
 
 describe('Compras v2 (decisão 103)', () => {
-  it('etapa do item no quadro', () => {
-    expect(etapaDoItem('a_comprar', false)).toBe('a_comprar');
-    expect(etapaDoItem('a_comprar', true)).toBe('em_cotacao');
-    expect(etapaDoItem('comprado', true)).toBe('comprado');
-    expect(etapaDoItem('cancelado', true)).toBeNull();
-  });
-  it('sugere o fornecedor de menor preço por item', () => {
-    const itens = [{ id: 'a', quantidade: 1 }, { id: 'b', quantidade: 1 }, { id: 'c', quantidade: 1 }];
-    const s = sugerirEscolhas([{ id: 'x', frete: 0, precos: { a: 10, b: 5 } }, { id: 'y', frete: 0, precos: { a: 8, b: 6 } }], itens);
-    expect(s).toEqual({ a: 'y', b: 'x' });
-  });
   it('condição de pagamento', () => {
     expect(lerDias('30/60/90')).toEqual([30, 60, 90]);
     expect(descreverCondicao('apos_recebimento', [28])).toBe('28 dias após o recebimento');
@@ -78,5 +67,24 @@ describe('Compras v2 (decisão 103)', () => {
       [h('2026-09-01', 5), h('2026-10-01', 6), { ...h('2026-08-01', 1), bib_tipo: null, bib_id: null, descricao: 'Lixa 80' }]);
     expect(f.map((x) => [x.descricao, x.cadastrado, x.compras.length])).toEqual([['Disco de corte', true, 2], ['Lixa 80', false, 1], ['Eletrodo', true, 0]]);
     expect(f[0].compras[0].valor_unit).toBe(6);
+  });
+});
+
+describe('À comprar e pacotes (decisão 111)', () => {
+  const req = (projeto_codigo: string, origem: 'engenharia' | 'almoxarifado' | 'compras', prioridade: 'normal' | 'urgente' = 'normal', necessario_em: string | null = null) =>
+    ({ projeto_codigo, origem, prioridade, necessario_em, setor: 'Manutenção' });
+  it('para quem é o item', () => {
+    expect(rotuloDestino(req('26-01-001', 'engenharia'))).toBe('Pedido 26-01-001');
+    expect(rotuloDestino(req('', 'almoxarifado'))).toBe('Estoque');
+    expect(rotuloDestino(req('', 'compras'))).toBe('Manutenção');
+  });
+  it('separa por categoria, pedido antes de estoque e urgente primeiro', () => {
+    const g = agruparAComprar([
+      { grupo: 'Perfis' as const, descricao: 'W150', compras_requisicoes: req('26-01-001', 'engenharia') },
+      { grupo: 'Chapas' as const, descricao: 'Inox 2mm', compras_requisicoes: req('', 'almoxarifado') },
+      { grupo: 'Chapas' as const, descricao: 'Inox 3mm', compras_requisicoes: req('26-01-001', 'engenharia') },
+      { grupo: 'Chapas' as const, descricao: 'A36 1/4', compras_requisicoes: req('26-01-002', 'engenharia', 'urgente') },
+    ]);
+    expect(g.map((x) => [x.grupo, x.itens.map((i) => i.descricao)])).toEqual([['Chapas', ['A36 1/4', 'Inox 3mm', 'Inox 2mm']], ['Perfis', ['W150']]]);
   });
 });

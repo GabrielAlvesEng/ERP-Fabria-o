@@ -1,7 +1,7 @@
 import { supabase } from '@/shared/lib/supabase';
-import type { BibTipo, CondicaoTipo, GrupoItem, Origem, PecaProjeto, StatusItem, StatusPedido, StatusRequisicao } from './regras';
+import type { BibTipo, CondicaoTipo, GrupoItem, Origem, PecaProjeto, StatusItem, StatusPacote, StatusPedido, StatusRequisicao } from './regras';
 
-// Compras (decisões 101 e 103). Situações mudam só pelas funções do banco (compras_*).
+// Compras (decisões 101, 107 e 111). Situações mudam só pelas funções do banco (compras_*).
 
 function ok<T>(r: { data: T | null; error: unknown }): T {
   if (r.error) throw r.error;
@@ -20,10 +20,10 @@ export interface Requisicao {
 }
 export interface ItemRequisicao {
   id: string; requisicao_id: string; ordem: number; grupo: GrupoItem; descricao: string; quantidade: number; unidade: string; observacoes: string;
-  bib_tipo: BibTipo | null; bib_id: string | null; status: StatusItem; cotacao_escolhida_id: string | null;
+  bib_tipo: BibTipo | null; bib_id: string | null; status: StatusItem; cotacao_escolhida_id: string | null; pacote_id: string | null;
 }
 export interface Cotacao {
-  id: string; requisicao_id: string; fornecedor_id: string; frete: number; prazo_dias: number | null; condicao_pagamento: string;
+  id: string; requisicao_id: string | null; pacote_id: string | null; fornecedor_id: string; frete: number; prazo_dias: number | null; condicao_pagamento: string;
   condicao_tipo: CondicaoTipo; condicao_dias: number[]; orcamento_caminho: string | null;
   validade: string | null; observacoes: string; criado_em: string;
   fornecedores?: { nome: string } | null;
@@ -31,12 +31,13 @@ export interface Cotacao {
 }
 export interface PedidoItem { pedido_id: string; item_id: string; quantidade: number; valor_unit: number; quantidade_recebida: number }
 export interface Pedido {
-  id: string; codigo: string; requisicao_id: string; cotacao_id: string; fornecedor_id: string; valor_itens: number; frete: number;
+  id: string; codigo: string; requisicao_id: string | null; pacote_id: string | null; cotacao_id: string; fornecedor_id: string; valor_itens: number; frete: number;
   valor_total: number; previsao_entrega: string | null; status: StatusPedido; entregue_em: string | null; observacoes: string; emitido_em: string;
   condicao_tipo: CondicaoTipo; condicao_dias: number[]; condicao_texto: string; orcamento_caminho: string | null; cancelado_motivo: string;
   fornecedores?: { nome: string } | null;
   compras_requisicoes?: { codigo: string; titulo: string; projeto_codigo: string; projeto_titulo: string; origem: Origem } | null;
   compras_pedido_itens?: PedidoItem[];
+  compras_pacotes?: { codigo: string; titulo: string } | null;
 }
 export interface Historico {
   pedido_id: string; item_id: string; bib_tipo: BibTipo | null; bib_id: string | null; grupo: GrupoItem; descricao: string; unidade: string;
@@ -46,6 +47,14 @@ export interface Historico {
 export interface Evento { id: string; tipo: string; de: string | null; para: string | null; justificativa: string; dados: Record<string, unknown>; criado_em: string; usuarios?: { nome: string } | null }
 export interface ProjetoCompras { id: string; codigo: string; titulo: string; cliente: string; status: string }
 export interface Produto { tipo: BibTipo; id: string; descricao: string; grupo: GrupoItem; unidade: string }
+export interface Pacote {
+  id: string; codigo: string; titulo: string; status: StatusPacote; observacoes: string; criado_em: string; atualizado_em: string;
+  criador?: { nome: string } | null;
+}
+// Item com a solicitação dele (À comprar, pacotes e ordens de compra).
+export type ItemComSolicitacao = ItemRequisicao & {
+  compras_requisicoes: Pick<Requisicao, 'codigo' | 'titulo' | 'projeto_codigo' | 'projeto_titulo' | 'origem' | 'setor' | 'status' | 'prioridade' | 'necessario_em'>;
+}
 
 // ---------- Fornecedores ----------
 export const listarFornecedores = async (): Promise<Fornecedor[]> => ok(await supabase.from('fornecedores').select('*').order('nome'));
@@ -67,6 +76,10 @@ export async function listarProdutos(): Promise<Produto[]> {
     ...(ok(i) as { id: string; descricao: string; grupo: GrupoItem; unidade: string }[]).map((x) => ({ tipo: 'item' as const, id: x.id, descricao: x.descricao, grupo: x.grupo, unidade: x.unidade || 'un' })),
   ];
 }
+// Cadastro rápido de item comercial, fixador ou consumível a partir do À comprar (chapas e perfis vão pela aba Produtos).
+export async function cadastrarItemBiblioteca(d: { grupo: 'Comerciais' | 'Fixadores' | 'Consumíveis'; descricao: string; unidade: string }): Promise<string> {
+  return (ok(await supabase.from('bib_itens').insert({ ...d, descricao: d.descricao.trim() }).select('id').single()) as { id: string }).id;
+}
 export const listarHistorico = async (): Promise<Historico[]> => ok(await supabase.from('compras_historico').select('*').order('emitido_em', { ascending: false }).limit(5000));
 
 // ---------- Requisições ----------
@@ -84,16 +97,13 @@ export async function atualizarRequisicao(id: string, d: Partial<DadosRequisicao
   ok(await supabase.from('compras_requisicoes').update(d).eq('id', id));
 }
 
-// Itens de todas as requisições (Kanban por item), com o fornecedor escolhido.
-export type ItemDoQuadro = ItemRequisicao & {
-  compras_requisicoes: Pick<Requisicao, 'codigo' | 'titulo' | 'projeto_codigo' | 'origem' | 'setor' | 'status' | 'prioridade' | 'necessario_em' | 'atualizado_em'>;
-  escolhida: { fornecedores: { nome: string } | null } | null;
-};
-export const listarTodosItens = async (): Promise<ItemDoQuadro[]> =>
-  ok(await supabase.from('compras_requisicao_itens')
-    .select('*, compras_requisicoes!inner(codigo, titulo, projeto_codigo, origem, setor, status, prioridade, necessario_em, atualizado_em), escolhida:compras_cotacoes!compras_requisicao_itens_cotacao_escolhida_id_fkey(fornecedores(nome))')
-    .neq('status', 'cancelado').neq('compras_requisicoes.status', 'cancelada').limit(5000));
-export const listarPrecosLancados = async (): Promise<{ item_id: string }[]> => ok(await supabase.from('compras_cotacao_precos').select('item_id').limit(20000));
+// À comprar: itens sem pacote e sem OC das solicitações abertas, de qualquer setor.
+const COM_REQ = '*, compras_requisicoes!inner(codigo, titulo, projeto_codigo, projeto_titulo, origem, setor, status, prioridade, necessario_em)';
+export const listarAComprar = async (): Promise<ItemComSolicitacao[]> =>
+  ok(await supabase.from('compras_requisicao_itens').select(COM_REQ)
+    .eq('status', 'a_comprar').is('pacote_id', null).eq('compras_requisicoes.status', 'aberta').order('ordem').limit(5000));
+export const itensPorIds = async (ids: string[]): Promise<ItemComSolicitacao[]> =>
+  ids.length ? ok(await supabase.from('compras_requisicao_itens').select(COM_REQ).in('id', ids)) : [];
 
 export const listarItens = async (req: string): Promise<ItemRequisicao[]> => ok(await supabase.from('compras_requisicao_itens').select('*').eq('requisicao_id', req).order('ordem'));
 export async function adicionarItens(req: string, itens: DadosItem[], ordemInicial: number): Promise<void> {
@@ -107,11 +117,12 @@ export async function removerItem(id: string): Promise<void> {
 }
 
 // ---------- Cotações ----------
-export const listarCotacoes = async (req: string): Promise<Cotacao[]> =>
-  ok(await supabase.from('compras_cotacoes').select('*, fornecedores(nome), compras_cotacao_precos(item_id, valor_unit)').eq('requisicao_id', req).order('criado_em'));
+export const listarCotacoes = async (pacote: string): Promise<Cotacao[]> =>
+  ok(await supabase.from('compras_cotacoes').select('*, fornecedores(nome), compras_cotacao_precos(item_id, valor_unit)').eq('pacote_id', pacote).order('criado_em'));
 export type DadosCotacao = Pick<Cotacao, 'fornecedor_id' | 'frete' | 'prazo_dias' | 'condicao_pagamento' | 'condicao_tipo' | 'condicao_dias' | 'validade' | 'observacoes'>;
-export async function salvarCotacao(req: string, id: string | null, d: DadosCotacao): Promise<string> {
-  const r = id ? await supabase.from('compras_cotacoes').update(d).eq('id', id).select('id').single() : await supabase.from('compras_cotacoes').insert({ ...d, requisicao_id: req }).select('id').single();
+// Orçamento de um pacote de cotação (decisão 111). Os orçamentos antigos, por requisição, só aparecem para consulta.
+export async function salvarCotacao(pacote: string, id: string | null, d: DadosCotacao): Promise<string> {
+  const r = id ? await supabase.from('compras_cotacoes').update(d).eq('id', id).select('id').single() : await supabase.from('compras_cotacoes').insert({ ...d, pacote_id: pacote }).select('id').single();
   return (ok(r) as { id: string }).id;
 }
 export async function removerCotacao(id: string): Promise<void> {
@@ -137,8 +148,30 @@ export async function abrirArquivo(caminho: string): Promise<void> {
 }
 
 // ---------- Fluxo ----------
-export async function gerarPedidos(req: string, observacoes: string): Promise<string[]> {
-  return ok(await supabase.rpc('compras_gerar_pedidos', { p_req: req, p_observacoes: observacoes })) as string[];
+// ---------- Pacotes de cotação (decisão 111) ----------
+export const listarPacotes = async (): Promise<(Pacote & { compras_requisicao_itens: { id: string; status: StatusItem }[]; compras_cotacoes: { id: string }[]; compras_pedidos: { codigo: string; status: StatusPedido; valor_total: number }[] })[]> =>
+  ok(await supabase.from('compras_pacotes').select('*, criador:usuarios!compras_pacotes_criado_por_fkey(nome), compras_requisicao_itens(id, status), compras_cotacoes(id), compras_pedidos(codigo, status, valor_total)').order('criado_em', { ascending: false }).limit(500));
+export const pacotesAbertos = async (): Promise<Pacote[]> => ok(await supabase.from('compras_pacotes').select('*').eq('status', 'aberto').order('criado_em', { ascending: false }));
+export const obterPacote = async (id: string): Promise<Pacote> => ok(await supabase.from('compras_pacotes').select('*, criador:usuarios!compras_pacotes_criado_por_fkey(nome)').eq('id', id).single());
+export const itensDoPacote = async (id: string): Promise<ItemComSolicitacao[]> =>
+  ok(await supabase.from('compras_requisicao_itens').select(COM_REQ).eq('pacote_id', id).order('grupo').order('descricao'));
+export async function atualizarPacote(id: string, d: { titulo?: string; observacoes?: string }): Promise<void> {
+  ok(await supabase.from('compras_pacotes').update(d).eq('id', id));
+}
+export async function criarPacote(titulo: string, itens: string[], observacoes = ''): Promise<string> {
+  return ok(await supabase.rpc('compras_criar_pacote', { p_titulo: titulo, p_itens: itens, p_observacoes: observacoes })) as string;
+}
+export async function adicionarAoPacote(pacote: string, itens: string[]): Promise<void> {
+  ok(await supabase.rpc('compras_pacote_adicionar', { p_pacote: pacote, p_itens: itens }));
+}
+export async function retirarDoPacote(pacote: string, itens: string[]): Promise<void> {
+  ok(await supabase.rpc('compras_pacote_retirar', { p_pacote: pacote, p_itens: itens }));
+}
+export async function cancelarPacote(pacote: string, motivo: string): Promise<void> {
+  ok(await supabase.rpc('compras_cancelar_pacote', { p_pacote: pacote, p_motivo: motivo }));
+}
+export async function gerarPedidoPacote(pacote: string, cotacao: string, previsao: string | null, observacoes: string): Promise<string> {
+  return ok(await supabase.rpc('compras_gerar_pedido_pacote', { p_pacote: pacote, p_cotacao: cotacao, p_previsao: previsao, p_observacoes: observacoes })) as string;
 }
 export async function cancelarPedido(pedido: string, motivo: string): Promise<void> {
   ok(await supabase.rpc('compras_cancelar_pedido', { p_pedido: pedido, p_motivo: motivo }));
@@ -153,14 +186,21 @@ export async function situacaoPagamento(pedido: string): Promise<string | null> 
 }
 
 // ---------- Ordens de compra e histórico ----------
-const PEDIDO = '*, fornecedores(nome), compras_requisicoes(codigo, titulo, projeto_codigo, projeto_titulo, origem), compras_pedido_itens(*)';
+const PEDIDO = '*, fornecedores(nome), compras_requisicoes(codigo, titulo, projeto_codigo, projeto_titulo, origem), compras_pacotes(codigo, titulo), compras_pedido_itens(*)';
 export const listarPedidos = async (): Promise<Pedido[]> => ok(await supabase.from('compras_pedidos').select(PEDIDO).order('emitido_em', { ascending: false }));
-export const pedidosDaRequisicao = async (req: string): Promise<Pedido[]> => ok(await supabase.from('compras_pedidos').select(PEDIDO).eq('requisicao_id', req).order('emitido_em'));
+export const pedidosDoPacote = async (pacote: string): Promise<Pedido[]> => ok(await supabase.from('compras_pedidos').select(PEDIDO).eq('pacote_id', pacote).order('emitido_em'));
+// OCs que têm algum item da solicitação (uma OC de pacote pode juntar várias solicitações).
+export async function pedidosDosItens(itens: string[]): Promise<Pedido[]> {
+  if (!itens.length) return [];
+  const ids = [...new Set((ok(await supabase.from('compras_pedido_itens').select('pedido_id').in('item_id', itens)) as { pedido_id: string }[]).map((x) => x.pedido_id))];
+  return ids.length ? ok(await supabase.from('compras_pedidos').select(PEDIDO).in('id', ids).order('emitido_em')) : [];
+}
 export async function atualizarPedido(id: string, d: { previsao_entrega?: string | null; observacoes?: string }): Promise<void> {
   ok(await supabase.from('compras_pedidos').update(d).eq('id', id));
 }
-export const listarEventos = async (req: string): Promise<Evento[]> =>
-  ok(await supabase.from('compras_eventos').select('*, usuarios(nome)').eq('requisicao_id', req).order('criado_em', { ascending: false }));
+export const listarEventos = async (dono: { requisicao: string } | { pacote: string }): Promise<Evento[]> =>
+  ok(await supabase.from('compras_eventos').select('*, usuarios(nome)')
+    .eq('requisicao' in dono ? 'requisicao_id' : 'pacote_id', 'requisicao' in dono ? dono.requisicao : dono.pacote).order('criado_em', { ascending: false }));
 
 // ---------- Engenharia (só o necessário, por funções do banco) ----------
 export const listarProjetos = async (): Promise<ProjetoCompras[]> => ok(await supabase.rpc('compras_projetos'));
