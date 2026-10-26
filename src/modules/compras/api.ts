@@ -21,6 +21,8 @@ export interface Requisicao {
 export interface ItemRequisicao {
   id: string; requisicao_id: string; ordem: number; grupo: GrupoItem; descricao: string; quantidade: number; unidade: string; observacoes: string;
   bib_tipo: BibTipo | null; bib_id: string | null; status: StatusItem; cotacao_escolhida_id: string | null; pacote_id: string | null;
+  // Referência da Engenharia para o comprador (link de compra e imagem no espaço privado 'engenharia').
+  referencia_link?: string; referencia_imagem?: string | null;
 }
 export interface Cotacao {
   id: string; requisicao_id: string | null; pacote_id: string | null; fornecedor_id: string; frete: number; prazo_dias: number | null; condicao_pagamento: string;
@@ -128,7 +130,7 @@ export async function salvarCotacao(pacote: string, id: string | null, d: DadosC
 export async function removerCotacao(id: string): Promise<void> {
   ok(await supabase.from('compras_cotacoes').delete().eq('id', id));
 }
-// Preço unitário sem IPI e o IPI % do item (decisão 113); valor vazio tira o preço.
+// Preço unitário sem IPI e o IPI % do item (decisão 114); valor vazio tira o preço.
 export async function salvarPreco(cotacao: string, item: string, valor: number | null, ipi = 0): Promise<void> {
   if (valor == null) ok(await supabase.from('compras_cotacao_precos').delete().eq('cotacao_id', cotacao).eq('item_id', item));
   else ok(await supabase.from('compras_cotacao_precos').upsert({ cotacao_id: cotacao, item_id: item, valor_unit: valor, ipi }));
@@ -141,6 +143,11 @@ export async function anexarOrcamento(cotacao: string, arquivo: File): Promise<v
   const { error } = await supabase.storage.from('compras').upload(caminho, arquivo, { contentType: arquivo.type });
   if (error) throw error;
   ok(await supabase.from('compras_cotacoes').update({ orcamento_caminho: caminho }).eq('id', cotacao));
+}
+export async function urlImagemReferencia(caminho: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('engenharia').createSignedUrl(caminho, 3600);
+  if (error) throw error;
+  return data.signedUrl;
 }
 export async function abrirArquivo(caminho: string): Promise<void> {
   const { data, error } = await supabase.storage.from('compras').createSignedUrl(caminho, 300);

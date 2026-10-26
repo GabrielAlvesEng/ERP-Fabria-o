@@ -10,6 +10,7 @@ import {
 } from './api';
 import { GRUPOS, ROTULO_DESTINO, UNIDADES, agruparAComprar, destinoDe, rotuloDestino, type Destino, type GrupoItem } from './regras';
 import { NovaRequisicaoModal } from './NovaRequisicaoModal';
+import { Referencia } from './comum';
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -208,6 +209,7 @@ function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, cad
           </span>
         )}
         {i.observacoes && <span className="block px-2 text-[11px] text-suave">{i.observacoes}</span>}
+        <Referencia link={i.referencia_link} imagem={i.referencia_imagem} />
       </td>
       <td className="px-1 py-1">{podeEditar ? (
         <Selecao compacto value={i.grupo} onChange={(e) => agir(() => atualizarItem(i.id, { grupo: e.target.value as GrupoItem }))}>{GRUPOS.map((g) => <option key={g}>{g}</option>)}</Selecao>

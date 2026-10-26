@@ -89,7 +89,7 @@ describe('À comprar e pacotes (decisão 111)', () => {
   });
 });
 
-describe('IPI no orçamento (decisão 113)', () => {
+describe('IPI no orçamento (decisão 114)', () => {
   it('soma o IPI no item e no total, e compara o preço com IPI', () => {
     expect(valorComIpi(10, 20, 5)).toBe(210);
     const itens = [{ id: 'a', quantidade: 10 }, { id: 'b', quantidade: 2 }];

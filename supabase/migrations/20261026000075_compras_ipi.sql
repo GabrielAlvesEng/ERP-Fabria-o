@@ -1,4 +1,4 @@
--- Compras: IPI por item no orçamento (pedido do Gabriel de 26/10/2026, decisão 113): os fornecedores mandam o IPI
+-- Compras: IPI por item no orçamento (pedido do Gabriel de 26/10/2026, decisão 114): os fornecedores mandam o IPI
 -- separado do valor unitário. O total do item passa a ser quantidade × valor unitário × (1 + IPI%), e a OC (e a conta a
 -- pagar do Financeiro, que usa o total da OC) já sai com o IPI.
 set lock_timeout = '10s';

@@ -11,7 +11,7 @@ import {
   type Cotacao, type Fornecedor, type ItemComSolicitacao, type Pedido,
 } from './api';
 import { ROTULO_ITEM, ROTULO_PACOTE, descreverCondicao, melhorCotacao, menoresPrecos, rotuloDestino, totalCotacao, valorComIpi, type StatusPacote } from './regras';
-import { COR_ITEM, CotacaoModal, Historico, Justificar, OrdemCartao, PrecoCelula, Secao, type Cor } from './comum';
+import { COR_ITEM, CotacaoModal, Historico, Justificar, OrdemCartao, PrecoCelula, Referencia, Secao, type Cor } from './comum';
 import { imprimirPedidoCotacao } from './ordemPdf';
 
 const COR_PACOTE: Record<StatusPacote, Cor> = { aberto: 'azul', comprado: 'verde', cancelado: 'vermelho' };
@@ -176,7 +176,7 @@ function ItensPacote({ itens, podeCotar, retirar }: { itens: ItemComSolicitacao[
         <tbody className="divide-y divide-borda">
           {itens.map((i) => (
             <tr key={i.id} className={i.status === 'cancelado' ? 'opacity-50' : ''}>
-              <td className="px-2 py-1.5">{i.descricao}{!i.bib_id && <span className="block text-[11px] text-amber-600">sem cadastro de produto</span>}{i.observacoes && <span className="block text-[11px] text-suave">{i.observacoes}</span>}</td>
+              <td className="px-2 py-1.5">{i.descricao}{!i.bib_id && <span className="block text-[11px] text-amber-600">sem cadastro de produto</span>}{i.observacoes && <span className="block text-[11px] text-suave">{i.observacoes}</span>}<Referencia link={i.referencia_link} imagem={i.referencia_imagem} /></td>
               <td className="px-2 py-1.5 text-xs">{i.grupo}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString('pt-BR')} {i.unidade}</td>
               <td className="px-2 py-1.5 text-xs">{rotuloDestino(i.compras_requisicoes)}</td>

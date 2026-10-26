@@ -10,7 +10,7 @@ import { FixadoresAba } from '@/modules/admin/predefinicoes/FixadoresAba';
 import { EXEMPLO, UNIDADES_ITEM } from '@/modules/admin/predefinicoes/OutrasAbas';
 import type { BibTipo } from './regras';
 
-// Compras → Produtos → "Cadastrar produto" (decisão 113): escolhe o tipo e o formulário muda conforme o produto.
+// Compras → Produtos → "Cadastrar produto" (decisão 114): escolhe o tipo e o formulário muda conforme o produto.
 export const TIPOS_CADASTRO = ['Chapa', 'Perfil', 'Item comercial', 'Fixador', 'Consumível'] as const;
 export type TipoCadastro = (typeof TIPOS_CADASTRO)[number];
 const GRUPO_ITEM: Record<'Item comercial' | 'Fixador' | 'Consumível', ItemBiblioteca['grupo']> = { 'Item comercial': 'Comerciais', Fixador: 'Fixadores', Consumível: 'Consumíveis' };

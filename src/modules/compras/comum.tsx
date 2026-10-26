@@ -1,16 +1,29 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Ban, FileDown, Paperclip, Truck } from 'lucide-react';
+import { Ban, ExternalLink, FileDown, Paperclip, Truck } from 'lucide-react';
 import { dataBR, dataHoraBR, hojeISO, moeda } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, CampoNumero, Cartao, Entrada, Modal, Selecao, Selo } from '@/shared/ui';
-import { abrirArquivo, atualizarPedido, itensPorIds, situacaoPagamento, type Cotacao, type DadosCotacao, type Evento, type Fornecedor, type Pedido } from './api';
+import { abrirArquivo, atualizarPedido, itensPorIds, situacaoPagamento, urlImagemReferencia, type Cotacao, type DadosCotacao, type Evento, type Fornecedor, type Pedido } from './api';
 import { ROTULO_CONDICAO, ROTULO_ORIGEM, ROTULO_PEDIDO, ROTULO_STATUS, descreverCondicao, lerDias, pedidoAtrasado, rotuloDestino, type CondicaoTipo, type Origem, type StatusItem, type StatusRequisicao } from './regras';
 import { imprimirOrdem } from './ordemPdf';
 
 // Peças comuns das telas de Compras (solicitação, pacote de cotação e ordens).
 export type Cor = 'cinza' | 'roxo' | 'verde' | 'vermelho' | 'amarelo' | 'azul';
 export const COR_ITEM: Record<StatusItem, Cor> = { a_comprar: 'cinza', comprado: 'roxo', recebido: 'verde', cancelado: 'vermelho' };
+// Link de compra e imagem que a Engenharia deixa no item para o comprador.
+export function Referencia({ link, imagem }: { link?: string; imagem?: string | null }) {
+  const { data: url } = useQuery({ queryKey: ['compras', 'ref-img', imagem], queryFn: () => urlImagemReferencia(imagem!), enabled: !!imagem, staleTime: 50 * 60 * 1000 });
+  if (!link && !imagem) return null;
+  const href = link && /^https?:\/\//i.test(link) ? link : link ? `https://${link}` : '';
+  return (
+    <span className="mt-0.5 flex items-center gap-2 px-2">
+      {imagem && url && <a href={url} target="_blank" rel="noreferrer" title="Imagem de referência"><img src={url} alt="Referência" className="h-9 w-9 rounded object-cover ring-1 ring-borda" /></a>}
+      {link && <a href={href} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-[11px] text-roxo-600 hover:underline dark:text-roxo-100" title={link}><ExternalLink size={11} /> link de compra</a>}
+    </span>
+  );
+}
+
 const PAGAMENTO: Record<string, [string, Cor]> = { a_pagar: ['A pagar', 'amarelo'], paga_parcial: ['Paga em parte', 'azul'], paga: ['Paga', 'verde'], cancelada: ['Conta cancelada', 'cinza'] };
 
 export function descreverEvento(e: { tipo: string; de: string | null; para: string | null; dados: Record<string, unknown> }) {

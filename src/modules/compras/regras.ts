@@ -48,7 +48,7 @@ export interface TotalCotacao { itens: number; ipi: number; total: number; falta
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-// Valor de um item com IPI (decisão 113): quantidade × unitário × (1 + IPI%), em centavos.
+// Valor de um item com IPI (decisão 114): quantidade × unitário × (1 + IPI%), em centavos.
 export function valorComIpi(quantidade: number, unit: number, ipi = 0): number {
   return r2(quantidade * unit * (1 + (Number(ipi) || 0) / 100));
 }

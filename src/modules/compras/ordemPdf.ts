@@ -61,7 +61,7 @@ export function imprimirOrdem(p: Pedido, itens: ItemComSolicitacao[], f: Fornece
     const ipi = Number(x.ipi ?? 0);
     return `<tr><td>${n + 1}</td><td>${esc(i?.descricao)}${i?.observacoes ? `<div class="obs">${esc(i.observacoes)}</div>` : ''}</td><td class="d">${num(q)}</td><td>${esc(i?.unidade)}</td><td class="d">${moeda(v)}</td><td class="d">${ipi ? `${num(ipi)}%` : '—'}</td><td class="d">${moeda(valorComIpi(q, v, ipi))}</td></tr>`;
   }).join('');
-  // Itens sem IPI e o IPI (decisão 113); o total da OC já tem o IPI.
+  // Itens sem IPI e o IPI (decisão 114); o total da OC já tem o IPI.
   const semIpi = (p.compras_pedido_itens ?? []).reduce((s, x) => s + Math.round(Number(x.quantidade) * Number(x.valor_unit) * 100) / 100, 0);
   const ipiTotal = Math.round((Number(p.valor_itens) - semIpi) * 100) / 100;
   const usados = (p.compras_pedido_itens ?? []).map((x) => porId.get(x.item_id)).filter((i): i is ItemComSolicitacao => !!i);

@@ -9,7 +9,7 @@ import { listarHistorico, listarProdutos, type Historico } from './api';
 import { GRUPOS, ROTULO_ORIGEM, fichasDeProdutos, type FichaProduto } from './regras';
 import { CadastroProdutoModal, TabelasApoioModal } from './CadastroProduto';
 
-// Compras → Produtos (decisões 107 e 113): a Biblioteca de Materiais numa página só, a biblioteca geral de onde todos os
+// Compras → Produtos (decisões 107 e 114): a Biblioteca de Materiais numa página só, a biblioteca geral de onde todos os
 // setores puxam (Engenharia, propostas, Almoxarifado). Só Compras cadastra e organiza. Cada produto mostra o histórico de
 // compras; "Cadastrar produto" abre o formulário do tipo escolhido (chapa, perfil, item comercial, fixador, consumível).
 export function ProdutosPage() {

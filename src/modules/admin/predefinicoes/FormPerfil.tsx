@@ -28,7 +28,7 @@ const doCadastro = (p: Perfil, materiais: MaterialBase[]): Form => ({
   kgManual: p.kg_m_manual, kg: Number(p.kg_m ?? 0), modo: p.preco_modo, valor: Number(p.valor),
 });
 
-// Cadastro de perfil (decisão 48; em Compras → Produtos desde a decisão 113): tipo e medidas, kg/m automático
+// Cadastro de perfil (decisão 48; em Compras → Produtos desde a decisão 114): tipo e medidas, kg/m automático
 // (fórmula, tabela SCH ou base de pesos) ou digitado, preço por metro ou por kg.
 export function FormPerfil({ inicial, onSalvo }: { inicial?: Perfil | null; onSalvo: (descricao: string) => void }) {
   const { erro, setErro, gravar } = useGravar();

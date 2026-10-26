@@ -15,7 +15,7 @@ const doCadastro = (c: Chapa, materiais: MaterialBase[]): Form => ({
   comp: Number(c.comprimento_mm), pesoManual: c.peso_manual, peso: Number(c.peso_kg), valorKg: c.valor_kg == null ? null : Number(c.valor_kg),
 });
 
-// Cadastro de chapa (decisão 48; em Compras → Produtos desde a decisão 113): material, tipo, espessura (mm ou pol.),
+// Cadastro de chapa (decisão 48; em Compras → Produtos desde a decisão 114): material, tipo, espessura (mm ou pol.),
 // medidas, peso automático ou manual, valor/kg herdado ou próprio. A descrição é montada pelos dados.
 export function FormChapa({ inicial, onSalvo }: { inicial?: Chapa | null; onSalvo: (descricao: string) => void }) {
   const { erro, setErro, gravar } = useGravar();

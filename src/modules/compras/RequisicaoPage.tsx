@@ -10,7 +10,7 @@ import {
   obterRequisicao, pedidosDosItens, removerItem, type ItemRequisicao, type Pedido, type Produto, type Requisicao,
 } from './api';
 import { GRUPOS, ROTULO_ITEM, ROTULO_ORIGEM, ROTULO_STATUS, SETORES, UNIDADES, type GrupoItem, type StatusRequisicao } from './regras';
-import { COR_ITEM, Historico, Justificar, OrdemCartao, Secao, type Cor } from './comum';
+import { COR_ITEM, Historico, Justificar, OrdemCartao, Referencia, Secao, type Cor } from './comum';
 import { ImportarListaModal } from './ImportarLista';
 
 const COR_STATUS: Record<StatusRequisicao, Cor> = { aberta: 'azul', concluida: 'verde', cancelada: 'vermelho' };
@@ -150,6 +150,7 @@ function Itens({ itens, produtos, pacotes, podeItens, agir }: { itens: ItemRequi
                 <td className="px-1 py-1">
                   {ed ? <CampoEscolha valor={i.descricao} opcoes={opcoes} placeholder="Produto" onConfirmar={(v) => trocarDescricao(i, v)} /> : <span className="px-2">{i.descricao}</span>}
                   {!i.bib_id && <span className="block px-2 text-[11px] text-amber-600">sem cadastro de produto</span>}
+                  <Referencia link={i.referencia_link} imagem={i.referencia_imagem} />
                 </td>
                 <td className="px-1 py-1">{ed ? (
                   <Selecao compacto value={i.grupo} onChange={(e) => agir(() => atualizarItem(i.id, { grupo: e.target.value as GrupoItem }))}>{GRUPOS.map((g) => <option key={g}>{g}</option>)}</Selecao>
