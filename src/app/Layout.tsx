@@ -30,8 +30,8 @@ const modulos = [
   { to: '/admin', rotulo: 'Administração', icone: ShieldCheck, modulo: 'admin', acao: 'editar' as const, grupo: 'administrativo' },
 ];
 // Decisão 95: módulos que aparecem no menu com cadeado e não abrem (nem pelo endereço) até o Gabriel liberar.
-// Para liberar um módulo, basta tirá-lo desta lista. Compras liberado na decisão 101.
-const BLOQUEADOS = new Set(['/financeiro']);
+// Para liberar um módulo, basta tirá-lo desta lista. Compras liberado na decisão 101; Financeiro em 26/10/2026 (decisão 109).
+const BLOQUEADOS = new Set<string>();
 const GRUPOS = [['operacional', 'Módulos operacionais'], ['administrativo', 'Módulos administrativos']] as const;
 type Pode = ReturnType<typeof useAuth>['pode'];
 const visivel = (m: (typeof modulos)[number], pode: Pode) => m.modulo === null || pode(m.modulo, ('acao' in m && m.acao) || 'ler');
