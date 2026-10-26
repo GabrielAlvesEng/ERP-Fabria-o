@@ -13,6 +13,11 @@ describe('prazos', () => {
     expect(prazoParcela(p({ vencimento: null }), hoje)).toBe('sem_data');
     expect(prazoParcela(p({ vencimento: '2026-10-01', pago_em: '2026-10-01', pago: 100 }), hoje)).toBe('paga');
   });
+  it('respeita o aviso editável (decisão 109)', () => {
+    expect(prazoParcela(p({ vencimento: '2026-11-01' }), hoje, 10)).toBe('em_breve');
+    expect(prazoParcela(p({ vencimento: '2026-11-02' }), hoje, 10)).toBe('a_pagar');
+    expect(prazoParcela(p({ vencimento: '2026-10-24' }), hoje, 1)).toBe('a_pagar');
+  });
   it('a próxima parcela é a mais antiga em aberto, ignorando substituídas', () => {
     const ps = [p({ id: 'a', numero: 1, vencimento: '2026-12-01' }), p({ id: 'b', numero: 2, vencimento: '2026-11-01' }),
       p({ id: 'c', numero: 3, vencimento: '2026-01-01', ativa: false }), p({ id: 'd', numero: 4, vencimento: null })];

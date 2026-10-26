@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, EntradaMoeda, Modal, Selecao } from '@/shared/ui';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, CampoInteiro, EntradaMoeda, Modal, Selecao } from '@/shared/ui';
 import { dataBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
-import { registrarPagamento, type Conta } from './api';
-import { COR_PRAZO, ROTULO_FORMA, ROTULO_PRAZO, emAberto, lerValor, proximaParcela, saldo, type FormaPagamento, type Prazo } from './regras';
+import { definirDiasAviso, obterDiasAviso, registrarPagamento, type Conta } from './api';
+import { COR_PRAZO, DIAS_AVISO, ROTULO_FORMA, ROTULO_PRAZO, emAberto, lerValor, proximaParcela, saldo, type FormaPagamento, type Prazo } from './regras';
 
 const ESTILO_PRAZO: Partial<Record<Prazo, string>> = {
   hoje: 'bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-200',
@@ -16,7 +16,47 @@ const ESTILO_COR = {
   cinza: 'bg-slate-100 text-slate-700 dark:bg-marinho-700 dark:text-slate-200',
 };
 
-// Selo do prazo: vermelho vencida, laranja vence hoje, amarelo em até 7 dias, verde paga (planejamento 2.2).
+// Dias de antecedência do aviso "vence em breve" (decisão 109); enquanto carrega, vale o padrão.
+export function useDiasAviso(ativo = true): number {
+  const { data } = useQuery({ queryKey: ['financeiro', 'dias_aviso'], queryFn: obterDiasAviso, enabled: ativo, staleTime: 5 * 60_000 });
+  return data ?? DIAS_AVISO;
+}
+
+export function DiasAvisoModal({ atual, onFechar }: { atual: number; onFechar: () => void }) {
+  const qc = useQueryClient();
+  const [dias, setDias] = useState<number | null>(atual);
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  async function salvar() {
+    if (!dias) return setErro('Informe os dias.');
+    setSalvando(true);
+    setErro('');
+    try {
+      await definirDiasAviso(dias);
+      await qc.invalidateQueries({ queryKey: ['financeiro', 'dias_aviso'] });
+      onFechar();
+    } catch (e) {
+      setErro(mensagemErro(e));
+    } finally {
+      setSalvando(false);
+    }
+  }
+  return (
+    <Modal aberto titulo="Aviso de vencimento" onFechar={onFechar}>
+      <div className="space-y-3">
+        <p className="text-sm text-suave">A conta passa para "Vence em breve" (amarelo, no sino e no painel) quando faltam estes dias para o vencimento. Vale para todos do Financeiro.</p>
+        <Campo rotulo="Avisar com quantos dias de antecedência"><CampoInteiro valor={dias} onChange={setDias} min={1} max={60} sufixo="dias" className="w-40" /></Campo>
+        {erro && <Aviso>{erro}</Aviso>}
+        <div className="flex justify-end gap-2">
+          <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
+          <Botao onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</Botao>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// Selo do prazo: vermelho vencida, laranja vence hoje, amarelo dentro do aviso, verde paga (planejamento 2.2).
 export function SeloPrazo({ prazo, data }: { prazo: Prazo; data?: string | null }) {
   return (
     <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${ESTILO_PRAZO[prazo] ?? ESTILO_COR[COR_PRAZO[prazo]]}`}>

@@ -10,7 +10,8 @@ export type TipoAnexo = 'orcamento' | 'boleto' | 'nf' | 'outro';
 export type Coluna = 'aguardando_entrega' | 'definir' | 'a_pagar' | 'em_breve' | 'vencida' | 'paga';
 export type Prazo = 'vencida' | 'hoje' | 'em_breve' | 'a_pagar' | 'sem_data' | 'paga';
 
-export const DIAS_AVISO = 7; // "vence em breve" (resposta 2 do planejamento)
+// "Vence em breve": padrão 7 dias, editável pelo Financeiro (decisão 109, configuração financeiro_dias_aviso).
+export const DIAS_AVISO = 7;
 
 export const COLUNAS: { id: Coluna; rotulo: string }[] = [
   { id: 'aguardando_entrega', rotulo: 'Aguardando entrega' },
@@ -31,7 +32,7 @@ export const ROTULO_ANEXO: Record<TipoAnexo, string> = { orcamento: 'Orçamento'
 export const ROTULO_PRAZO: Record<Prazo, string> = {
   vencida: 'Vencida', hoje: 'Vence hoje', em_breve: 'Vence em breve', a_pagar: 'A pagar', sem_data: 'Sem data', paga: 'Paga',
 };
-// Vermelho vencida, laranja hoje, amarelo em até 7 dias, verde paga.
+// Vermelho vencida, laranja hoje, amarelo dentro do aviso, verde paga.
 export const COR_PRAZO: Record<Prazo, 'vermelho' | 'amarelo' | 'verde' | 'azul' | 'cinza'> = {
   vencida: 'vermelho', hoje: 'amarelo', em_breve: 'amarelo', a_pagar: 'azul', sem_data: 'cinza', paga: 'verde',
 };
@@ -53,12 +54,12 @@ export const parcelasAtivas = <P extends ParcelaBase>(ps: P[]) => ps.filter((p) 
 export const emAberto = <P extends ParcelaBase>(ps: P[]) => parcelasAtivas(ps).filter((p) => !p.pago_em && Number(p.valor) > 0);
 export const saldo = (p: ParcelaBase) => Math.round((Number(p.valor) - Number(p.pago)) * 100) / 100;
 
-export function prazoParcela(p: ParcelaBase, hoje: string): Prazo {
+export function prazoParcela(p: ParcelaBase, hoje: string, dias = DIAS_AVISO): Prazo {
   if (p.pago_em || Number(p.valor) <= 0) return 'paga';
   if (!p.vencimento) return 'sem_data';
   if (p.vencimento < hoje) return 'vencida';
   if (p.vencimento === hoje) return 'hoje';
-  return diasEntre(hoje, p.vencimento) <= DIAS_AVISO ? 'em_breve' : 'a_pagar';
+  return diasEntre(hoje, p.vencimento) <= dias ? 'em_breve' : 'a_pagar';
 }
 
 // A próxima parcela a pagar: a de vencimento mais antigo; sem data vai para o fim.
@@ -66,15 +67,15 @@ export function proximaParcela<P extends ParcelaBase>(ps: P[]): P | undefined {
   return [...emAberto(ps)].sort((a, b) => (a.vencimento ?? '9999').localeCompare(b.vencimento ?? '9999') || a.numero - b.numero)[0];
 }
 
-export function prazoConta(c: ContaBase, ps: ParcelaBase[], hoje: string): Prazo {
+export function prazoConta(c: ContaBase, ps: ParcelaBase[], hoje: string, dias = DIAS_AVISO): Prazo {
   if (c.status === 'paga') return 'paga';
   const p = proximaParcela(ps);
-  return p ? prazoParcela(p, hoje) : 'paga';
+  return p ? prazoParcela(p, hoje, dias) : 'paga';
 }
 
-export function colunaConta(c: ContaBase, ps: ParcelaBase[], hoje: string): Coluna | null {
+export function colunaConta(c: ContaBase, ps: ParcelaBase[], hoje: string, dias = DIAS_AVISO): Coluna | null {
   if (c.status === 'cancelada') return null;
-  const prazo = prazoConta(c, ps, hoje);
+  const prazo = prazoConta(c, ps, hoje, dias);
   if (prazo === 'paga') return 'paga';
   if (prazo === 'sem_data') return c.condicao_tipo === 'apos_recebimento' && !c.entregue_em ? 'aguardando_entrega' : 'definir';
   if (prazo === 'vencida') return 'vencida';

@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Settings2 } from 'lucide-react';
+import { useAuth } from '@/shared/auth/AuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { dataBR, hojeISO, moeda } from '@/shared/lib/formato';
-import { Cabecalho, Cartao, EsqueletoDashboard, Selo, Vazio } from '@/shared/ui';
+import { Botao, Cabecalho, Cartao, EsqueletoDashboard, Selo, Vazio } from '@/shared/ui';
 import { Linhas } from '@/shared/ui/graficos';
 import { listarContas } from './api';
+import { DiasAvisoModal, useDiasAviso } from './componentes';
 import { COR_PRAZO, ROTULO_PRAZO, aVencerPorSemana, diasEntre, emAberto, prazoParcela, saldo, somarDias } from './regras';
 
 const moedaCurta = (v: number) => v >= 1000 ? `R$ ${(v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : moeda(v);
@@ -12,14 +16,17 @@ const moedaCurta = (v: number) => v >= 1000 ? `R$ ${(v / 1000).toLocaleString('p
 export function PainelFinanceiro() {
   const { data: contas = [], isLoading } = useQuery({ queryKey: ['financeiro', 'contas'], queryFn: listarContas });
   const hoje = hojeISO();
+  const dias = useDiasAviso();
+  const { pode } = useAuth();
+  const [editarAviso, setEditarAviso] = useState(false);
   if (isLoading) return <EsqueletoDashboard />;
 
   const abertas = contas.filter((c) => c.status === 'aberta');
   const parcelas = abertas.flatMap((c) => emAberto(c.fin_parcelas).map((p) => ({ ...p, conta: c })));
   const soma = (l: typeof parcelas) => l.reduce((s, p) => s + saldo(p), 0);
-  const vencidas = parcelas.filter((p) => prazoParcela(p, hoje) === 'vencida');
+  const vencidas = parcelas.filter((p) => prazoParcela(p, hoje, dias) === 'vencida');
   const deHoje = parcelas.filter((p) => p.vencimento === hoje);
-  const sete = parcelas.filter((p) => p.vencimento && p.vencimento > hoje && diasEntre(hoje, p.vencimento) <= 7);
+  const sete = parcelas.filter((p) => p.vencimento && p.vencimento > hoje && diasEntre(hoje, p.vencimento) <= dias);
   const trinta = parcelas.filter((p) => p.vencimento && p.vencimento <= somarDias(hoje, 30));
   const semData = parcelas.filter((p) => !p.vencimento);
   const mes = hoje.slice(0, 7);
@@ -28,7 +35,7 @@ export function PainelFinanceiro() {
   const cartoes: [string, string, number, string][] = [
     ['Vencidas', moeda(soma(vencidas)), vencidas.length, vencidas.length ? 'text-red-600 dark:text-red-300' : ''],
     ['Vencem hoje', moeda(soma(deHoje)), deHoje.length, deHoje.length ? 'text-orange-600 dark:text-orange-300' : ''],
-    ['Próximos 7 dias', moeda(soma(sete)), sete.length, sete.length ? 'text-amber-600 dark:text-amber-300' : ''],
+    [`Próximos ${dias} dias`, moeda(soma(sete)), sete.length, sete.length ? 'text-amber-600 dark:text-amber-300' : ''],
     ['A pagar em 30 dias', moeda(soma(trinta)), trinta.length, ''],
     ['Pago no mês', moeda(pagoMes), -1, 'text-petroleo-600 dark:text-teal-200'],
   ];
@@ -37,7 +44,9 @@ export function PainelFinanceiro() {
 
   return (
     <>
-      <Cabecalho titulo="Financeiro" subtitulo="Contas a pagar das ordens de compra, com os vencimentos e os avisos." />
+      <Cabecalho titulo="Financeiro" subtitulo="Contas a pagar das ordens de compra, com os vencimentos e os avisos."
+        acoes={pode('financeiro', 'editar') && <Botao variante="secundario" onClick={() => setEditarAviso(true)}><Settings2 size={16} /> Aviso: {dias} dias antes</Botao>} />
+      {editarAviso && <DiasAvisoModal atual={dias} onFechar={() => setEditarAviso(false)} />}
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {cartoes.map(([rot, val, n, cor]) => (
           <div key={rot} className="rounded-xl bg-superficie p-4 shadow-sm ring-1 ring-borda">
@@ -63,7 +72,7 @@ export function PainelFinanceiro() {
           {proximas.length === 0 ? <div className="px-5 pb-5"><Vazio>Nenhuma conta em aberto.</Vazio></div> : (
             <ul className="divide-y divide-borda">
               {proximas.map((p) => {
-                const prazo = prazoParcela(p, hoje);
+                const prazo = prazoParcela(p, hoje, dias);
                 return (
                   <li key={p.id}>
                     <Link to={`/financeiro/contas/${p.conta.id}`} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm hover:bg-pagina">

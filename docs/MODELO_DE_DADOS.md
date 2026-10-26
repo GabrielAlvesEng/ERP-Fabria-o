@@ -208,6 +208,7 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `fin_parcelas` (número, vencimento, valor, pago, pago_em, `ativa`; parcela refeita fica inativa). `fin_pagamentos` (parcela, data, valor, forma, comprovante, quem lançou; estorno marca `estornado_em` e motivo). `fin_anexos` (orçamento no bucket `compras`; boleto, NF e outros no bucket privado `financeiro`, pasta = id da conta). `fin_eventos` (histórico).
 - `fornecedores_pagamento` (banco, agência, conta, titular, PIX, prazo após o recebimento), separada de `fornecedores` para só o Financeiro ler.
 - Funções: `fin_definir_parcelas`, `fin_alterar_vencimento`, `fin_registrar_pagamento`, `fin_estornar_pagamento` (financeiro.critica), `fin_anexar`, `fin_remover_anexo`, `compras_situacao_pagamento`. A situação pela data (vencida, hoje, em breve) é calculada na tela (`src/modules/financeiro/regras.ts`).
+- Aviso de vencimento (decisão 109, migration 68): `configuracoes.financeiro_dias_aviso` (padrão 7); muda por `fin_definir_dias_aviso(dias)` com `financeiro.editar`.
 
 ## Engenharia: solicitação de compra (`20261026000059_engenharia_solicita_compra.sql`, decisão 103)
 - `compras_requisicoes.engenharia_revisao` (inteiro, R0 = 0): preenchida só nas requisições enviadas pela Engenharia; única por projeto.

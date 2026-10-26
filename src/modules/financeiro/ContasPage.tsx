@@ -7,7 +7,7 @@ import { dataBR, hojeISO, moeda } from '@/shared/lib/formato';
 import { Cabecalho, Entrada, EsqueletoKanban, Selecao, Vazio } from '@/shared/ui';
 import { listarContas, type Conta } from './api';
 import { COLUNAS, colunaConta, emAberto, prazoConta, proximaParcela, saldo, textoCondicao, type Coluna } from './regras';
-import { PagamentoModal, SeloPrazo } from './componentes';
+import { PagamentoModal, SeloPrazo, useDiasAviso } from './componentes';
 
 type Filtro = 'abertas' | Coluna | 'canceladas' | 'todas';
 const FILTROS: [Filtro, string][] = [
@@ -30,6 +30,7 @@ export function ContasPage() {
   const [pagar, setPagar] = useState<Conta | null>(null);
   const [arrastando, setArrastando] = useState<string | null>(null);
   const hoje = hojeISO();
+  const dias = useDiasAviso();
   const editar = pode('financeiro', 'editar');
 
   function mudarVisao(v: 'quadro' | 'lista') {
@@ -41,7 +42,7 @@ export function ContasPage() {
   const projetos = useMemo(() => [...new Map(contas.filter((c) => c.projeto_codigo).map((c) => [c.projeto_codigo, c.projeto_titulo])).entries()].sort(), [contas]);
   const base = contas.filter((c) => (!fornecedor || c.fornecedor_nome === fornecedor) && (!projeto || c.projeto_codigo === projeto)
     && (!busca || `${c.pedido_codigo} ${c.fornecedor_nome} ${c.descricao} ${c.projeto_codigo} ${c.projeto_titulo}`.toLowerCase().includes(busca.toLowerCase())));
-  const coluna = (c: Conta) => colunaConta(c, c.fin_parcelas, hoje);
+  const coluna = (c: Conta) => colunaConta(c, c.fin_parcelas, hoje, dias);
   const lista = base.filter((c) => filtro === 'todas' || (filtro === 'canceladas' ? c.status === 'cancelada'
     : filtro === 'abertas' ? c.status === 'aberta' : coluna(c) === filtro))
     .sort((a, b) => (proximaParcela(a.fin_parcelas)?.vencimento ?? '9999').localeCompare(proximaParcela(b.fin_parcelas)?.vencimento ?? '9999'));
@@ -92,7 +93,7 @@ export function ContasPage() {
                 {!pagas && itens.length > 0 && <div className="px-1.5 pb-2 text-xs tabular-nums text-suave">{moeda(itens.reduce((s, c) => s + emAbertoConta(c), 0))}</div>}
                 {pagas && <div className="px-1.5 pb-2 text-xs text-suave">Pagas neste mês</div>}
                 <div className="space-y-2">
-                  {itens.map((c) => <CartaoConta key={c.id} conta={c} hoje={hoje} arrastavel={editar && !pagas} onArrastar={setArrastando} />)}
+                  {itens.map((c) => <CartaoConta key={c.id} conta={c} hoje={hoje} dias={dias} arrastavel={editar && !pagas} onArrastar={setArrastando} />)}
                   {itens.length === 0 && <div className="px-2 py-4 text-center text-xs text-suave">{alvo ? 'Solte aqui para pagar' : 'Nada aqui.'}</div>}
                 </div>
               </div>
@@ -115,7 +116,7 @@ export function ContasPage() {
                     <td className="px-3 py-2">{c.fornecedor_nome}</td>
                     <td className="px-3 py-2">{c.projeto_codigo ? <>{c.projeto_codigo}<span className="block text-xs text-suave">{c.projeto_titulo}</span></> : <span className="text-suave">—</span>}</td>
                     <td className="px-3 py-2 text-xs">{textoCondicao(c.condicao_tipo, c.condicao_dias)}</td>
-                    <td className="px-3 py-2">{c.status === 'cancelada' ? <span className="text-xs text-suave">Cancelada</span> : <SeloPrazo prazo={prazoConta(c, c.fin_parcelas, hoje)} data={p?.vencimento} />}</td>
+                    <td className="px-3 py-2">{c.status === 'cancelada' ? <span className="text-xs text-suave">Cancelada</span> : <SeloPrazo prazo={prazoConta(c, c.fin_parcelas, hoje, dias)} data={p?.vencimento} />}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{c.status === 'aberta' ? moeda(emAbertoConta(c)) : '—'}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{moeda(c.valor_total)}</td>
                   </tr>
@@ -130,9 +131,9 @@ export function ContasPage() {
   );
 }
 
-function CartaoConta({ conta: c, hoje, arrastavel, onArrastar }: { conta: Conta; hoje: string; arrastavel: boolean; onArrastar: (id: string | null) => void }) {
+function CartaoConta({ conta: c, hoje, dias, arrastavel, onArrastar }: { conta: Conta; hoje: string; dias: number; arrastavel: boolean; onArrastar: (id: string | null) => void }) {
   const p = proximaParcela(c.fin_parcelas);
-  const prazo = prazoConta(c, c.fin_parcelas, hoje);
+  const prazo = prazoConta(c, c.fin_parcelas, hoje, dias);
   const n = c.fin_parcelas.filter((x) => x.ativa).length;
   return (
     <Link to={`/financeiro/contas/${c.id}`} draggable={arrastavel}

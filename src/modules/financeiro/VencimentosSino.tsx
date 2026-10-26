@@ -6,9 +6,9 @@ import { useAuth } from '@/shared/auth/AuthProvider';
 import { hojeISO, moeda } from '@/shared/lib/formato';
 import { listarContas } from './api';
 import { emAberto, prazoParcela, saldo } from './regras';
-import { SeloPrazo } from './componentes';
+import { SeloPrazo, useDiasAviso } from './componentes';
 
-// Sino do Financeiro (decisão 105): contas vencidas, que vencem hoje e nos próximos 7 dias, para quem tem financeiro.ler.
+// Sino do Financeiro (decisão 105): contas vencidas, que vencem hoje e nos próximos dias do aviso (decisão 109), para quem tem financeiro.ler.
 // Uma vez por dia, se a pessoa permitir, também sai um aviso do Windows com o resumo.
 export function VencimentosFinanceiroSino({ bloqueado = false }: { bloqueado?: boolean }) {
   const { pode } = useAuth();
@@ -18,11 +18,12 @@ export function VencimentosFinanceiroSino({ bloqueado = false }: { bloqueado?: b
   const [permissao, setPermissao] = useState<NotificationPermission | 'indisponivel'>(() => ('Notification' in window ? Notification.permission : 'indisponivel'));
   const ativo = pode('financeiro', 'ler') && !bloqueado;
   const hoje = hojeISO();
+  const dias = useDiasAviso(ativo);
   const { data: contas = [] } = useQuery({ queryKey: ['financeiro', 'contas'], queryFn: listarContas, enabled: ativo, refetchInterval: 30 * 60_000 });
   useEffect(() => setAberto(false), [local.pathname]);
 
   const avisos = contas.filter((c) => c.status === 'aberta')
-    .flatMap((c) => emAberto(c.fin_parcelas).map((p) => ({ p, c, prazo: prazoParcela(p, hoje) })))
+    .flatMap((c) => emAberto(c.fin_parcelas).map((p) => ({ p, c, prazo: prazoParcela(p, hoje, dias) })))
     .filter((x) => x.prazo === 'vencida' || x.prazo === 'hoje' || x.prazo === 'em_breve')
     .sort((a, b) => (a.p.vencimento ?? '').localeCompare(b.p.vencimento ?? ''));
   const vencidas = avisos.filter((x) => x.prazo === 'vencida').length;
@@ -57,7 +58,7 @@ export function VencimentosFinanceiroSino({ bloqueado = false }: { bloqueado?: b
           <div className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-superficie p-2 shadow-lg ring-1 ring-borda">
             <div className="px-2 py-1 text-sm font-semibold">Contas a pagar</div>
             {avisos.length === 0 ? (
-              <div className="px-2 py-3 text-sm text-suave">Nada vencido nem vencendo nos próximos 7 dias.</div>
+              <div className="px-2 py-3 text-sm text-suave">Nada vencido nem vencendo nos próximos {dias} dias.</div>
             ) : (
               <ul className="max-h-80 overflow-y-auto">
                 {avisos.map(({ p, c, prazo }) => (

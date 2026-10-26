@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
-import type { CondicaoTipo, FormaPagamento, StatusConta, TipoAnexo } from './regras';
+import { DIAS_AVISO, type CondicaoTipo, type FormaPagamento, type StatusConta, type TipoAnexo } from './regras';
 
 // Financeiro, contas a pagar (decisão 105). Tudo que muda dinheiro passa pelas funções do banco (fin_*).
 
@@ -28,6 +28,17 @@ export interface DadosPagamentoFornecedor {
 }
 
 const CONTA = '*, fin_parcelas(*)';
+
+// Quantos dias antes o aviso "vence em breve" aparece (decisão 109).
+export async function obterDiasAviso(): Promise<number> {
+  const r = ok<{ valor: unknown }>(await supabase.from('configuracoes').select('valor').eq('chave', 'financeiro_dias_aviso').maybeSingle());
+  const n = Number(r?.valor);
+  return Number.isInteger(n) && n > 0 ? n : DIAS_AVISO;
+}
+
+export async function definirDiasAviso(dias: number) {
+  ok(await supabase.rpc('fin_definir_dias_aviso', { p_dias: dias }));
+}
 export const listarContas = async (): Promise<Conta[]> => ok(await supabase.from('fin_contas_pagar').select(CONTA).order('criado_em', { ascending: false }));
 export const obterConta = async (id: string): Promise<Conta> => ok(await supabase.from('fin_contas_pagar').select(CONTA).eq('id', id).single());
 

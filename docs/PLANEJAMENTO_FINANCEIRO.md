@@ -97,3 +97,12 @@ Contas a receber, despesas avulsas, fluxo de caixa, conciliação bancária e in
 4. **Parcelas:** os fornecedores costumam parcelar (30/60/90)? Se raramente, posso deixar só vencimento único na entrega 1.
 5. **Quem paga:** quais pessoas recebem o perfil Financeiro?
 6. **Ordem das entregas:** confirma começar pelas contas a pagar e depois contas a receber (entrega 2)?
+
+### Respostas do Gabriel (26/10/2026, decisão 109)
+
+1. Financeiro não precisa aprovar; se acontecer alguma coisa, ele só não paga.
+2. Aviso editável, padrão 7 dias (feito: Painel → "Aviso: N dias antes").
+3. Resumo no celular/e-mail: não por enquanto.
+4. Pagamento costuma ser adiantado, exceto consumíveis pedidos pelo Almoxarifado.
+5. Perfil Financeiro: por enquanto só o Fabiano (CFO).
+6. Explicada de novo ao Gabriel; aguardando a resposta.

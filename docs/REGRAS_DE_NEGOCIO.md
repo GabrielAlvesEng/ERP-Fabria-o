@@ -300,6 +300,12 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Destino do aceito: requisição de um projeto fica **reservada para o projeto** (fora do estoque comum) até ser entregue à Preparação/Fabricação, com o registro de para quem; item do cadastro sem projeto **entra no estoque** com o custo da OC (atualiza o custo médio; se o produto ainda não estava no estoque, entra com mínimo 0); o resto fica registrado como entregue direto ao setor que pediu.
    - Só quem tem `almoxarifado.editar` registra recebimento e entrega de reserva.
    - Migration `20261026000067_almoxarifado_recebimento.sql` (o comentário dela cita "decisão 107" por engano; a decisão é a 108).
+109. **Financeiro: respostas do Gabriel ao planejamento (26/10/2026)** (complementa a decisão 105, sem mudar o que foi aprovado):
+   - **Aviso editável:** "Deixa o aviso editável, mas pode deixar padrão 7 dias". O prazo de "vence em breve" fica em `configuracoes.financeiro_dias_aviso` (padrão 7, de 1 a 60) e quem tem `financeiro.editar` muda no Painel do Financeiro ("Aviso: N dias antes"), pela função `fin_definir_dias_aviso`. Vale para o quadro, a lista, o painel e o sino. Migration `20261026000068_financeiro_dias_aviso.sql`.
+   - **Sem aprovação do Financeiro:** "Financeiro não precisa aprovar, se acontecer alguma coisa ele só não paga" (igual à decisão 107; substitui a aprovação da decisão 3).
+   - **Sem resumo no celular/e-mail por enquanto:** fica só o sino e o aviso do Windows.
+   - **Condição de pagamento:** "a gente costuma pagar os fornecedores adiantado, exceto os fornecedores de itens consumíveis que o Almoxarifado vai pedir". O Financeiro já trata todas as condições; o padrão "antecipado" na OC foi repassado à conversa de Compras.
+   - **Quem paga:** por enquanto só o Fabiano (CFO) recebe o perfil Financeiro (além da Administração). Ele ainda não tem login no ERP: o RH cria pela ficha → Acesso ao ERP e o perfil Financeiro é dado em seguida.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

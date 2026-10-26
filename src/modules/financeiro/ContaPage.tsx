@@ -10,7 +10,7 @@ import {
   obterConta, removerAnexo, type Conta, type Pagamento, type Parcela,
 } from './api';
 import { ROTULO_ANEXO, ROTULO_FORMA, dividir, lerValor, parcelasAtivas, prazoConta, prazoParcela, saldo, textoCondicao, type TipoAnexo } from './regras';
-import { PagamentoModal, SeloPrazo } from './componentes';
+import { PagamentoModal, SeloPrazo, useDiasAviso } from './componentes';
 
 type ModalConta = null | 'pagar' | 'parcelas' | 'anexo' | { vencimento: Parcela } | { estorno: Pagamento };
 
@@ -27,6 +27,7 @@ export function ContaPage() {
   const [modal, setModal] = useState<ModalConta>(null);
   const [erro, setErro] = useState('');
   const hoje = hojeISO();
+  const dias = useDiasAviso();
 
   if (isLoading) return <EsqueletoDetalhe />;
   if (error || !c) return <Aviso>{error ? mensagemErro(error) : 'Conta não encontrada.'}</Aviso>;
@@ -35,7 +36,7 @@ export function ContaPage() {
   const parcelas = parcelasAtivas(c.fin_parcelas);
   const banco = bancarios.find((b) => b.fornecedor_id === c.fornecedor_id);
   const emAbertoTotal = parcelas.reduce((s, p) => s + saldo(p), 0);
-  const prazo = prazoConta(c, c.fin_parcelas, hoje);
+  const prazo = prazoConta(c, c.fin_parcelas, hoje, dias);
   const teveP = pagamentos.length > 0;
   const fechar = () => setModal(null);
 
@@ -130,7 +131,7 @@ export function ContaPage() {
                   <td className="px-3 py-2">{p.vencimento ? dataBR(p.vencimento) : <span className="text-suave">{c.condicao_tipo === 'apos_recebimento' && !c.entregue_em ? 'Depois da entrega' : 'A definir'}</span>}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{moeda(p.valor)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{Number(p.pago) > 0 ? moeda(p.pago) : '—'}</td>
-                  <td className="px-3 py-2">{c.status === 'cancelada' ? <span className="text-xs text-suave">—</span> : <SeloPrazo prazo={prazoParcela(p, hoje)} />}</td>
+                  <td className="px-3 py-2">{c.status === 'cancelada' ? <span className="text-xs text-suave">—</span> : <SeloPrazo prazo={prazoParcela(p, hoje, dias)} />}</td>
                   <td className="px-3 py-2 text-right">
                     {editar && !p.pago_em && <button onClick={() => setModal({ vencimento: p })} className="text-xs text-roxo-600 hover:underline dark:text-roxo-100">Mudar data</button>}
                   </td>
