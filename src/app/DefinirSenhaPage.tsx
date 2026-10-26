@@ -2,12 +2,14 @@ import { useState, type FormEvent } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, Campo, Entrada } from '@/shared/ui';
+import { loginVisivel } from '@/shared/lib/login';
 import { Marca } from './Layout';
 
 // Tela de definir senha (RH, entrega 4): aberta pelo link de convite que o RH manda, ou pelo link de nova senha.
+// Também aparece no primeiro acesso de quem entrou com senha provisória (login por usuário, decisão 106).
 // A senha vai direto para o Supabase Auth; o ERP nunca a guarda.
-export function DefinirSenhaPage({ convite, email, codigo, onPronto }: {
-  convite: boolean; email: string; codigo?: { token: string; tipo: 'invite' | 'recovery' } | null; onPronto: () => void;
+export function DefinirSenhaPage({ convite, email, codigo, provisoria, onPronto }: {
+  convite: boolean; provisoria?: boolean; email: string; codigo?: { token: string; tipo: 'invite' | 'recovery' } | null; onPronto: () => void;
 }) {
   const [s1, setS1] = useState('');
   const [s2, setS2] = useState('');
@@ -29,7 +31,7 @@ export function DefinirSenhaPage({ convite, email, codigo, onPronto }: {
       }
       history.replaceState(null, '', window.location.pathname);
     }
-    const { error } = await supabase.auth.updateUser({ password: s1 });
+    const { error } = await supabase.auth.updateUser({ password: s1, ...(provisoria ? { data: { trocar_senha: false } } : {}) });
     setSalvando(false);
     if (error) return setErro(error.message.includes('different from the old') ? 'A nova senha precisa ser diferente da anterior.' : mensagemErro(error));
     onPronto();
@@ -42,7 +44,7 @@ export function DefinirSenhaPage({ convite, email, codigo, onPronto }: {
           <div className="pb-2"><Marca vertical /></div>
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-texto">{convite ? 'Bem-vindo ao ERP' : 'Nova senha'}</h1>
-            <p className="text-sm text-suave">{convite ? 'Escolha a senha do seu login' : 'Escolha uma nova senha'}{email && <> para <b>{email}</b></>}.</p>
+            <p className="text-sm text-suave">{provisoria ? 'Troque a senha provisória por uma senha só sua' : convite ? 'Escolha a senha do seu login' : 'Escolha uma nova senha'}{email && <> para <b>{loginVisivel(email)}</b></>}.</p>
           </div>
         </div>
         {erro && <Aviso>{erro}</Aviso>}

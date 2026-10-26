@@ -2,8 +2,11 @@
 // criar_login: cria o usuário no Auth e manda o convite por e-mail (o funcionário escolhe a própria senha).
 // link_senha: manda por e-mail o link para definir uma nova senha. Se o e-mail não sair, devolve o link para o RH.
 // desativar / reativar: bloqueia ou libera o login.
+// Sem e-mail (decisão 106): criar_login com `usuario` cria o login pelo nome de usuário, com uma senha provisória que o
+// RH entrega em mãos e a pessoa troca no primeiro acesso. Para esses logins, link_senha gera outra senha provisória.
+// A senha provisória só aparece na resposta para o RH; não é gravada no ERP nem na auditoria.
 // A chave service_role vem do ambiente da Edge Function (SUPABASE_SERVICE_ROLE_KEY) e nunca vai para o site.
-// O ERP nunca vê nem guarda senhas: só gera links. As regras de quem pode mexer em quem são as do banco
+// O ERP nunca guarda senhas (só gera links ou a senha provisória acima). As regras de quem pode mexer em quem são as do banco
 // (conferir_gestao_acesso, migration 39), chamadas como o próprio usuário logado.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
@@ -16,6 +19,18 @@ const cors = (origem: string | null) => ({
 });
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DOMINIO_SEM_EMAIL = 'sem-email.fabriacobrasil.com.br';
+const USUARIO = /^[a-z0-9][a-z0-9._-]{2,39}$/;
+const semEmail = (email: string) => email.toLowerCase().endsWith(`@${DOMINIO_SEM_EMAIL}`);
+
+// Senha provisória fácil de ditar (ex.: Kmtr-4827).
+function senhaProvisoria() {
+  const letras = 'abcdefghjkmnpqrstuvwxyz';
+  const n = crypto.getRandomValues(new Uint32Array(8));
+  const l = [...n.slice(0, 4)].map((x) => letras[x % letras.length]).join('');
+  const d = [...n.slice(4)].map((x) => String(x % 10)).join('');
+  return `${l[0].toUpperCase()}${l.slice(1)}-${d}`;
+}
 
 Deno.serve(async (req) => {
   const h = { ...cors(req.headers.get('origin')), 'Content-Type': 'application/json' };
@@ -58,8 +73,13 @@ Deno.serve(async (req) => {
 
     if (corpo.acao === 'criar_login') {
       const funcionarioId = String(corpo.funcionario_id ?? '');
-      const email = String(corpo.email ?? '').trim().toLowerCase();
+      const usuario = String(corpo.usuario ?? '').trim().toLowerCase();
+      if (usuario && !USUARIO.test(usuario)) {
+        return resposta({ erro: 'Usuário inválido: use de 3 a 40 letras sem acento, números, ponto, hífen ou sublinhado, começando por letra ou número.' }, 400);
+      }
+      const email = usuario ? `${usuario}@${DOMINIO_SEM_EMAIL}` : String(corpo.email ?? '').trim().toLowerCase();
       if (!EMAIL.test(email)) return resposta({ erro: 'E-mail inválido.' }, 400);
+      if (!usuario && semEmail(email)) return resposta({ erro: 'Para login sem e-mail, escolha "Por usuário".' }, 400);
       const { data: ficha } = await sb.from('funcionarios').select('id, nome, usuario_id, situacao').eq('id', funcionarioId).maybeSingle();
       if (!ficha) return resposta({ erro: 'Funcionário não encontrado.' }, 404);
       if (ficha.usuario_id) return resposta({ erro: 'Este funcionário já tem login.' }, 400);
@@ -67,6 +87,19 @@ Deno.serve(async (req) => {
 
       const { data: existente, error: e0 } = await sb.from('usuarios').select('id').ilike('email', email).maybeSingle();
       if (e0) return resposta({ erro: e0.message }, 500);
+      if (usuario) {
+        if (existente) return resposta({ erro: `O usuário ${usuario} já existe. Escolha outro.` }, 400);
+        const senha = senhaProvisoria();
+        const { data, error } = await adm.auth.admin.createUser({ email, password: senha, email_confirm: true, user_metadata: { nome: ficha.nome, trocar_senha: true } });
+        if (error || !data.user) return resposta({ erro: `Não foi possível criar o login: ${error?.message ?? 'erro desconhecido'}.` }, 400);
+        const { error: e2 } = await sb.rpc('vincular_login_funcionario', { p_funcionario: funcionarioId, p_usuario: data.user.id });
+        if (e2) return resposta({ erro: `Login criado, mas não foi ligado à ficha: ${e2.message}.` }, 500);
+        // Começa com o perfil Funcionário (Comunicação e Meu perfil); o RH muda nos perfis abaixo se precisar.
+        const { data: perfil } = await sb.from('perfis').select('id').eq('nome', 'Funcionário').maybeSingle();
+        if (perfil) await sb.rpc('definir_perfis_usuario', { p_usuario: data.user.id, p_perfis: [perfil.id] });
+        await auditar(data.user.id, { usuario, funcionario_id: funcionarioId, sem_email: true, senha_provisoria: true });
+        return resposta({ usuario_id: data.user.id, usuario, senha_provisoria: senha });
+      }
       if (existente) {
         // Login já existe (ex.: convite criado antes e não ligado): liga à ficha se ninguém mais usa e gera o link de novo.
         const { error } = await sb.rpc('vincular_login_funcionario', { p_funcionario: funcionarioId, p_usuario: existente.id });
@@ -102,6 +135,14 @@ Deno.serve(async (req) => {
     if (usuarioId === eu.user.id) return resposta({ erro: 'Você não pode mudar o próprio acesso por aqui. Use "Esqueci minha senha" no login.' }, 400);
     const { error: regra } = await sb.rpc('conferir_gestao_acesso', { p_usuario: usuarioId });
     if (regra) return resposta({ erro: regra.message }, 403);
+
+    if (corpo.acao === 'link_senha' && semEmail(alvo.email)) {
+      const senha = senhaProvisoria();
+      const { error } = await adm.auth.admin.updateUserById(usuarioId, { password: senha, user_metadata: { trocar_senha: true } });
+      if (error) return resposta({ erro: `Não foi possível gerar a senha provisória: ${error.message}.` }, 400);
+      await auditar(usuarioId, { senha_provisoria: true });
+      return resposta({ usuario: alvo.email.split('@')[0], senha_provisoria: senha });
+    }
 
     if (corpo.acao === 'link_senha') {
       const r = await linkSenha(usuarioId, alvo.email);

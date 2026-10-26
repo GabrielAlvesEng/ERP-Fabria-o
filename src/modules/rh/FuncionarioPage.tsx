@@ -11,6 +11,7 @@ import { AcessoFicha } from './AcessoFicha';
 import { DocumentosFicha } from './DocumentosFicha';
 import { IntegracoesFicha } from './IntegracoesFicha';
 import { formatarCPF, situacao, SITUACOES, UFS, validarFicha, VINCULOS, type Situacao } from './regras';
+import { loginVisivel } from '@/shared/lib/login';
 
 // Gerador da assinatura (decisão 89): carregado só quando abre (desenho em canvas).
 const AssinaturaGeradaModal = lazy(() => import('./assinatura/AssinaturaGeradaModal'));
@@ -200,7 +201,7 @@ export function FuncionarioPage() {
         </Secao>
       )}
 
-      <Secao titulo="Acesso ao ERP" detalhe="O RH cria o login (o convite vai por e-mail para a pessoa definir a senha) e escolhe os perfis. O ERP nunca guarda nem mostra senhas.">
+      <Secao titulo="Acesso ao ERP" detalhe="O RH cria o login (por e-mail, com convite, ou por usuário, com senha provisória) e escolhe os perfis. O ERP nunca guarda senhas.">
         {funcionario && f.usuario_id === (funcionario.usuario_id ?? '') && (funcionario.usuarios || pode('rh', 'critica')) ? (
           <div className="space-y-3">
             <AcessoFicha funcionario={funcionario} />
@@ -211,7 +212,7 @@ export function FuncionarioPage() {
           <Campo rotulo="Ou ligar a um login que já existe" className="mt-3 max-w-md">
             <Selecao value={f.usuario_id} onChange={(e) => setF({ ...f, usuario_id: e.target.value })}>
               <option value="">Sem login</option>
-              {usuarios.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
+              {usuarios.map((u) => <option key={u.id} value={u.id}>{loginVisivel(u.email)}</option>)}
             </Selecao>
           </Campo>
         ) : !funcionario?.usuarios && !pode('rh', 'critica') ? <span className="text-sm text-suave">Sem login no ERP.</span> : null}

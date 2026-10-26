@@ -1,6 +1,6 @@
 # Comunicação
 
-Versão 2, 22/10/2026. **Estado: aprovado ("A e C" e as recomendações nas perguntas, 22/10/2026) e implementado (decisão 100). Falta o login por usuário para quem não tem e-mail (pergunta 3).**
+Versão 2, 22/10/2026. **Estado: aprovado ("A e C" e as recomendações nas perguntas, 22/10/2026) e implementado (decisão 100). O login por usuário para quem não tem e-mail (pergunta 3) foi feito em 26/10/2026 (decisão 106).**
 
 Resposta do Gabriel (22/10): "quero ativar os itens A e C, enviar pelo app do celular e pelo email também se quiser". Ou seja: **o push no celular (A) é o canal principal**, e **quem envia escolhe, em cada comunicado, se também manda por e-mail (C)**.
 

@@ -68,6 +68,11 @@ export function App() {
   if (linkCodigo) return <DefinirSenhaPage convite={linkCodigo.tipo === 'invite'} email={session?.user.email ?? ''} codigo={linkCodigo} onPronto={() => setLinkCodigo(null)} />;
   if (!session) return <LoginPage erroLink={linkAuth.erro} />;
   if (definirSenha) return <DefinirSenhaPage convite={definirSenha === 'invite'} email={session.user.email ?? ''} onPronto={() => setDefinirSenha(null)} />;
+  // Entrou com a senha provisória que o RH entregou: troca antes de abrir o ERP. Ao salvar, o Auth avisa
+  // USER_UPDATED com trocar_senha falso e a sessão nova abre o ERP.
+  if (session.user.user_metadata?.trocar_senha) {
+    return <DefinirSenhaPage convite provisoria email={session.user.email ?? ''} onPronto={() => undefined} />;
+  }
 
   return (
     <AnoProvider>
