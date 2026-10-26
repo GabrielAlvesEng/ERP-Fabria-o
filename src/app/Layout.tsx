@@ -6,6 +6,7 @@ import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
 import { RetornosSino } from '@/modules/vendas/RetornosSino';
 import { VencimentosSino } from '@/modules/rh/VencimentosSino';
+import { EstoqueSino } from '@/modules/almoxarifado/EstoqueSino';
 import { Avatar } from '@/modules/perfil/Avatar';
 import { useMeuUsuario } from '@/modules/perfil/api';
 import { PresencaVendas, useVendasAoVivo } from '@/modules/vendas/aoVivo';
@@ -28,7 +29,7 @@ const modulos = [
 ];
 // Decisão 95: módulos que aparecem no menu com cadeado e não abrem (nem pelo endereço) até o Gabriel liberar.
 // Para liberar um módulo, basta tirá-lo desta lista. Compras liberado na decisão 101.
-const BLOQUEADOS = new Set(['/financeiro', '/almoxarifado']);
+const BLOQUEADOS = new Set(['/financeiro']);
 const GRUPOS = [['operacional', 'Módulos operacionais'], ['administrativo', 'Módulos administrativos']] as const;
 type Pode = ReturnType<typeof useAuth>['pode'];
 const visivel = (m: (typeof modulos)[number], pode: Pode) => m.modulo === null || pode(m.modulo, ('acao' in m && m.acao) || 'ler');
@@ -90,6 +91,7 @@ export function Layout() {
             <ComunicadosSino />
             <RetornosSino />
             <VencimentosSino />
+            <EstoqueSino bloqueado={BLOQUEADOS.has('/almoxarifado')} />
             <button onClick={() => setTema(tema === 'claro' ? 'escuro' : 'claro')} className="rounded-lg p-2 text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700" aria-label="Alternar tema">
               {tema === 'claro' ? <Moon size={18} /> : <Sun size={18} />}
             </button>

@@ -190,3 +190,10 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `compras_pedidos` (código OC-AA-NNN, cotação, fornecedor, valores, previsão, status aguardando_entrega/entregue_parcial/entregue), `compras_eventos` (histórico), `compras_contadores` (RC e OC por ano).
 - `fornecedores` ganhou `cnpj`, `categorias`, `condicao_pagamento`.
 - Funções: `compras_enviar_aprovacao`, `compras_decidir` (Financeiro), `compras_emitir_pedido`, `compras_registrar_entrega`, `compras_cancelar`, `compras_total_cotacao`, `compras_projetos`, `compras_pecas_projeto`.
+
+## Almoxarifado (decisão 104, migrations 61 a 63)
+- `alm_itens` (produto da Biblioteca por `bib_tipo` + `bib_id`, unidade, saldo, mínimo, local, custo médio, ativo). Só mínimo, local e ativo mudam direto; o saldo muda só pelas funções.
+- `alm_movimentos` (entrada, retirada, devolução, ajuste, estorno; quantidade com sinal, saldo depois, custo, retirada, movimento de origem, OC, motivo, quem e quando). Nunca é apagado; um estorno por lançamento.
+- `alm_retiradas` (código RT-AA-NNN, funcionário com cópia do nome, destino projeto ou setor, observação), `alm_contadores`.
+- `alm_solicitacoes` (item do estoque → requisição de Compras).
+- Funções: `alm_estoque`, `alm_produtos`, `alm_adicionar_item`, `alm_ajustar`, `alm_registrar_retirada`, `alm_devolver`, `alm_estornar`, `alm_solicitar_compra` (usa `compras_solicitar` quando existir), `alm_compras_abertas`, `alm_funcionarios`, `alm_projetos`, `alm_setores`.

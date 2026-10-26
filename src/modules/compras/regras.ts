@@ -9,7 +9,7 @@ export type GrupoItem = 'Chapas' | 'Perfis' | 'Comerciais' | 'Fixadores' | 'Cons
 
 export const GRUPOS: GrupoItem[] = ['Chapas', 'Perfis', 'Comerciais', 'Fixadores', 'Consumíveis', 'Serviços', 'Outros'];
 export const UNIDADES = ['un', 'pç', 'kg', 'm', 'm²', 'barra', 'chapa', 'cx', 'L', 'h', 'serviço'];
-export const SETORES = ['Engenharia', 'Fabricação', 'Montagem em campo', 'Manutenção', 'Qualidade', 'Administrativo', 'Outro'];
+export const SETORES = ['Engenharia', 'Almoxarifado', 'Fabricação', 'Montagem em campo', 'Manutenção', 'Qualidade', 'Administrativo', 'Outro'];
 
 // Colunas do painel, na ordem do fluxo (cancelada fica fora do quadro).
 export const ETAPAS: { status: StatusRequisicao; rotulo: string }[] = [

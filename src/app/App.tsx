@@ -18,7 +18,9 @@ import { ProjetosPage } from '@/modules/engenharia/ProjetosPage';
 import { DashboardEngenharia } from '@/modules/engenharia/DashboardEngenharia';
 import { ProjetoPage } from '@/modules/engenharia/ProjetoPage';
 import { AlmoxarifadoLayout } from '@/modules/almoxarifado/AlmoxarifadoLayout';
-import { AlmoxarifadoInicioPage } from '@/modules/almoxarifado/AlmoxarifadoInicioPage';
+import { PainelPage as AlmoxarifadoPainelPage } from '@/modules/almoxarifado/PainelPage';
+import { EstoquePage } from '@/modules/almoxarifado/EstoquePage';
+import { RetiradasPage } from '@/modules/almoxarifado/RetiradasPage';
 import { AdminLayout, ExcluidasPage, SenhasPage } from '@/modules/admin/AdminPages';
 import { FrotaPage } from '@/modules/admin/FrotaPage';
 import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
@@ -87,7 +89,9 @@ export function App() {
             <Route path="fornecedores" element={<FornecedoresPage />} />
           </Route>
           <Route path="/almoxarifado" element={<AlmoxarifadoLayout />}>
-            <Route index element={<AlmoxarifadoInicioPage />} />
+            <Route index element={<AlmoxarifadoPainelPage />} />
+            <Route path="estoque" element={<EstoquePage />} />
+            <Route path="retiradas" element={<RetiradasPage />} />
           </Route>
           <Route path="/rh" element={<RhLayout />}>
             <Route index element={<FuncionariosPage />} />
