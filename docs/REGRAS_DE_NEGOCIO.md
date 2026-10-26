@@ -309,6 +309,13 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - **Contas a receber (entrega 2) fica para depois:** "não, por enquanto não" (26/10). Só começa quando o Gabriel pedir.
    - **Módulo liberado no menu** (Gabriel, 26/10: "Pode publicar"). O Gabriel continua com Administração e acesso total.
    - **Quem paga:** por enquanto só o Fabiano (CFO) recebe o perfil Financeiro (além da Administração). Ele ainda não tem login no ERP: o RH cria pela ficha → Acesso ao ERP e o perfil Financeiro é dado em seguida.
+110. **Almoxarifado → aba Solicitações (26/10/2026)** (pedido do Gabriel: "Em almoxarifado precisa de uma aba para ele solicitar algum item, o item pode ser cadastrado ou não, essa lista vai para compra e lá o comprador organiza"; seção 9 do `docs/PLANEJAMENTO_ALMOXARIFADO.md`, aprovada com a opção "Compras liga ao cadastro"):
+   - Nova solicitação com vários itens: cada linha é um produto do cadastro (Biblioteca, não precisa estar no estoque) ou um item digitado (descrição, grupo, unidade), com quantidade e observação; no pedido, precisa em, prioridade e observações.
+   - Vira uma solicitação de Compras com origem Almoxarifado (setor Almoxarifado), pela mesma função `compras_solicitar`; o comprador organiza (cota, escolhe fornecedor por item, gera as OCs).
+   - A aba mostra os pedidos do Almoxarifado com a situação de cada item (à comprar, em cotação, comprado, recebido, cancelado), a OC e o quanto chegou.
+   - **Item digitado:** o comprador liga ao cadastro (ou cadastra o produto) antes da OC; ligado, entra no estoque ao ser recebido; sem ligação, fica registrado como entregue direto ao Almoxarifado, fora do estoque (regra da decisão 108).
+   - O "Solicitar compra" do Estoque e do Painel continua como atalho para itens baixos.
+   - Migration `20261026000070_almoxarifado_solicitacoes.sql` (`alm_solicitar_itens`, `alm_minhas_solicitacoes`).
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

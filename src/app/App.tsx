@@ -22,6 +22,7 @@ import { PainelPage as AlmoxarifadoPainelPage } from '@/modules/almoxarifado/Pai
 import { EstoquePage } from '@/modules/almoxarifado/EstoquePage';
 import { RetiradasPage } from '@/modules/almoxarifado/RetiradasPage';
 import { RecebimentosPage } from '@/modules/almoxarifado/RecebimentosPage';
+import { SolicitacoesPage } from '@/modules/almoxarifado/SolicitacoesPage';
 import { AdminLayout, ExcluidasPage, SenhasPage } from '@/modules/admin/AdminPages';
 import { FrotaPage } from '@/modules/admin/FrotaPage';
 import { ModelosPropostaPage } from '@/modules/admin/ModelosPropostaPage';
@@ -104,6 +105,7 @@ export function App() {
             <Route index element={<AlmoxarifadoPainelPage />} />
             <Route path="estoque" element={<EstoquePage />} />
             <Route path="retiradas" element={<RetiradasPage />} />
+            <Route path="solicitacoes" element={<SolicitacoesPage />} />
             <Route path="recebimentos" element={<RecebimentosPage />} />
           </Route>
           <Route path="/rh" element={<RhLayout />}>

@@ -1,6 +1,6 @@
 # Planejamento do módulo Almoxarifado (v1, 22/10/2026)
 
-**Estado: aprovado ("Pode executar", seguindo as recomendações das perguntas). Entregas 1 a 4 feitas e liberadas em 26/10/2026 (decisões 104 e 108); o recebimento funciona quando o Compras v2 estiver no banco.**
+**Estado: aprovado ("Pode executar", seguindo as recomendações das perguntas). Entregas 1 a 4 feitas e liberadas em 26/10/2026 (decisões 104 e 108); aba Solicitações (seção 9) feita na decisão 110.**
 
 Base: a explicação do Gabriel de 22/10/2026, o Documento Mestre (§5.4), o fluxograma (bloco "Almoxarifado": recebimento parcial aceito ou rejeitado, estoque ou destino direto no projeto) e o planejamento v2 de Compras (`/mnt/project-files/compras/PLANEJAMENTO_COMPRAS_V2.md`), com quem este plano foi combinado.
 
@@ -114,3 +114,13 @@ Estoque ── Retirada (funcionário + onde foi usado) ── baixa no saldo   
 8. **Mínimo:** cada item tem um estoque mínimo definido pelo almoxarife? Quer também um máximo?
 9. **Locais:** é um almoxarifado só (na fábrica) ou há estoque em obra/caminhão que precisa saldo separado? Recomendo um só nesta versão.
 10. **Pessoas:** quem recebe o perfil Almoxarifado (nomes)?
+
+## 9. Aba "Solicitações" (pedido do Gabriel, 26/10/2026; aprovada com "Compras liga ao cadastro" e feita, decisão 110)
+
+Pedido: "Em almoxarifado precisa de uma aba para ele solicitar algum item, o item pode ser cadastrado ou não, essa lista vai para compra e lá o comprador organiza."
+
+- **Nova solicitação**: uma lista de itens. Cada linha é um **produto do cadastro** (busca por nome; não precisa estar no estoque) ou um **item digitado** (descrição, grupo e unidade), com quantidade e observação. No pedido todo: precisa em, prioridade e observações.
+- Vai para Compras como uma solicitação com origem Almoxarifado (a mesma função que o "Solicitar compra" do estoque já usa). Lá o comprador organiza: cota, escolhe o fornecedor por item e gera as OCs.
+- **Acompanhamento**: na mesma aba, os pedidos do Almoxarifado com a situação de cada item (à comprar, comprado, recebido, cancelado), a OC e a data.
+- O "Solicitar compra" de Estoque e do Painel continua como atalho para os itens baixos.
+- **Item digitado no recebimento**: se o comprador ligar o item a um produto do cadastro (ou cadastrar o produto) antes da OC, ele entra no estoque ao ser recebido; se não, fica registrado como entregue direto ao Almoxarifado, fora do estoque (recomendado).

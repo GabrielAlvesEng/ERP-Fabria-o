@@ -103,3 +103,16 @@ export async function receberOC(pedido: string, data: string, itens: { item_id: 
 export async function entregarReserva(id: string, para: string): Promise<void> {
   ok(await supabase.rpc('alm_entregar_reserva', { p_reserva: id, p_para: para }));
 }
+
+// ---------- Solicitações de compra do Almoxarifado (decisão 110) ----------
+export type SituacaoItemCompra = 'a_comprar' | 'em_cotacao' | 'comprado' | 'recebido' | 'cancelado';
+export interface SolicitacaoAlm {
+  id: string; codigo: string; titulo: string; status: 'aberta' | 'concluida' | 'cancelada'; prioridade: 'normal' | 'urgente';
+  necessario_em: string | null; observacoes: string; criado_em: string; solicitante: string | null;
+  itens: { id: string; descricao: string; grupo: string; quantidade: number; unidade: string; cadastrado: boolean; observacoes: string; situacao: SituacaoItemCompra; pedido: string | null; recebida: number }[];
+}
+export interface LinhaSolicitacao { bib_tipo?: string; bib_id?: string; descricao?: string; grupo?: string; unidade: string; quantidade: number; observacoes: string }
+export const listarSolicitacoes = async (): Promise<SolicitacaoAlm[]> => ok(await supabase.rpc('alm_minhas_solicitacoes'));
+export async function solicitarItens(itens: LinhaSolicitacao[], necessario_em: string | null, prioridade: 'normal' | 'urgente', observacoes: string): Promise<string> {
+  return ok(await supabase.rpc('alm_solicitar_itens', { p_itens: itens, p_necessario_em: necessario_em, p_prioridade: prioridade, p_observacoes: observacoes }));
+}
