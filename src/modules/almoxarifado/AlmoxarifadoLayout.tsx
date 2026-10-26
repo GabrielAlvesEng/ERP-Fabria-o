@@ -1,11 +1,12 @@
 import { AbasModulo } from '@/shared/ui/AbasModulo';
-import { ArrowRightFromLine, LayoutDashboard, Warehouse } from 'lucide-react';
+import { ArrowRightFromLine, LayoutDashboard, PackageCheck, Warehouse } from 'lucide-react';
 
-// Abas do Almoxarifado (decisão 104). Recebimentos entra com o Compras v2 (ordens de compra por item).
+// Abas do Almoxarifado (decisões 104 e 108).
 const abas = [
   { to: '/almoxarifado', rotulo: 'Painel', icone: LayoutDashboard, end: true },
   { to: '/almoxarifado/estoque', rotulo: 'Estoque', icone: Warehouse },
   { to: '/almoxarifado/retiradas', rotulo: 'Retiradas', icone: ArrowRightFromLine },
+  { to: '/almoxarifado/recebimentos', rotulo: 'Recebimentos', icone: PackageCheck },
 ];
 
 export function AlmoxarifadoLayout() {

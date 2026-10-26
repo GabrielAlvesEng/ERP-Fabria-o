@@ -293,7 +293,14 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - **Quadro:** Painel com Kanban **por item** (À comprar, Em cotação = à comprar com preço lançado, Comprado, Recebido nos últimos 30 dias), filtros por origem e projeto, e a visão por solicitação. A OC mostra se o Financeiro já pagou.
    - **Engenharia (ajusta a decisão 103):** a lista enviada trava; mudança vai por nova revisão, que deve mostrar em cada item quanto era e quanto passa a ser (Gabriel, 26/10; tela da Engenharia). A revisão anterior só é substituída se ainda **não tem nenhum item comprado**; com algo comprado, a nova revisão leva só o complemento. A requisição da Engenharia sai com origem Engenharia e o produto de cada peça.
    - Respostas do Gabriel ao planejamento v1 (26/10): Fabricação ainda não acessa Compras; sem aprovação por enquanto (Compras só solicita o pagamento); por enquanto só o Gabriel tem o perfil Compras.
-   - Migration `20261026000066_compras_v2.sql` (numerada depois das do Almoxarifado e do Financeiro).
+   - Migration `20261026000066_compras_v2.sql` (numerada depois das do Almoxarifado, do Financeiro e da Engenharia), aplicada pelo Gabriel no SQL Editor em 26/10/2026 e testada no banco com o usuário dele numa transação desfeita: duas OCs por fornecedor com as condições certas, duas contas a pagar criadas, item comprado travado, OC cancelada devolve o item e cancela a conta, recebimento e histórico do produto.
+108. **Recebimento das ordens de compra pelo Almoxarifado (26/10/2026)** (resposta 3 do Gabriel ao Compras v2: "quem marca recebido é o almoxarifado"; entrega 3 do `docs/PLANEJAMENTO_ALMOXARIFADO.md`):
+   - Almoxarifado → Recebimentos lista as OCs aguardando entrega ou com entrega parcial. Em "Conferir entrega", o almoxarife informa, item por item, o aceito e o rejeitado (com motivo), a data e uma observação (ex.: nota fiscal). Pode receber em partes.
+   - Só o aceito conta como recebido na OC (Compras e Financeiro veem a entrega); o rejeitado continua faltando na OC, com o motivo registrado.
+   - Destino do aceito: requisição de um projeto fica **reservada para o projeto** (fora do estoque comum) até ser entregue à Preparação/Fabricação, com o registro de para quem; item do cadastro sem projeto **entra no estoque** com o custo da OC (atualiza o custo médio; se o produto ainda não estava no estoque, entra com mínimo 0); o resto fica registrado como entregue direto ao setor que pediu.
+   - Só quem tem `almoxarifado.editar` registra recebimento e entrega de reserva.
+   - Funciona depois que a migration do Compras v2 estiver no banco (OC por item); antes disso a tela avisa.
+   - Migration `20261026000067_almoxarifado_recebimento.sql` (o comentário dela cita "decisão 107" por engano; a decisão é a 108).
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
