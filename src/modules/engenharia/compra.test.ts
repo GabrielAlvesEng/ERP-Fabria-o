@@ -28,6 +28,19 @@ describe('solicitação de compra da Engenharia (decisão 103)', () => {
     expect(p.proximaRevisao).toBe(2);
   });
 
+  it('nova revisão descreve em cada item quanto era e quanto é agora', () => {
+    const p = planoEnvio([l('Chapa 6,35', 120), l('Parafuso', 8, 'Fixadores', 'un')], [s(0, 'aberta', [l('Chapa 6,35', 100), l('Chapa 3,00', 40)])]);
+    expect(p.itens.map((i) => [i.descricao, i.quantidade, i.observacoes])).toEqual([['Chapa 6,35', 120, 'era 100 kg, agora 120 kg'], ['Parafuso', 8, 'novo na R1']]);
+    expect(p.saidas).toEqual(['Chapa 3,00 (era 40 kg)']);
+    expect(p.comparacao.map((c) => [c.descricao, c.era, c.agora])).toEqual([['Chapa 6,35', 100, 120], ['Parafuso', null, 8]]);
+  });
+
+  it('complemento também mostra era e agora; item igual não ganha observação', () => {
+    const p = planoEnvio([l('Chapa 6,35', 130), l('Chapa 3,00', 40)], [s(0, 'em_compra', [l('Chapa 6,35', 100), l('Chapa 3,00', 40)])]);
+    expect(p.itens.map((i) => i.observacoes)).toEqual(['era 100 kg, agora 130 kg · complemento: já pedidos 100 kg']);
+    expect(planoEnvio([l('Chapa 6,35', 100)], []).itens[0].observacoes).toBe('');
+  });
+
   it('avisa quando a lista mudou desde o envio', () => {
     expect(mudouDesde([l('Chapa 6,35', 100)], [s(0, 'aberta', [l('Chapa 6,35', 100)])])).toBe(false);
     expect(mudouDesde([l('Chapa 6,35', 101)], [s(0, 'aberta', [l('Chapa 6,35', 100)])])).toBe(true);

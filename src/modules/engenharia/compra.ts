@@ -27,7 +27,21 @@ export interface PlanoEnvio {
   itens: LinhaImportada[];        // o que vai na nova requisição
   substitui: Solicitacao[];        // requisições abertas/em cotação que serão canceladas
   reducoes: string[];              // o que já foi comprado e saiu ou diminuiu na lista
+  comparacao: Comparacao[];        // era × agora por item, contra as revisões vivas (pedido do Gabriel, Compras v2 item 4)
+  saidas: string[];                // itens que estavam nas revisões vivas e saíram da lista
   proximaRevisao: number;
+}
+
+// chave = a da linha da lista (LinhaImportada.chave), para a tela casar com plano.itens.
+export interface Comparacao { chave: string; grupo: GrupoItem; descricao: string; unidade: string; era: number | null; agora: number }
+
+const qtd = (n: number) => r3(n).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+
+// Texto que vai na observação do item da RC: "era 100 kg, agora 120 kg" ou "novo na R1".
+export function textoMudanca(c: Pick<Comparacao, 'era' | 'agora' | 'unidade'>, revisao: number): string {
+  if (c.era == null) return `novo na R${revisao}`;
+  if (Math.abs(c.era - c.agora) <= 0.0005) return '';
+  return `era ${qtd(c.era)} ${c.unidade}, agora ${qtd(c.agora)} ${c.unidade}`;
 }
 
 // Lista atual × o que já está com Compras e não pode mais ser trocado (já tem item comprado, ou concluída):
@@ -36,19 +50,29 @@ export function planoEnvio(atual: LinhaImportada[], solicitacoes: Solicitacao[])
   const vivas = solicitacoes.filter((s) => s.status !== 'cancelada');
   const travadas = vivas.filter((s) => !SUBSTITUIVEL.includes(s.status));
   const base = somar(travadas.flatMap((s) => s.itens));
+  const proximaRevisao = solicitacoes.length ? Math.max(...solicitacoes.map((s) => s.revisao)) + 1 : 0;
+  // "Era" = soma do que está vivo com Compras antes deste envio (a revisão que será substituída também conta).
+  const enviado = somar(vivas.flatMap((s) => s.itens));
+  const doAtual = somar(atual);
+  const comparacao: Comparacao[] = vivas.length ? atual.map((l) => ({
+    chave: l.chave, grupo: l.grupo, descricao: l.descricao, unidade: l.unidade, era: enviado.has(chave(l)) ? r3(enviado.get(chave(l))!) : null, agora: r3(doAtual.get(chave(l)) ?? 0),
+  })) : [];
+  const mudanca = new Map(comparacao.map((c) => [chave(c), textoMudanca(c, proximaRevisao)]));
   const itens: LinhaImportada[] = [];
   for (const l of atual) {
     const q = r3(l.quantidade - (base.get(chave(l)) ?? 0));
-    if (q > 0) itens.push({ ...l, quantidade: q, observacoes: base.has(chave(l)) ? [l.observacoes, `complemento: já pedidos ${r3(base.get(chave(l))!)} ${l.unidade}`].filter(Boolean).join(' · ') : l.observacoes });
+    const notas = [mudanca.get(chave(l)), l.observacoes, base.has(chave(l)) ? `complemento: já pedidos ${r3(base.get(chave(l))!)} ${l.unidade}` : ''];
+    if (q > 0) itens.push({ ...l, quantidade: q, observacoes: notas.filter(Boolean).join(' · ') });
   }
-  const doAtual = somar(atual);
+  const vistos = new Set<string>();
+  const saidas = vivas.flatMap((s) => s.itens).filter((i) => !doAtual.has(chave(i)) && !vistos.has(chave(i)) && vistos.add(chave(i)))
+    .map((i) => `${i.descricao} (era ${qtd(enviado.get(chave(i))!)} ${i.unidade})`);
   const reducoes = [...base.entries()].filter(([k, q]) => (doAtual.get(k) ?? 0) < q - 0.0005).map(([k, q]) => {
     const [, , unidade] = k.split('|');
     const desc = travadas.flatMap((s) => s.itens).find((i) => chave(i) === k)!.descricao;
     return `${desc}: pedido ${r3(q)} ${unidade}, lista atual ${r3(doAtual.get(k) ?? 0)} ${unidade}`;
   });
-  const proximaRevisao = solicitacoes.length ? Math.max(...solicitacoes.map((s) => s.revisao)) + 1 : 0;
-  return { itens, substitui: vivas.filter((s) => SUBSTITUIVEL.includes(s.status)), reducoes, proximaRevisao };
+  return { itens, substitui: vivas.filter((s) => SUBSTITUIVEL.includes(s.status)), reducoes, comparacao, saidas, proximaRevisao };
 }
 
 // A lista mudou desde a última revisão enviada (que não foi cancelada)?

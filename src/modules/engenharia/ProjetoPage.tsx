@@ -221,6 +221,7 @@ function SolicitacaoCompra({ projeto, lista }: { projeto: Projeto; lista: LinhaI
   const [historico, setHistorico] = useState(false);
   const plano = useMemo(() => planoEnvio(lista, solicitacoes), [lista, solicitacoes]);
   const mudou = useMemo(() => mudouDesde(lista, solicitacoes), [lista, solicitacoes]);
+  const alterados = plano.comparacao.filter((c) => c.era == null || Math.abs(c.era - c.agora) > 0.0005).length + plano.saidas.length;
   const ultima = solicitacoes.find((s) => s.status !== 'cancelada');
   const pendente = !ultima ? lista.length > 0 : mudou;
   const podeEnviar = pode('engenharia', 'editar') && projeto.status !== 'cancelado' && plano.itens.length > 0;
@@ -242,7 +243,7 @@ function SolicitacaoCompra({ projeto, lista }: { projeto: Projeto; lista: LinhaI
               {ultima.prioridade === 'urgente' && <Selo cor="vermelho">Urgente</Selo>}
             </div>
           )}
-          {ultima && mudou && <div className="mt-1 flex items-center gap-1 text-sm text-amber-600 dark:text-amber-400"><AlertTriangle size={14} /> A lista mudou depois do envio da R{ultima.revisao}. Envie uma nova revisão para Compras.</div>}
+          {ultima && mudou && <div className="mt-1 flex items-center gap-1 text-sm text-amber-600 dark:text-amber-400"><AlertTriangle size={14} /> A lista mudou depois do envio da R{ultima.revisao} ({alterados} {alterados === 1 ? 'item' : 'itens'}). Envie uma nova revisão para Compras.</div>}
         </div>
         {solicitacoes.length > 0 && <Botao tamanho="sm" variante="secundario" onClick={() => setHistorico(true)}><History size={14} /> Envios ({solicitacoes.length})</Botao>}
         {pode('engenharia', 'editar') && (
@@ -266,9 +267,13 @@ function SolicitarModal({ projeto, plano, onFechar }: { projeto: Projeto; plano:
   const [erro, setErro] = useState('');
   const [feito, setFeito] = useState<{ codigo: string; revisao: number } | null>(null);
   const complemento = plano.itens.some((i) => i.observacoes.includes('complemento'));
+  // Revisão: cada item mostra quanto era (soma do que está com Compras) e quanto é agora (pedido do Gabriel, Compras v2 item 4).
+  const revisando = plano.comparacao.length > 0;
+  const porChave = new Map(plano.comparacao.map((c) => [c.chave, c]));
   const enviar = useMutation({
     mutationFn: () => {
       const notas = [obs.trim(), complemento ? 'Complemento: parte da lista já foi comprada em outra requisição.' : '',
+        plano.saidas.length ? `Saíram da lista na R${plano.proximaRevisao}: ${plano.saidas.join('; ')}.` : '',
         plano.reducoes.length ? `Itens que diminuíram ou saíram da lista depois de comprados: ${plano.reducoes.join('; ')}.` : ''].filter(Boolean).join('\n');
       return solicitarCompra(projeto.id, plano.itens, necessario || null, prioridade, notas);
     },
@@ -292,7 +297,7 @@ function SolicitarModal({ projeto, plano, onFechar }: { projeto: Projeto; plano:
   return (
     <Modal aberto titulo={`Solicitar compra · ${projeto.codigo} · R${plano.proximaRevisao}`} onFechar={onFechar} largura="max-w-3xl">
       <div className="space-y-3 text-sm">
-        <p className="text-suave">Vai para Compras a lista inteira, somada por material: chapas em kg, perfis em metros e itens comerciais em unidades. Sem valores: preços e fornecedores ficam com Compras.</p>
+        <p className="text-suave">Vai para Compras a lista inteira, somada por material: chapas em kg, perfis em metros e itens comerciais em unidades. Sem valores: preços e fornecedores ficam com Compras.{revisando && ' Cada item que mudou leva para Compras quanto era e quanto é agora.'}</p>
         {plano.substitui.length > 0 && <Aviso tipo="info">A requisição {plano.substitui.map((s) => `${s.codigo} (R${s.revisao})`).join(', ')} ainda não teve nada comprado e será cancelada e substituída por esta revisão.</Aviso>}
         {complemento && <Aviso tipo="info">Parte da lista já foi comprada. Vai só o que falta, marcado como complemento.</Aviso>}
         {plano.reducoes.length > 0 && (
@@ -303,15 +308,30 @@ function SolicitarModal({ projeto, plano, onFechar }: { projeto: Projeto; plano:
         <div className="max-h-72 overflow-auto rounded-lg ring-1 ring-borda">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-pagina text-left text-xs uppercase text-suave">
-              <tr><th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Material / item</th><th className="px-3 py-2 text-right">Quantidade</th><th className="px-3 py-2">Un.</th></tr>
+              <tr>
+                <th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Material / item</th>
+                {revisando && <><th className="px-3 py-2 text-right">Era</th><th className="px-3 py-2 text-right">Agora</th></>}
+                <th className="px-3 py-2 text-right">{revisando ? 'Vai na RC' : 'Quantidade'}</th><th className="px-3 py-2">Un.</th>
+              </tr>
             </thead>
             <tbody>
-              {plano.itens.map((i) => (
-                <tr key={i.chave} className="border-t border-borda">
-                  <td className="px-3 py-1.5 text-suave">{i.grupo}</td>
-                  <td className="px-3 py-1.5">{i.descricao}{i.observacoes && <div className="text-[11px] text-amber-600 dark:text-amber-400">{i.observacoes}</div>}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{qtdBR(i.quantidade)}</td>
-                  <td className="px-3 py-1.5">{i.unidade}</td>
+              {plano.itens.map((i) => {
+                const c = porChave.get(i.chave);
+                const mudou = c && (c.era == null || Math.abs(c.era - c.agora) > 0.0005);
+                return (
+                  <tr key={i.chave} className={`border-t border-borda ${mudou ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''}`}>
+                    <td className="px-3 py-1.5 text-suave">{i.grupo}</td>
+                    <td className="px-3 py-1.5">{i.descricao}{i.observacoes && <div className="text-[11px] text-amber-600 dark:text-amber-400">{i.observacoes}</div>}</td>
+                    {revisando && <><td className="px-3 py-1.5 text-right tabular-nums text-suave">{c?.era == null ? '—' : qtdBR(c.era)}</td><td className="px-3 py-1.5 text-right tabular-nums">{c ? qtdBR(c.agora) : '—'}</td></>}
+                    <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{qtdBR(i.quantidade)}</td>
+                    <td className="px-3 py-1.5">{i.unidade}</td>
+                  </tr>
+                );
+              })}
+              {plano.saidas.map((t) => (
+                <tr key={t} className="border-t border-borda text-suave">
+                  <td className="px-3 py-1.5" /><td className="px-3 py-1.5 line-through" colSpan={1}>{t}</td>
+                  <td className="px-3 py-1.5 text-right text-[11px]" colSpan={4}>saiu da lista</td>
                 </tr>
               ))}
             </tbody>
