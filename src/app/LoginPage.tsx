@@ -1,6 +1,7 @@
 import { Marca } from './Layout';
 import { useState, type FormEvent } from 'react';
 import { supabase } from '@/shared/lib/supabase';
+import { emailDoLogin } from '@/shared/lib/login';
 import { Aviso, Botao, Campo, Entrada } from '@/shared/ui';
 
 export function LoginPage({ erroLink }: { erroLink?: string | null }) {
@@ -15,14 +16,16 @@ export function LoginPage({ erroLink }: { erroLink?: string | null }) {
     e.preventDefault();
     setErro('');
     setEnviando(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    const { error } = await supabase.auth.signInWithPassword({ email: emailDoLogin(email), password: senha });
     setEnviando(false);
-    if (error) setErro(error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message);
+    if (error) setErro(error.message === 'Invalid login credentials' ? 'Login ou senha incorretos.' : error.message);
   }
 
   async function recuperar() {
     setErro('');
     if (!email) return setErro('Informe o e-mail para recuperar a senha.');
+    // Quem entra por usuário não tem e-mail para receber o link: o RH gera outra senha provisória.
+    if (!email.includes('@')) return setErro('Quem entra por usuário pede ao RH uma senha provisória nova.');
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: new URL(import.meta.env.BASE_URL, window.location.origin).href });
     if (error) setErro(error.message);
     else setAviso('Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.');
@@ -35,12 +38,12 @@ export function LoginPage({ erroLink }: { erroLink?: string | null }) {
           <div className="pb-2"><Marca vertical /></div>
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-texto">Entrar no ERP</h1>
-            <p className="text-sm text-suave">Use seu e-mail e senha.</p>
+            <p className="text-sm text-suave">Use seu e-mail ou usuário e a senha.</p>
           </div>
         </div>
         {erro && <Aviso>{erro}</Aviso>}
         {aviso && <Aviso tipo="info">{aviso}</Aviso>}
-        <Campo rotulo="E-mail"><Entrada type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></Campo>
+        <Campo rotulo="E-mail ou usuário"><Entrada type="text" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></Campo>
         <Campo rotulo="Senha"><Entrada type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} required /></Campo>
         <Botao type="submit" className="w-full" disabled={enviando}>{enviando ? 'Entrando…' : 'Entrar'}</Botao>
         <button type="button" onClick={recuperar} className="w-full text-center text-xs text-roxo-600 hover:underline dark:text-roxo-100">Esqueci minha senha</button>

@@ -7,6 +7,7 @@ import { Aviso, Botao, Campo, Entrada, Modal } from '@/shared/ui';
 import type { Funcionario } from '../api';
 import { faltaParaAssinatura, montarHtmlAssinatura, type DadosAssinatura } from './assinatura';
 import { canvasParaBlob, desenharBanner, fotoDeBlob } from './banner';
+import { semEmail } from '@/shared/lib/login';
 
 const paraDataUrl = (b: Blob) => new Promise<string>((ok, falha) => {
   const r = new FileReader();
@@ -32,7 +33,7 @@ export default function AssinaturaGeradaModal({ funcionario, cargo, onFechar }: 
   const [d, setD] = useState<DadosAssinatura>({
     nome: funcionario.nome,
     cargo,
-    email: funcionario.email_corporativo || funcionario.usuarios?.email || '',
+    email: funcionario.email_corporativo || (semEmail(funcionario.usuarios?.email) ? '' : funcionario.usuarios?.email) || '',
     telefone: funcionario.telefone,
   });
   const [foto, setFoto] = useState<HTMLImageElement | null>(null);

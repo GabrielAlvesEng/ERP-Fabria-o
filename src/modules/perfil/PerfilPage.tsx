@@ -8,6 +8,7 @@ import { enviarMinhaFoto, salvarMeuPerfil, tirarMinhaFoto, useMeuUsuario } from 
 import { Avatar } from './Avatar';
 import { MinhaFicha } from '@/modules/rh/MinhaFicha';
 import { NotificacoesPerfil } from '@/modules/comunicacao/CelularAviso';
+import { loginVisivel, semEmail } from '@/shared/lib/login';
 
 // Meu perfil (decisão 68): aberto pelo nome no menu lateral, em qualquer módulo. Cada um edita só os próprios dados.
 export function PerfilPage() {
@@ -65,7 +66,7 @@ export function PerfilPage() {
           <Avatar caminho={eu.foto_caminho} versao={eu.foto_atualizada_em} nome={eu.nome} tamanho={120} />
           <div>
             <div className="font-semibold">{eu.nome}</div>
-            <div className="text-xs text-suave">{eu.email}</div>
+            <div className="text-xs text-suave">{loginVisivel(eu.email)}</div>
           </div>
           <div className="flex flex-wrap justify-center gap-1">
             {eu.perfis.length ? eu.perfis.map((p) => <Selo key={p} cor="roxo">{p}</Selo>) : <Selo>Sem perfil de acesso</Selo>}
@@ -87,7 +88,7 @@ export function PerfilPage() {
             {salvo && <div className="mb-3"><Aviso tipo="info">Dados salvos.</Aviso></div>}
             <div className="grid gap-3 sm:grid-cols-2">
               <Campo rotulo="Nome completo *"><Entrada value={f.nome} onChange={(e) => { setF({ ...f, nome: e.target.value }); setSalvo(false); }} placeholder="Ex.: Pedro Vinicius" /></Campo>
-              <Campo rotulo="E-mail (login)"><Entrada value={eu.email} disabled /></Campo>
+              <Campo rotulo={semEmail(eu.email) ? 'Usuário (login)' : 'E-mail (login)'}><Entrada value={loginVisivel(eu.email)} disabled /></Campo>
               <Campo rotulo="Telefone / WhatsApp"><Entrada value={f.telefone} onChange={(e) => { setF({ ...f, telefone: e.target.value }); setSalvo(false); }} placeholder="(19) 90000-0000" /></Campo>
               <Campo rotulo="Data de nascimento"><CampoData value={f.nascimento} onChange={(v) => { setF({ ...f, nascimento: v }); setSalvo(false); }} /></Campo>
             </div>

@@ -10,6 +10,7 @@ import { listarPropostas } from '../api';
 import { listarCandidatosVendedor, listarVendedores, removerVendedor, salvarVendedor, type Vendedor } from './api';
 import { resumoVendedor } from './regras';
 import { AssinaturaModal, useMinhaAssinatura } from './AssinaturaModal';
+import { loginVisivel } from '@/shared/lib/login';
 
 // Vendas → Vendedores (decisão 62): a equipe com os números do ano. Cadastro e edição só para o RH (permissão rh.editar).
 // Quem não é do RH (o vendedor comum) vê só o próprio cartão (decisão 68).
@@ -51,7 +52,7 @@ export function VendedoresPage() {
                   {rh && <button type="button" onClick={() => setEditando(v)} className="rounded p-1.5 text-suave hover:bg-pagina hover:text-texto" title="Editar"><Pencil size={15} /></button>}
                 </div>
                 <div className="mt-2 space-y-0.5 text-xs text-suave">
-                  {v.usuarios?.email && <div className="flex items-center gap-1.5"><Mail size={12} /> {v.usuarios.email}</div>}
+                  {v.usuarios?.email && <div className="flex items-center gap-1.5"><Mail size={12} /> {loginVisivel(v.usuarios.email)}</div>}
                   {v.telefone && <div className="flex items-center gap-1.5"><Phone size={12} /> {v.telefone}</div>}
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center">
@@ -148,7 +149,7 @@ function FichaVendedor({ vendedor, jaVendedores, onFechar }: { vendedor: Vendedo
       <div className="space-y-3">
         {erro && <Aviso>{erro}</Aviso>}
         {vendedor ? (
-          <div className="text-sm text-suave">Usuário: <b className="text-texto">{vendedor.usuarios?.email ?? vendedor.usuarios?.nome}</b></div>
+          <div className="text-sm text-suave">Usuário: <b className="text-texto">{vendedor.usuarios?.email ? loginVisivel(vendedor.usuarios.email) : vendedor.usuarios?.nome}</b></div>
         ) : (
           <Campo rotulo="Funcionário (RH) *">
             <Selecao value={f.usuario_id} onChange={(e) => {

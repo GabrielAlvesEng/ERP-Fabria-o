@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ban, Copy, KeyRound, Mail, RotateCcw, UserPlus } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
+import { USUARIO, loginVisivel, semEmail, sugerirUsuario } from '@/shared/lib/login';
 import { Aviso, Botao, Caixa, Campo, Entrada, Selecao, Selo } from '@/shared/ui';
 import {
   definirPerfis, definirPermissao, listarPerfis, listarPermissoes, listarPermissoesDosPerfis, obterAcessoUsuario, rhAcesso,
@@ -10,9 +11,10 @@ import {
 } from './api';
 
 // Ficha → Acesso ao ERP (decisão 69, resposta 1): o RH cria o login, gera o link para a pessoa definir a senha,
-// desativa ou reativa e escolhe perfis e ajustes. O ERP nunca vê nem guarda senhas. Quem garante as regras é o banco.
+// desativa ou reativa e escolhe perfis e ajustes. O ERP nunca guarda senhas. Quem garante as regras é o banco.
+// Quem não tem e-mail entra por usuário, com uma senha provisória que o RH entrega em mãos (decisão 106).
 const ACOES = ['ler', 'criar', 'editar', 'aprovar', 'excluir', 'critica'] as const;
-const ROTULO_MODULO: Record<string, string> = { vendas: 'Vendas', engenharia: 'Engenharia', almoxarifado: 'Almoxarifado', rh: 'RH', admin: 'Administração', financeiro: 'Financeiro', compras: 'Compras' };
+const ROTULO_MODULO: Record<string, string> = { vendas: 'Vendas', engenharia: 'Engenharia', almoxarifado: 'Almoxarifado', rh: 'RH', admin: 'Administração', financeiro: 'Financeiro', compras: 'Compras', comunicacao: 'Comunicação' };
 const ROTULO_ACAO: Record<string, string> = { ler: 'Ler', criar: 'Criar', editar: 'Editar', aprovar: 'Aprovar', excluir: 'Excluir', critica: 'Crítica' };
 
 export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
@@ -21,6 +23,9 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
   const gerencia = pode('rh', 'critica');
   const usuario = funcionario.usuarios;
   const [email, setEmail] = useState(funcionario.email_corporativo || funcionario.email_pessoal || '');
+  const [porUsuario, setPorUsuario] = useState(!email);
+  const [nomeUsuario, setNomeUsuario] = useState(sugerirUsuario(funcionario.nome));
+  const [provisoria, setProvisoria] = useState<{ usuario: string; senha: string } | null>(null);
   const [link, setLink] = useState<{ link: string; email: string; convite: boolean; motivo: string } | null>(null);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
@@ -28,13 +33,15 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
   const proprio = funcionario.usuario_id === session?.user.id;
 
   async function executar(f: () => Promise<void>) {
-    setErro(''); setAviso(''); setOcupado(true);
+    setErro(''); setAviso(''); setProvisoria(null); setOcupado(true);
     try { await f(); } catch (e) { setErro(mensagemErro(e)); }
     setOcupado(false);
   }
 
   const criar = () => executar(async () => {
-    const r = await rhAcesso({ acao: 'criar_login', funcionario_id: funcionario.id, email: email.trim() });
+    const r = await rhAcesso(porUsuario
+      ? { acao: 'criar_login', funcionario_id: funcionario.id, usuario: nomeUsuario.trim().toLowerCase() }
+      : { acao: 'criar_login', funcionario_id: funcionario.id, email: email.trim() });
     mostrar(r, 'Login criado. O convite foi enviado');
     await qc.invalidateQueries({ queryKey: ['rh'] });
   });
@@ -44,7 +51,8 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
   });
   // O e-mail sai sozinho pelo Supabase; se não sair, o RH vê o link para mandar por outro meio.
   function mostrar(r: Awaited<ReturnType<typeof rhAcesso>>, texto: string) {
-    if (r.enviado) { setLink(null); setAviso(`${texto} para ${r.email}. O link vale por pouco tempo e funciona uma vez.`); }
+    if (r.senha_provisoria) { setLink(null); setProvisoria({ usuario: r.usuario!, senha: r.senha_provisoria }); }
+    else if (r.enviado) { setLink(null); setAviso(`${texto} para ${r.email}. O link vale por pouco tempo e funciona uma vez.`); }
     else setLink({ link: r.link!, email: r.email!, convite: r.tipo === 'invite', motivo: r.motivo ?? '' });
   }
   const alternar = (ativar: boolean) => executar(async () => {
@@ -60,17 +68,39 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
       <div className="space-y-3">
         {erro && <Aviso>{erro}</Aviso>}
         {aviso && <Aviso tipo="info">{aviso}</Aviso>}
-        {link ? <LinkSenha {...link} nome={funcionario.nome} /> : funcionario.situacao === 'desligado' ? (
+        {provisoria ? <SenhaProvisoria {...provisoria} nome={funcionario.nome} /> : link ? <LinkSenha {...link} nome={funcionario.nome} /> : funcionario.situacao === 'desligado' ? (
           <p className="text-sm text-suave">Funcionário desligado não recebe login.</p>
         ) : (
-          <div className="flex flex-wrap items-end gap-2">
-            <Campo rotulo="E-mail de acesso" className="w-full max-w-sm">
-              <Entrada type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@fabriacobrasil.com.br" />
-            </Campo>
-            <Botao onClick={criar} disabled={ocupado || !email.trim()}><UserPlus size={15} /> Criar login</Botao>
+          <div className="space-y-2">
+            <div className="inline-flex rounded-lg bg-pagina p-0.5 text-sm ring-1 ring-borda" role="group" aria-label="Tipo de login">
+              {[{ v: false, r: 'Por e-mail' }, { v: true, r: 'Por usuário (sem e-mail)' }].map((o) => (
+                <button key={String(o.v)} type="button" onClick={() => setPorUsuario(o.v)} aria-pressed={porUsuario === o.v}
+                  className={`rounded-md px-3 py-1 ${porUsuario === o.v ? 'bg-superficie font-medium shadow-sm ring-1 ring-borda' : 'text-suave hover:text-texto'}`}>{o.r}</button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              {porUsuario ? (
+                <Campo rotulo="Usuário" className="w-full max-w-sm">
+                  <Entrada value={nomeUsuario} onChange={(e) => setNomeUsuario(e.target.value.toLowerCase().replace(/\s+/g, '.'))} placeholder="joao.silva"
+                    autoCapitalize="none" spellCheck={false} />
+                </Campo>
+              ) : (
+                <Campo rotulo="E-mail de acesso" className="w-full max-w-sm">
+                  <Entrada type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@fabriacobrasil.com.br" />
+                </Campo>
+              )}
+              <Botao onClick={criar} disabled={ocupado || (porUsuario ? !USUARIO.test(nomeUsuario.trim()) : !email.trim())}><UserPlus size={15} /> Criar login</Botao>
+            </div>
+            {porUsuario && nomeUsuario.trim() && !USUARIO.test(nomeUsuario.trim()) && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">Use de 3 a 40 letras sem acento, números, ponto, hífen ou sublinhado.</p>
+            )}
           </div>
         )}
-        <p className="text-xs text-suave">O ERP manda um convite por e-mail para a pessoa escolher a própria senha. Depois de criar, escolha os perfis abaixo.</p>
+        {!provisoria && !link && (
+          <p className="text-xs text-suave">{porUsuario
+            ? 'O ERP gera uma senha provisória para você entregar à pessoa. No primeiro acesso ela troca por uma senha só dela. O login começa com o perfil Funcionário (Comunicação e Meu perfil).'
+            : 'O ERP manda um convite por e-mail para a pessoa escolher a própria senha. Depois de criar, escolha os perfis abaixo.'}</p>
+        )}
       </div>
     );
   }
@@ -79,7 +109,7 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <KeyRound size={16} className="text-petroleo-600 dark:text-petroleo-100" />
-        <span>Login: <b>{usuario.email}</b></span>
+        <span>{semEmail(usuario.email) ? 'Usuário' : 'Login'}: <b>{loginVisivel(usuario.email)}</b></span>
         {usuario.ativo ? <Selo cor="verde">Ativo</Selo> : <Selo cor="cinza">Desativado</Selo>}
       </div>
       {erro && <Aviso>{erro}</Aviso>}
@@ -88,15 +118,35 @@ export function AcessoFicha({ funcionario }: { funcionario: Funcionario }) {
       {gerencia && !proprio && (
         <>
           <div className="flex flex-wrap gap-2">
-            <Botao variante="secundario" tamanho="sm" onClick={gerarLink} disabled={ocupado}><KeyRound size={14} /> Enviar link de senha</Botao>
+            <Botao variante="secundario" tamanho="sm" onClick={gerarLink} disabled={ocupado}><KeyRound size={14} /> {semEmail(usuario.email) ? 'Gerar senha provisória' : 'Enviar link de senha'}</Botao>
             {usuario.ativo
               ? <Botao variante="secundario" tamanho="sm" onClick={() => alternar(false)} disabled={ocupado}><Ban size={14} /> Desativar login</Botao>
               : <Botao variante="secundario" tamanho="sm" onClick={() => alternar(true)} disabled={ocupado || funcionario.situacao === 'desligado'}><RotateCcw size={14} /> Reativar login</Botao>}
           </div>
           {link && <LinkSenha {...link} nome={funcionario.nome} />}
+          {provisoria && <SenhaProvisoria {...provisoria} nome={funcionario.nome} />}
           <PerfisEPermissoes usuarioId={funcionario.usuario_id!} />
         </>
       )}
+    </div>
+  );
+}
+
+// Mostrada uma vez, só para o RH. A pessoa troca no primeiro acesso.
+function SenhaProvisoria({ usuario, senha, nome }: { usuario: string; senha: string; nome: string }) {
+  const [copiado, setCopiado] = useState(false);
+  async function copiar() {
+    try { await navigator.clipboard.writeText(`Usuário: ${usuario}\nSenha provisória: ${senha}`); setCopiado(true); } catch { setCopiado(false); }
+  }
+  return (
+    <div className="space-y-2 rounded-lg bg-roxo-50 p-3 text-sm ring-1 ring-roxo-100 dark:bg-roxo-700/20 dark:ring-roxo-700/40">
+      <div className="font-medium">Entregue estes dados a {nome.split(' ')[0]}</div>
+      <div className="grid w-fit grid-cols-[auto_auto] gap-x-4 gap-y-1">
+        <span className="text-suave">Usuário</span><b className="font-mono">{usuario}</b>
+        <span className="text-suave">Senha provisória</span><b className="font-mono">{senha}</b>
+      </div>
+      <p className="text-xs text-suave">Anote agora: a senha não aparece de novo. No primeiro acesso a pessoa escolhe uma senha só dela. Se perder, use "Gerar senha provisória".</p>
+      <Botao tamanho="sm" variante="secundario" onClick={copiar}><Copy size={14} /> {copiado ? 'Copiado' : 'Copiar'}</Botao>
     </div>
   );
 }

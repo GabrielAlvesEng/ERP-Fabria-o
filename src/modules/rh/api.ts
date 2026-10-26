@@ -211,10 +211,10 @@ export const definirPermissao = async (usuarioId: string, modulo: string, acao: 
   ok(await supabase.rpc('definir_permissao_usuario', { p_usuario: usuarioId, p_modulo: modulo, p_acao: acao, p_concedida: concedida }));
 
 type AcaoLogin =
-  | { acao: 'criar_login'; funcionario_id: string; email: string }
+  | { acao: 'criar_login'; funcionario_id: string; email?: string; usuario?: string }
   | { acao: 'link_senha' | 'desativar' | 'reativar'; usuario_id: string };
 
-export async function rhAcesso(pedido: AcaoLogin): Promise<{ enviado?: boolean; motivo?: string; link?: string; email?: string; tipo?: string; ativo?: boolean }> {
+export async function rhAcesso(pedido: AcaoLogin): Promise<{ enviado?: boolean; motivo?: string; link?: string; email?: string; tipo?: string; ativo?: boolean; usuario?: string; senha_provisoria?: string }> {
   // O link do convite volta para o próprio ERP, na tela de definir senha.
   const voltar = new URL(import.meta.env.BASE_URL, window.location.origin).href;
   const { data, error } = await supabase.functions.invoke('rh-acesso', { body: { ...pedido, voltar } });

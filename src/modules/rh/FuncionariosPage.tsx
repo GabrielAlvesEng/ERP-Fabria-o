@@ -8,6 +8,7 @@ import { Aviso, Botao, Cabecalho, Caixa, Entrada, EsqueletoTabela, Selecao, Selo
 import { Avatar } from '@/modules/perfil/Avatar';
 import { listarFuncionarios, listarFuncoes, listarSetores } from './api';
 import { situacao } from './regras';
+import { loginVisivel } from '@/shared/lib/login';
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -75,7 +76,7 @@ export function FuncionariosPage() {
                     <td className="px-4 py-2">{fn ? nomeSetor.get(fn.setor_id) : '—'}</td>
                     <td className="px-4 py-2"><Selo cor={s.cor}>{s.rotulo}</Selo></td>
                     <td className="px-4 py-2">
-                      {f.usuarios ? <span className="inline-flex items-center gap-1.5 text-xs"><KeyRound size={13} className="text-petroleo-600 dark:text-petroleo-100" /> {f.usuarios.email}</span> : <span className="text-xs text-suave">Sem login</span>}
+                      {f.usuarios ? <span className="inline-flex items-center gap-1.5 text-xs"><KeyRound size={13} className="text-petroleo-600 dark:text-petroleo-100" /> {loginVisivel(f.usuarios.email)}</span> : <span className="text-xs text-suave">Sem login</span>}
                     </td>
                     <td className="px-4 py-2 text-right text-suave"><ChevronRight size={16} /></td>
                   </tr>

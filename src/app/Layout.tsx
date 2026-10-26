@@ -13,6 +13,7 @@ import { useMeuUsuario } from '@/modules/perfil/api';
 import { PresencaVendas, useVendasAoVivo } from '@/modules/vendas/aoVivo';
 import { ComunicadosSino, useComunicacaoAoVivo } from '@/modules/comunicacao/ComunicadosSino';
 import { desativarNesteAparelho } from '@/modules/comunicacao/push';
+import { loginVisivel } from '@/shared/lib/login';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 // Decisão 78: o menu é dividido em Operacionais (a operação dos projetos: Vendas, Engenharia, Fabricação...)
@@ -73,7 +74,7 @@ export function Layout() {
       <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-borda bg-superficie md:flex">
         <div className="px-5 py-5"><Marca /></div>
         <ListaModulos menu={menu} />
-        <Rodape email={session?.user.email} sair={sair} />
+        <Rodape email={loginVisivel(session?.user.email)} sair={sair} />
       </aside>
 
       <div className="flex h-full min-w-0 flex-1 flex-col">
@@ -108,7 +109,7 @@ export function Layout() {
                 <button onClick={() => setGaveta(false)} className="rounded-lg p-2 text-suave hover:bg-pagina dark:hover:bg-marinho-700" aria-label="Fechar menu"><X size={20} /></button>
               </div>
               <ListaModulos menu={menu} grande />
-              <Rodape email={session?.user.email} sair={sair} />
+              <Rodape email={loginVisivel(session?.user.email)} sair={sair} />
             </aside>
           </div>
         )}

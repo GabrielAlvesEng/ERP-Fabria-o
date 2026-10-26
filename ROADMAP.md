@@ -22,14 +22,14 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 | 0 | Base do projeto (estrutura, Supabase novo, login, permissões, tema) | A definir junto com o planejamento de Vendas |
 | 1 | **Vendas** (Empresas, Contatos, Propostas, Kanban, Kick-off) | **Em planejamento, aguardando aprovação** |
 | 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Em andamento** (decisões 33 e 96): Dashboard, Kanban de projetos e lista de materiais manual feitos em 22/10/2026, aguardando o teste do Gabriel. Planejamento completo em `docs/PLANEJAMENTO_ENGENHARIA.md`; as outras áreas do projeto vêm depois |
-| 3 | Compras e Financeiro (aprovação e pagamento) | Compras implementado e liberado (decisão 101), aguardando validação do Gabriel; Financeiro: contas a pagar feitas (decisão 105, `docs/PLANEJAMENTO_FINANCEIRO.md`), ainda bloqueado no menu até o Gabriel liberar; contas a receber e fluxo de caixa são as próximas entregas |
+| 3 | Compras e Financeiro (aprovação e pagamento) | Compras implementado e liberado (decisão 101), aguardando validação do Gabriel; Financeiro: contas a pagar feitas (decisão 106, `docs/PLANEJAMENTO_FINANCEIRO.md`), ainda bloqueado no menu até o Gabriel liberar; contas a receber e fluxo de caixa são as próximas entregas |
 | 4 | Almoxarifado | **Liberado em 26/10/2026 (decisão 104)**: estoque, retiradas e pedido de compra. Falta o recebimento das ordens de compra (com o Compras v2). Aguardando os testes do Gabriel |
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |
 | 6 | Fabricação e Qualidade | Não iniciado |
 | 7 | Expedição, campo e Financeiro (faturamento e recebimento) | Não iniciado |
 | 8 | RH, Agenda, Tarefas e Frota | **RH: entregas 1 a 4 feitas e publicadas em 22/10/2026, aguardando validação do Gabriel** (decisão 69: o Gabriel decidiu em 22/10/2026 fazer o RH antes de seguir com a Engenharia; `docs/PLANEJAMENTO_RH.md`). Frota feita (decisão 55). Agenda e Tarefas não iniciadas |
 | 9 | Administração (usuários, permissões, senhas, auditoria) | Parte entra já em Vendas (permissões, senhas) |
-| 10 | Comunicação (avisos dos líderes por setor e comunicados gerais no celular) | **Feito e publicado em 22/10/2026, aguardando o teste do Gabriel em celular de verdade** (decisão 100, `docs/PLANEJAMENTO_COMUNICACAO.md`). Falta: login por usuário para quem não tem e-mail |
+| 10 | Comunicação (avisos dos líderes por setor e comunicados gerais no celular) | **Feito e publicado em 22/10/2026, aguardando o teste do Gabriel em celular de verdade** (decisão 100, `docs/PLANEJAMENTO_COMUNICACAO.md`). Login por usuário para quem não tem e-mail feito em 26/10 (decisão 106). Falta o Gabriel cadastrar o secret `SMTP_SENHA` |
 
 A ordem dos módulos 2 a 8 será revista quando o fluxograma completo da empresa estiver validado.
 
