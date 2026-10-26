@@ -286,7 +286,6 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Só o aceito conta como recebido na OC (Compras e Financeiro veem a entrega); o rejeitado continua faltando na OC, com o motivo registrado.
    - Destino do aceito: requisição de um projeto fica **reservada para o projeto** (fora do estoque comum) até ser entregue à Preparação/Fabricação, com o registro de para quem; item do cadastro sem projeto **entra no estoque** com o custo da OC (atualiza o custo médio; se o produto ainda não estava no estoque, entra com mínimo 0); o resto fica registrado como entregue direto ao setor que pediu.
    - Só quem tem `almoxarifado.editar` registra recebimento e entrega de reserva.
-   - Funciona depois que a migration do Compras v2 estiver no banco (OC por item); antes disso a tela avisa.
    - Migration `20261026000067_almoxarifado_recebimento.sql` (o comentário dela cita "decisão 107" por engano; a decisão é a 108).
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
