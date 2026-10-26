@@ -14,7 +14,7 @@ import {
 } from './api';
 import {
   GRUPOS, ROTULO_CONDICAO, ROTULO_ITEM, ROTULO_ORIGEM, ROTULO_PEDIDO, ROTULO_STATUS, SETORES, UNIDADES, descreverCondicao, lerDias, menoresPrecos,
-  pedidoAtrasado, sugerirEscolhas, totalCotacao, type CondicaoTipo, type GrupoItem, type StatusItem, type StatusRequisicao,
+  pedidoAtrasado, sugerirEscolhas, totalCotacao, type CondicaoTipo, type GrupoItem, type Origem, type StatusItem, type StatusRequisicao,
 } from './regras';
 import { ImportarListaModal } from './ImportarLista';
 import { imprimirOrdem } from './ordemPdf';
@@ -134,7 +134,7 @@ export function RequisicaoPage() {
           onFechar={() => setModal(null)} onConfirmar={(t) => agir(() => cancelarPedido(modal.cancelarOc.id, t))} />
       )}
       {modal && typeof modal === 'object' && 'cotacao' in modal && (
-        <CotacaoModal cotacao={modal.cotacao} fornecedores={fornecedores.filter((f) => f.ativo && (f.id === modal.cotacao?.fornecedor_id || !cotacoes.some((c) => c.fornecedor_id === f.id)))}
+        <CotacaoModal cotacao={modal.cotacao} origem={r.origem} fornecedores={fornecedores.filter((f) => f.ativo && (f.id === modal.cotacao?.fornecedor_id || !cotacoes.some((c) => c.fornecedor_id === f.id)))}
           onFechar={() => setModal(null)}
           onSalvar={(d, arquivo) => agir(async () => { const cid = await salvarCotacao(r.id, modal.cotacao?.id ?? null, d); if (arquivo) await anexarOrcamento(cid, arquivo); })} />
       )}
@@ -347,12 +347,15 @@ function PrecoCelula({ valor, onConfirmar }: { valor: number | undefined; onConf
   );
 }
 
-function CotacaoModal({ cotacao, fornecedores, onFechar, onSalvar }: {
-  cotacao: Cotacao | null; fornecedores: Fornecedor[]; onFechar: () => void; onSalvar: (d: DadosCotacao, arquivo: File | null) => Promise<boolean>;
+// Pagamento padrão (Gabriel, 26/10/2026): a Fabriaço costuma pagar adiantado, exceto os consumíveis que o Almoxarifado
+// pede; a condição cadastrada no fornecedor, quando há, vale mais.
+function CotacaoModal({ cotacao, origem, fornecedores, onFechar, onSalvar }: {
+  cotacao: Cotacao | null; origem: Origem; fornecedores: Fornecedor[]; onFechar: () => void; onSalvar: (d: DadosCotacao, arquivo: File | null) => Promise<boolean>;
 }) {
+  const padrao: CondicaoTipo = origem === 'almoxarifado' ? 'a_combinar' : 'antecipado';
   const [d, setD] = useState<DadosCotacao>({
     fornecedor_id: cotacao?.fornecedor_id ?? '', frete: Number(cotacao?.frete ?? 0), prazo_dias: cotacao?.prazo_dias ?? null,
-    condicao_pagamento: cotacao?.condicao_pagamento ?? '', condicao_tipo: cotacao?.condicao_tipo ?? 'a_combinar', condicao_dias: cotacao?.condicao_dias ?? [],
+    condicao_pagamento: cotacao?.condicao_pagamento ?? '', condicao_tipo: cotacao?.condicao_tipo ?? padrao, condicao_dias: cotacao?.condicao_dias ?? [],
     validade: cotacao?.validade ?? null, observacoes: cotacao?.observacoes ?? '',
   });
   const [dias, setDias] = useState((cotacao?.condicao_dias ?? []).join('/'));
@@ -378,7 +381,7 @@ function CotacaoModal({ cotacao, fornecedores, onFechar, onSalvar }: {
         <Campo rotulo="Fornecedor">
           <Selecao value={d.fornecedor_id} onChange={(e) => {
             const f = fornecedores.find((x) => x.id === e.target.value);
-            setD((x) => ({ ...x, fornecedor_id: e.target.value, condicao_tipo: !cotacao && f ? f.condicao_pagamento : x.condicao_tipo }));
+            setD((x) => ({ ...x, fornecedor_id: e.target.value, condicao_tipo: cotacao ? x.condicao_tipo : f && f.condicao_pagamento !== 'a_combinar' ? f.condicao_pagamento : padrao }));
           }}>
             <option value="">Escolha…</option>
             {fornecedores.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
