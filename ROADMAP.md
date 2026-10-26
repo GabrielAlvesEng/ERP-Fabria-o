@@ -21,7 +21,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 |---|--------|--------|
 | 0 | Base do projeto (estrutura, Supabase novo, login, permissões, tema) | A definir junto com o planejamento de Vendas |
 | 1 | **Vendas** (Empresas, Contatos, Propostas, Kanban, Kick-off) | **Em planejamento, aguardando aprovação** |
-| 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Em andamento** (decisões 33 e 96): Dashboard, Kanban de projetos e lista de materiais manual feitos em 22/10/2026, aguardando o teste do Gabriel. Planejamento completo em `docs/PLANEJAMENTO_ENGENHARIA.md`; as outras áreas do projeto vêm depois |
+| 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Em andamento** (decisões 33 e 96): Dashboard, Kanban de projetos e lista de materiais manual feitos em 22/10/2026; envio da lista para Compras feito em 26/10/2026 (decisão 103); aguardando o teste do Gabriel. Planejamento completo em `docs/PLANEJAMENTO_ENGENHARIA.md`; as outras áreas do projeto vêm depois |
 | 3 | Compras e Financeiro (aprovação e pagamento) | Compras implementado e liberado (decisão 101), aguardando validação do Gabriel; Financeiro: contas a pagar feitas (decisão 105, `docs/PLANEJAMENTO_FINANCEIRO.md`), ainda bloqueado no menu até o Gabriel liberar; contas a receber e fluxo de caixa são as próximas entregas |
 | 4 | Almoxarifado | **Liberado em 26/10/2026 (decisão 104)**: estoque, retiradas e pedido de compra. Falta o recebimento das ordens de compra (com o Compras v2). Aguardando os testes do Gabriel |
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |

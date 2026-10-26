@@ -3,6 +3,8 @@ import { supabase } from '@/shared/lib/supabase';
 import type { ColunaProjeto, Conjunto, MaterialCatalogo, PainelProjeto, Peca, Projeto } from './regras';
 import type { RefsEng } from './biblioteca';
 import type { EventoMes, ItemMes } from './indicadores';
+import type { Solicitacao } from './compra';
+import type { LinhaImportada } from '@/modules/compras/regras';
 
 function ok<T>(r: { data: T | null; error: unknown }): T {
   if (r.error) throw r.error;
@@ -44,7 +46,7 @@ export async function listarPainel(): Promise<PainelProjeto[]> {
   return ok(await supabase.from('painel_engenharia').select('*'));
 }
 
-export interface EventoProjeto { id: string; tipo: 'criado' | 'status' | 'pausa'; de: string | null; para: string | null; justificativa: string; criado_em: string; usuarios: { nome: string } | null }
+export interface EventoProjeto { id: string; tipo: 'criado' | 'status' | 'pausa' | 'compra'; de: string | null; para: string | null; justificativa: string; criado_em: string; usuarios: { nome: string } | null }
 
 export async function listarEventos(projetoId: string): Promise<EventoProjeto[]> {
   return ok(await supabase.from('projeto_eventos').select('id, tipo, de, para, justificativa, criado_em, usuarios(nome)').eq('projeto_id', projetoId).order('criado_em', { ascending: false })) as unknown as EventoProjeto[];
@@ -127,4 +129,17 @@ export async function listarRefsEng(): Promise<RefsEng> {
     supabase.from('bib_chapa_precos').select('cod_mat, tipo_id, valor_kg'),
   ]);
   return { chapas: ok(ch) ?? [], perfis: ok(pf) ?? [], itens: ok(it) ?? [], tipos: ok(tp) ?? [], precosChapa: ok(pc) ?? [] };
+}
+
+// Solicitação de compra da lista de materiais (decisão 103).
+export async function listarSolicitacoes(projetoId: string): Promise<Solicitacao[]> {
+  return ok(await supabase.rpc('engenharia_solicitacoes', { p_projeto: projetoId })) ?? [];
+}
+
+export async function solicitarCompra(projetoId: string, itens: LinhaImportada[], necessarioEm: string | null, prioridade: 'normal' | 'urgente', observacoes: string) {
+  const r = ok(await supabase.rpc('engenharia_solicitar_compra', {
+    p_projeto: projetoId, p_itens: itens.map(({ grupo, descricao, quantidade, unidade, observacoes: o }) => ({ grupo, descricao, quantidade, unidade, observacoes: o })),
+    p_necessario_em: necessarioEm, p_prioridade: prioridade, p_observacoes: observacoes,
+  })) as { id: string; codigo: string; revisao: number; substituidas: string[] }[];
+  return r[0];
 }

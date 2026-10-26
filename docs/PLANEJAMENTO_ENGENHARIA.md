@@ -67,7 +67,7 @@ Pedido do Gabriel (22/10/2026): a Engenharia passa a ter Dashboard de projetos, 
 - **Revisões da lista** (R0, R1…), independentes das revisões da proposta e do CAD. Cada revisão guarda uma cópia congelada da lista.
 - **PDF personalizado** com o cabeçalho da Fabriaço: código e nome do projeto, cliente, revisão, data, responsável e os três blocos.
 - **Enviar para Compras**: congela a revisão. A partir daí a Engenharia não altera aquela revisão; mudanças na árvore geram aviso "lista diferente da enviada" e exigem **nova revisão**, que mostra as diferenças (entrou, saiu, mudou quantidade) antes de enviar.
-- Sem consulta de estoque nesta tela. O módulo de Compras ainda não existe: o envio fica registrado e pronto para Compras ler quando ele for feito.
+- Sem consulta de estoque nesta tela. **Feito em 26/10/2026 (decisão 103):** o envio vira uma requisição em Compras (RC) por revisão; RC ainda aberta ou em cotação é substituída, e depois da aprovação a nova revisão leva só o complemento.
 
 ### 3.5 Itens de corte
 - Peças fabricadas organizadas por **operação** (LC, LP, PO, GU, DO, CL, US), depois **material**, depois **espessura** (chapas) ou **perfil**.

@@ -1,17 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, ClipboardList, Download, FileUp, History, ListTree, Pencil, Plus, Settings2, Table2, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ClipboardList, Download, Send, ShoppingCart, FileUp, History, ListTree, Pencil, Plus, Settings2, Table2, Trash2 } from 'lucide-react';
 import { ExcluirProjetoModal } from './ExcluirProjetoModal';
 import { KickoffAba } from '@/modules/vendas/kickoff/KickoffAba';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
+import { dataBR, dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
 import { useIndicadorAbas } from '@/shared/ui/AbasModulo';
 import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, Entrada, EsqueletoDetalhe, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
   adicionarPeca, atualizarPeca, atualizarProjeto, excluirItem, listarCatalogo, listarConjuntos, listarEventos, listarImportacoesCad, listarPecas,
-  listarRefsEng, listarUsuariosAtivos, obterProjeto, pausarProjeto,
+  listarRefsEng, listarSolicitacoes, listarUsuariosAtivos, obterProjeto, pausarProjeto, solicitarCompra,
 } from './api';
+import { agruparLista, mudouDesde, planoEnvio, type Solicitacao } from './compra';
+import { ROTULO_STATUS, type LinhaImportada, type PecaProjeto } from '@/modules/compras/regras';
 import { LIMITE_DIFERENCA, blocoDaPeca, estimar, resumoCompra, type RefsEng } from './biblioteca';
 import { descricaoDoItem } from './CampoBiblioteca';
 import { ArvoreView } from './Arvore';
@@ -143,6 +145,17 @@ function ListaMateriais({ projeto, conjuntos, pecas }: { projeto: Projeto; conju
   const resumo = useMemo(() => resumoCompra(listaMateriais(pecas, conjuntos, false), refs, nomeMaterial), [pecas, conjuntos, refs, catalogo]); // eslint-disable-line react-hooks/exhaustive-deps
   const custoResumo = resumo.reduce((s, l) => s + (l.custo ?? 0), 0);
   const semCusto = ativas.filter((l) => l.est.custoUnit == null).length;
+  // Mesma soma da importação de Compras (agruparLista): só o que está no CAD/lista hoje.
+  const paraCompra = useMemo(() => agruparLista(listaMateriais(pecas, conjuntos, false).map((l): PecaProjeto => {
+    const est = estimar(l, refs);
+    const item = l.bib_tipo === 'item' && l.bib_id ? refs.itens.find((x) => x.id === l.bib_id) : undefined;
+    return {
+      descricao: l.descricao, cod_op: l.cod_op, cod_mat: l.cod_mat, material: catalogo.find((c) => c.cod_mat === l.cod_mat)?.nome || l.material || null,
+      espessura: l.espessura ?? null, largura: l.largura ?? null, comprimento: l.comprimento ?? null, peso_unit: l.peso_unit ?? est.pesoBib ?? null,
+      bib_tipo: l.bib_id ? l.bib_tipo ?? null : null, bib_descricao: l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) : null,
+      bib_grupo: item?.grupo ?? null, bib_unidade: item?.unidade ?? null, qtd_total: l.qtdTotal,
+    };
+  })), [pecas, conjuntos, refs, catalogo]);
 
   function exportarCsv() {
     if (visao === 'compra') {
@@ -157,6 +170,7 @@ function ListaMateriais({ projeto, conjuntos, pecas }: { projeto: Projeto; conju
 
   return (
     <div className="space-y-4">
+      <SolicitacaoCompra projeto={projeto} lista={paraCompra} />
       <div className="grid gap-3 sm:grid-cols-3">
         {BLOCOS.map((b) => {
           const doBloco = ativas.filter((l) => l.bloco === b);
@@ -190,6 +204,165 @@ function ListaMateriais({ projeto, conjuntos, pecas }: { projeto: Projeto; conju
       ))}
       {editando && <PecaModal projeto={projeto} bloco={editando.bloco} peca={editando.peca} conjuntos={conjuntos} catalogo={catalogo} onFechar={() => setEditando(null)} />}
     </div>
+  );
+}
+
+const COR_REQ: Record<Solicitacao['status'], 'cinza' | 'roxo' | 'verde' | 'vermelho' | 'amarelo' | 'azul'> = {
+  aberta: 'azul', em_cotacao: 'roxo', aguardando_aprovacao: 'amarelo', aprovada: 'verde', pedido_emitido: 'verde', entregue: 'verde', cancelada: 'cinza',
+};
+const qtdBR = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+
+// Envio da lista de materiais para Compras (decisão 103). Cada envio é uma revisão (R0, R1…) e vira uma RC em Compras.
+function SolicitacaoCompra({ projeto, lista }: { projeto: Projeto; lista: LinhaImportada[] }) {
+  const { pode } = useAuth();
+  const { data: solicitacoes = [], error } = useQuery({ queryKey: ['eng', projeto.id, 'solicitacoes'], queryFn: () => listarSolicitacoes(projeto.id) });
+  const [abrindo, setAbrindo] = useState(false);
+  const [historico, setHistorico] = useState(false);
+  const plano = useMemo(() => planoEnvio(lista, solicitacoes), [lista, solicitacoes]);
+  const mudou = useMemo(() => mudouDesde(lista, solicitacoes), [lista, solicitacoes]);
+  const ultima = solicitacoes.find((s) => s.status !== 'cancelada');
+  const pendente = !ultima ? lista.length > 0 : mudou;
+  const podeEnviar = pode('engenharia', 'editar') && projeto.status !== 'cancelado' && plano.itens.length > 0;
+
+  return (
+    <Cartao className="p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="rounded-xl bg-petroleo-50 p-2.5 text-petroleo-600 dark:bg-petroleo-600/30 dark:text-teal-100"><ShoppingCart size={18} /></div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold">Solicitação para Compras</div>
+          {error ? <div className="text-sm text-red-600">{mensagemErro(error)}</div> : !ultima ? (
+            <div className="text-sm text-suave">{lista.length ? `A lista ainda não foi enviada. ${lista.length} ${lista.length === 1 ? 'item' : 'itens'} para comprar.` : 'Lance peças e itens na lista para poder solicitar a compra.'}</div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-suave">
+              <span className="font-mono font-semibold text-texto">{ultima.codigo}</span><span>· R{ultima.revisao}</span>
+              <Selo cor={COR_REQ[ultima.status]}>{ROTULO_STATUS[ultima.status]}</Selo>
+              <span>enviada em {dataHoraBR(ultima.criado_em)}{ultima.solicitante ? ` por ${ultima.solicitante}` : ''}</span>
+              {ultima.necessario_em && <span>· precisa em {dataBR(ultima.necessario_em)}</span>}
+              {ultima.prioridade === 'urgente' && <Selo cor="vermelho">Urgente</Selo>}
+            </div>
+          )}
+          {ultima && mudou && <div className="mt-1 flex items-center gap-1 text-sm text-amber-600 dark:text-amber-400"><AlertTriangle size={14} /> A lista mudou depois do envio da R{ultima.revisao}. Envie uma nova revisão para Compras.</div>}
+        </div>
+        {solicitacoes.length > 0 && <Botao tamanho="sm" variante="secundario" onClick={() => setHistorico(true)}><History size={14} /> Envios ({solicitacoes.length})</Botao>}
+        {pode('engenharia', 'editar') && (
+          <Botao tamanho="sm" variante={pendente ? 'primario' : 'secundario'} disabled={!podeEnviar} onClick={() => setAbrindo(true)}
+            title={plano.itens.length ? undefined : 'Nada a solicitar: a lista está vazia ou já foi toda pedida'}>
+            <Send size={14} /> {ultima ? 'Enviar nova revisão' : 'Solicitar compra'}
+          </Botao>
+        )}
+      </div>
+      {abrindo && <SolicitarModal projeto={projeto} plano={plano} onFechar={() => setAbrindo(false)} />}
+      {historico && <HistoricoSolicitacoes solicitacoes={solicitacoes} onFechar={() => setHistorico(false)} />}
+    </Cartao>
+  );
+}
+
+function SolicitarModal({ projeto, plano, onFechar }: { projeto: Projeto; plano: ReturnType<typeof planoEnvio>; onFechar: () => void }) {
+  const qc = useQueryClient();
+  const [necessario, setNecessario] = useState(projeto.prazo ?? '');
+  const [prioridade, setPrioridade] = useState<'normal' | 'urgente'>('normal');
+  const [obs, setObs] = useState('');
+  const [erro, setErro] = useState('');
+  const [feito, setFeito] = useState<{ codigo: string; revisao: number } | null>(null);
+  const complemento = plano.itens.some((i) => i.observacoes.includes('complemento'));
+  const enviar = useMutation({
+    mutationFn: () => {
+      const notas = [obs.trim(), complemento ? 'Complemento: parte da lista já está em aprovação ou comprada em outra requisição.' : '',
+        plano.reducoes.length ? `Itens que diminuíram ou saíram da lista depois de comprados: ${plano.reducoes.join('; ')}.` : ''].filter(Boolean).join('\n');
+      return solicitarCompra(projeto.id, plano.itens, necessario || null, prioridade, notas);
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['eng', projeto.id] });
+      qc.invalidateQueries({ queryKey: ['compras'] });
+      setFeito({ codigo: r.codigo, revisao: r.revisao });
+    },
+    onError: (e) => setErro(mensagemErro(e)),
+  });
+
+  if (feito) return (
+    <Modal aberto titulo="Solicitação enviada" onFechar={onFechar}>
+      <div className="space-y-3 text-sm">
+        <p>A lista R{feito.revisao} foi enviada para Compras como <span className="font-mono font-semibold">{feito.codigo}</span>. Ela aparece no painel de Compras, coluna Abertas.</p>
+        <div className="flex justify-end"><Botao onClick={onFechar}>Fechar</Botao></div>
+      </div>
+    </Modal>
+  );
+
+  return (
+    <Modal aberto titulo={`Solicitar compra · ${projeto.codigo} · R${plano.proximaRevisao}`} onFechar={onFechar} largura="max-w-3xl">
+      <div className="space-y-3 text-sm">
+        <p className="text-suave">Vai para Compras a lista inteira, somada por material: chapas em kg, perfis em metros e itens comerciais em unidades. Sem valores: preços e fornecedores ficam com Compras.</p>
+        {plano.substitui.length > 0 && <Aviso tipo="info">A requisição {plano.substitui.map((s) => `${s.codigo} (R${s.revisao})`).join(', ')} ainda não foi para aprovação e será cancelada e substituída por esta revisão.</Aviso>}
+        {complemento && <Aviso tipo="info">Parte da lista já está em aprovação ou comprada. Vai só o que falta, marcado como complemento.</Aviso>}
+        {plano.reducoes.length > 0 && (
+          <Aviso>Itens que já foram para aprovação ou compra e diminuíram ou saíram da lista (avise Compras se for preciso cancelar ou devolver):
+            <ul className="mt-1 list-disc pl-5">{plano.reducoes.map((r) => <li key={r}>{r}</li>)}</ul>
+          </Aviso>
+        )}
+        <div className="max-h-72 overflow-auto rounded-lg ring-1 ring-borda">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-pagina text-left text-xs uppercase text-suave">
+              <tr><th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Material / item</th><th className="px-3 py-2 text-right">Quantidade</th><th className="px-3 py-2">Un.</th></tr>
+            </thead>
+            <tbody>
+              {plano.itens.map((i) => (
+                <tr key={i.chave} className="border-t border-borda">
+                  <td className="px-3 py-1.5 text-suave">{i.grupo}</td>
+                  <td className="px-3 py-1.5">{i.descricao}{i.observacoes && <div className="text-[11px] text-amber-600 dark:text-amber-400">{i.observacoes}</div>}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{qtdBR(i.quantidade)}</td>
+                  <td className="px-3 py-1.5">{i.unidade}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo rotulo="Precisa em"><CampoData value={necessario} onChange={setNecessario} /></Campo>
+          <Campo rotulo="Prioridade">
+            <Selecao value={prioridade} onChange={(e) => setPrioridade(e.target.value as 'normal' | 'urgente')}>
+              <option value="normal">Normal</option><option value="urgente">Urgente</option>
+            </Selecao>
+          </Campo>
+        </div>
+        <Campo rotulo="Observações para Compras"><AreaTexto value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ex.: entregar na fábrica, preferir chapa de 3000 × 1200" /></Campo>
+        {erro && <Aviso>{erro}</Aviso>}
+        <div className="flex justify-end gap-2">
+          <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
+          <Botao disabled={enviar.isPending} onClick={() => { setErro(''); enviar.mutate(); }}><Send size={14} /> {enviar.isPending ? 'Enviando…' : `Enviar ${plano.itens.length} ${plano.itens.length === 1 ? 'item' : 'itens'}`}</Botao>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function HistoricoSolicitacoes({ solicitacoes, onFechar }: { solicitacoes: Solicitacao[]; onFechar: () => void }) {
+  const [aberta, setAberta] = useState<string | null>(solicitacoes[0]?.id ?? null);
+  return (
+    <Modal aberto titulo="Envios para Compras" onFechar={onFechar} largura="max-w-2xl">
+      <div className="space-y-2 text-sm">
+        {solicitacoes.map((s) => (
+          <div key={s.id} className="rounded-lg ring-1 ring-borda">
+            <button onClick={() => setAberta(aberta === s.id ? null : s.id)} className="flex w-full flex-wrap items-center gap-2 px-3 py-2 text-left">
+              <span className="font-semibold">R{s.revisao}</span><span className="font-mono text-xs">{s.codigo}</span>
+              <Selo cor={COR_REQ[s.status]}>{ROTULO_STATUS[s.status]}</Selo>
+              <span className="ml-auto text-xs text-suave">{dataHoraBR(s.criado_em)}{s.solicitante ? ` · ${s.solicitante}` : ''} · {s.itens.length} itens</span>
+            </button>
+            {aberta === s.id && (
+              <table className="w-full border-t border-borda text-sm">
+                <tbody>
+                  {s.itens.map((i, n) => (
+                    <tr key={n} className="border-t border-borda first:border-0">
+                      <td className="px-3 py-1 text-suave">{i.grupo}</td><td className="px-3 py-1">{i.descricao}</td>
+                      <td className="px-3 py-1 text-right tabular-nums">{qtdBR(Number(i.quantidade))} {i.unidade}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }
 
@@ -450,7 +623,7 @@ function DadosModal({ projeto, onFechar }: { projeto: Projeto; onFechar: () => v
                 <li key={ev.id} className="flex flex-wrap gap-x-2">
                   <span className="tabular-nums text-suave">{dataHoraBR(ev.criado_em)}</span>
                   <span className="font-medium">
-                    {ev.tipo === 'criado' ? 'Projeto aberto' : ev.tipo === 'pausa' ? (ev.para === 'pausado' ? 'Pausado' : 'Retomado') : `${nome(ev.de)} → ${nome(ev.para)}`}
+                    {ev.tipo === 'criado' ? 'Projeto aberto' : ev.tipo === 'compra' ? `Compra solicitada (${ev.para})` : ev.tipo === 'pausa' ? (ev.para === 'pausado' ? 'Pausado' : 'Retomado') : `${nome(ev.de)} → ${nome(ev.para)}`}
                   </span>
                   {ev.justificativa && <span>· {ev.justificativa}</span>}
                   <span className="text-suave">· {ev.usuarios?.nome ?? 'Sistema'}</span>
