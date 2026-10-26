@@ -1,6 +1,6 @@
 # Planejamento do módulo Almoxarifado (v1, 22/10/2026)
 
-**Estado: aprovado ("Pode executar", seguindo as recomendações das perguntas). Entregas 1, 2 e 4 feitas e liberadas em 26/10/2026 (decisão 104); a entrega 3 (recebimento) vem com o Compras v2.**
+**Estado: aprovado ("Pode executar", seguindo as recomendações das perguntas). Entregas 1 a 4 feitas e liberadas em 26/10/2026 (decisões 104 e 108); o recebimento funciona quando o Compras v2 estiver no banco.**
 
 Base: a explicação do Gabriel de 22/10/2026, o Documento Mestre (§5.4), o fluxograma (bloco "Almoxarifado": recebimento parcial aceito ou rejeitado, estoque ou destino direto no projeto) e o planejamento v2 de Compras (`/mnt/project-files/compras/PLANEJAMENTO_COMPRAS_V2.md`), com quem este plano foi combinado.
 

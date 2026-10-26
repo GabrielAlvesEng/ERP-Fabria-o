@@ -75,3 +75,31 @@ export const listarComprasAbertas = async (): Promise<CompraAberta[]> => ok(awai
 export async function solicitarCompra(p: { itens: { item_id: string; quantidade: number }[]; necessario_em: string | null; prioridade: 'normal' | 'urgente'; observacoes: string }): Promise<string> {
   return ok(await supabase.rpc('alm_solicitar_compra', { p_itens: p.itens, p_necessario_em: p.necessario_em, p_prioridade: p.prioridade, p_observacoes: p.observacoes }));
 }
+
+// ---------- Recebimento das ordens de compra (decisão 108) ----------
+export type DestinoRecebimento = 'estoque' | 'projeto' | 'setor';
+export interface ItemOC { item_id: string; descricao: string; unidade: string; grupo: string; quantidade: number; recebida: number; valor_unit: number; destino: DestinoRecebimento }
+export interface OCReceber {
+  id: string; codigo: string; status: 'aguardando_entrega' | 'entregue_parcial'; previsao: string | null; emitido_em: string; fornecedor: string | null;
+  requisicao_codigo: string; requisicao_titulo: string; origem: string; setor: string; projeto_codigo: string; projeto_titulo: string; itens: ItemOC[] | null;
+}
+export interface Reserva {
+  id: string; projeto_codigo: string; projeto_titulo: string; descricao: string; unidade: string; quantidade: number; pedido_codigo: string;
+  status: 'reservado' | 'entregue'; entregue_para: string; entregue_em: string | null; criado_em: string;
+}
+export interface Recebimento {
+  id: string; pedido_codigo: string; fornecedor_nome: string; data: string; observacao: string; criado_em: string;
+  usuarios?: { nome: string } | null;
+  alm_recebimento_itens: { id: string; descricao: string; unidade: string; aceita: number; rejeitada: number; motivo: string; destino: DestinoRecebimento }[];
+}
+export const recebimentoDisponivel = async (): Promise<boolean> => ok(await supabase.rpc('alm_recebimento_disponivel'));
+export const listarOCsReceber = async (): Promise<OCReceber[]> => ok(await supabase.rpc('alm_ocs_a_receber'));
+export const listarReservas = async (): Promise<Reserva[]> => ok(await supabase.from('alm_reservas').select('*').order('criado_em', { ascending: false }).limit(500));
+export const listarRecebimentos = async (): Promise<Recebimento[]> =>
+  ok(await supabase.from('alm_recebimentos').select('*, usuarios(nome), alm_recebimento_itens(*)').order('criado_em', { ascending: false }).limit(50));
+export async function receberOC(pedido: string, data: string, itens: { item_id: string; aceita: number; rejeitada: number; motivo: string }[], observacao: string): Promise<void> {
+  ok(await supabase.rpc('alm_receber_oc', { p_pedido: pedido, p_data: data, p_itens: itens, p_observacao: observacao }));
+}
+export async function entregarReserva(id: string, para: string): Promise<void> {
+  ok(await supabase.rpc('alm_entregar_reserva', { p_reserva: id, p_para: para }));
+}
