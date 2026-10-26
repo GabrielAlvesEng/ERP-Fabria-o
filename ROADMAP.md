@@ -23,7 +23,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 | 1 | **Vendas** (Empresas, Contatos, Propostas, Kanban, Kick-off) | **Em planejamento, aguardando aprovação** |
 | 2 | Engenharia (dados técnicos, árvore de montagens, BOM, SolidWorks) | **Em andamento** (decisões 33 e 96): Dashboard, Kanban de projetos e lista de materiais manual feitos em 22/10/2026; envio da lista para Compras feito em 26/10/2026 (decisão 103); aguardando o teste do Gabriel. Planejamento completo em `docs/PLANEJAMENTO_ENGENHARIA.md`; as outras áreas do projeto vêm depois |
 | 3 | Compras e Financeiro (pagamento) | Compras implementado e liberado (decisão 101); Compras v2 (decisão 107: produtos, orçamento anexado, fornecedor por item, uma OC por fornecedor, Kanban por item, sem aprovação) publicado em 26/10/2026 (migration 66 aplicada pelo Gabriel); Financeiro: contas a pagar feitas (decisão 106, `docs/PLANEJAMENTO_FINANCEIRO.md`), ainda bloqueado no menu até o Gabriel liberar; contas a receber e fluxo de caixa são as próximas entregas |
-| 4 | Almoxarifado | **Liberado em 26/10/2026 (decisões 104 e 108)**: estoque, retiradas, pedido de compra e recebimento das OCs (este funciona quando o Compras v2 estiver no banco). Aguardando os testes do Gabriel |
+| 4 | Almoxarifado | **Liberado em 26/10/2026 (decisões 104 e 108)**: estoque, retiradas, pedido de compra e recebimento das OCs. Aguardando os testes do Gabriel |
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |
 | 6 | Fabricação e Qualidade | Não iniciado |
 | 7 | Expedição, campo e Financeiro (faturamento e recebimento) | Não iniciado |
