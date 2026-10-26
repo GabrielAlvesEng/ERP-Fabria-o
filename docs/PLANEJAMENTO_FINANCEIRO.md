@@ -105,4 +105,4 @@ Contas a receber, despesas avulsas, fluxo de caixa, conciliação bancária e in
 3. Resumo no celular/e-mail: não por enquanto.
 4. Pagamento costuma ser adiantado, exceto consumíveis pedidos pelo Almoxarifado.
 5. Perfil Financeiro: por enquanto só o Fabiano (CFO).
-6. Explicada de novo ao Gabriel; aguardando a resposta.
+6. Contas a receber: "não, por enquanto não" (26/10). Fica para quando o Gabriel pedir.

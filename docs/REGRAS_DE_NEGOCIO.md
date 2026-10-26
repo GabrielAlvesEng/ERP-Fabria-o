@@ -306,6 +306,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - **Sem aprovação do Financeiro:** "Financeiro não precisa aprovar, se acontecer alguma coisa ele só não paga" (igual à decisão 107; substitui a aprovação da decisão 3).
    - **Sem resumo no celular/e-mail por enquanto:** fica só o sino e o aviso do Windows.
    - **Condição de pagamento:** "a gente costuma pagar os fornecedores adiantado, exceto os fornecedores de itens consumíveis que o Almoxarifado vai pedir". O Financeiro já trata todas as condições; o padrão "antecipado" na OC foi repassado à conversa de Compras.
+   - **Contas a receber (entrega 2) fica para depois:** "não, por enquanto não" (26/10). Só começa quando o Gabriel pedir.
    - **Módulo liberado no menu** (Gabriel, 26/10: "Pode publicar"). O Gabriel continua com Administração e acesso total.
    - **Quem paga:** por enquanto só o Fabiano (CFO) recebe o perfil Financeiro (além da Administração). Ele ainda não tem login no ERP: o RH cria pela ficha → Acesso ao ERP e o perfil Financeiro é dado em seguida.
 
