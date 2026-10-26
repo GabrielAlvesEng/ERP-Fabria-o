@@ -183,13 +183,17 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - Funções: `enviar_comunicado`, `anexar_comunicado`, `marcar_comunicado_lido`, `dar_ciente_comunicado`, `cancelar_comunicado`, `comunicacao_meu_papel`, `comunicacao_pessoas` (sem dados pessoais), `comunicado_para_envio` e `registrar_envio_comunicado` (usadas pela Edge Function `comunicacao-envio`, como quem enviou), `registrar_aparelho`, `remover_aparelho`.
 - Permissão `comunicacao.critica` = "Comunicado geral". Perfil "Funcionário" sem permissões. Bucket privado `comunicacao` ({comunicado}/{arquivo}). `comunicados` e `comunicado_destinatarios` no Realtime.
 
-## Compras (decisão 101, migration 57)
+## Compras (decisões 101 e 107, migrations 57 e 66)
 
-- `compras_requisicoes` (código RC-AA-NNN, título, projeto com cópia do código e título, setor, precisa em, prioridade, status, cotação escolhida, solicitante). Status: aberta, em_cotacao, aguardando_aprovacao, aprovada, pedido_emitido, entregue, cancelada; só muda pelas funções.
-- `compras_requisicao_itens` (grupo, descrição, quantidade, unidade, observação), `compras_cotacoes` (fornecedor, frete, prazo em dias, condição de pagamento, validade; uma por fornecedor), `compras_cotacao_precos` (preço unitário por item).
-- `compras_pedidos` (código OC-AA-NNN, cotação, fornecedor, valores, previsão, status aguardando_entrega/entregue_parcial/entregue), `compras_eventos` (histórico), `compras_contadores` (RC e OC por ano).
-- `fornecedores` ganhou `cnpj`, `categorias`, `condicao_pagamento`.
-- Funções: `compras_enviar_aprovacao`, `compras_decidir` (Financeiro), `compras_emitir_pedido`, `compras_registrar_entrega`, `compras_cancelar`, `compras_total_cotacao`, `compras_projetos`, `compras_pecas_projeto`.
+- `compras_requisicoes` (código RC-AA-NNN, título, projeto com cópia do código e título, setor, **origem** engenharia/almoxarifado/compras, precisa em, prioridade, solicitante, `engenharia_revisao`). Status: aberta, concluida, cancelada; só muda pelas funções.
+- `compras_requisicao_itens` (grupo, descrição, quantidade, unidade, observação, produto `bib_tipo` + `bib_id`, **status** a_comprar/comprado/recebido/cancelado, `cotacao_escolhida_id` = fornecedor escolhido).
+- `compras_cotacoes` (fornecedor, frete, prazo em dias, `condicao_tipo` + `condicao_dias`, detalhe do pagamento, validade, `orcamento_caminho`; uma por fornecedor), `compras_cotacao_precos` (preço unitário por item).
+- `compras_pedidos` (código OC-AA-NNN, requisição, cotação, fornecedor, valores, previsão, condição de pagamento copiada da cotação, orçamento, status aguardando_entrega/entregue_parcial/entregue/cancelada, motivo do cancelamento; várias por requisição), `compras_pedido_itens` (item, quantidade, preço, quantidade recebida), `compras_eventos` (histórico), `compras_contadores` (RC e OC por ano).
+- View `compras_historico` (cada item de OC não cancelada com produto, fornecedor, data e preço): ficha do produto.
+- Espaço privado `compras` ({cotação}/{arquivo}): Compras grava; Compras e Financeiro leem.
+- Biblioteca (`bib_*`): Compras lê e edita; Almoxarifado lê.
+- `fornecedores` ganhou `cnpj`, `categorias`, `condicao_pagamento`, `razao_social`, `endereco`.
+- Funções: `compras_solicitar` (Engenharia, Almoxarifado ou Compras), `compras_gerar_pedidos`, `compras_registrar_entrega` (por item), `compras_cancelar_pedido`, `compras_cancelar`, `compras_projetos`, `compras_pecas_projeto_v2`; `compras_situacao_pagamento` vem do Financeiro.
 
 ## Almoxarifado (decisão 104, migrations 61 a 63)
 - `alm_itens` (produto da Biblioteca por `bib_tipo` + `bib_id`, unidade, saldo, mínimo, local, custo médio, ativo). Só mínimo, local e ativo mudam direto; o saldo muda só pelas funções.

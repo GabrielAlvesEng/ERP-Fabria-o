@@ -1,15 +1,18 @@
 // Solicitação de compra da lista de materiais (decisão 103): a Engenharia manda a lista inteira para Compras.
 // A soma é a mesma da importação de Compras (agruparLista); cada envio é uma revisão R0, R1…
-import { agruparLista, type GrupoItem, type LinhaImportada, type StatusRequisicao } from '@/modules/compras/regras';
+import { ROTULO_STATUS, agruparLista, type GrupoItem, type LinhaImportada, type StatusRequisicao } from '@/modules/compras/regras';
 
 export interface ItemSolicitado { grupo: GrupoItem; descricao: string; quantidade: number; unidade: string }
+// Compras v2: a requisição aberta que já tem item comprado volta como "em_compra" (engenharia_solicitacoes).
+export type StatusSolicitacao = StatusRequisicao | 'em_compra';
+export const ROTULO_SOLICITACAO: Record<StatusSolicitacao, string> = { ...ROTULO_STATUS, em_compra: 'Em compra' };
 export interface Solicitacao {
-  id: string; codigo: string; revisao: number; status: StatusRequisicao; necessario_em: string | null; prioridade: 'normal' | 'urgente';
+  id: string; codigo: string; revisao: number; status: StatusSolicitacao; necessario_em: string | null; prioridade: 'normal' | 'urgente';
   criado_em: string; solicitante: string | null; itens: ItemSolicitado[];
 }
 
-// Ainda dá para trocar: a requisição aberta ou em cotação é substituída pela nova revisão.
-export const SUBSTITUIVEL: StatusRequisicao[] = ['aberta', 'em_cotacao'];
+// Ainda dá para trocar: a requisição aberta sem nada comprado é substituída pela nova revisão.
+export const SUBSTITUIVEL: StatusSolicitacao[] = ['aberta'];
 
 const chave = (i: Pick<ItemSolicitado, 'grupo' | 'descricao' | 'unidade'>) => `${i.grupo}|${i.descricao.trim().toLowerCase()}|${i.unidade}`;
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -23,11 +26,11 @@ function somar(itens: Pick<ItemSolicitado, 'grupo' | 'descricao' | 'unidade' | '
 export interface PlanoEnvio {
   itens: LinhaImportada[];        // o que vai na nova requisição
   substitui: Solicitacao[];        // requisições abertas/em cotação que serão canceladas
-  reducoes: string[];              // o que já foi comprado (ou está em aprovação) e saiu ou diminuiu na lista
+  reducoes: string[];              // o que já foi comprado e saiu ou diminuiu na lista
   proximaRevisao: number;
 }
 
-// Lista atual × o que já está com Compras e não pode mais ser trocado (em aprovação, aprovado, pedido, entregue):
+// Lista atual × o que já está com Compras e não pode mais ser trocado (já tem item comprado, ou concluída):
 // vai só o que falta. Sem nada travado, vai a lista inteira.
 export function planoEnvio(atual: LinhaImportada[], solicitacoes: Solicitacao[]): PlanoEnvio {
   const vivas = solicitacoes.filter((s) => s.status !== 'cancelada');

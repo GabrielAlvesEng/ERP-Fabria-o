@@ -1,16 +1,19 @@
 import { dataBR, formatarCNPJ, moeda } from '@/shared/lib/formato';
-import type { Cotacao, Fornecedor, ItemRequisicao, Pedido, Requisicao } from './api';
-import { ROTULO_PAGAMENTO } from './regras';
+import type { Fornecedor, ItemRequisicao, Pedido, Requisicao } from './api';
+import { descreverCondicao } from './regras';
 
 const esc = (s: string | null | undefined) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const num = (n: number) => Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 
 // Ordem de compra em PDF (fluxograma: "Ordem de compra em PDF"): abre a versão para imprimir e o navegador salva em PDF.
-export function imprimirOrdem(p: Pedido, r: Requisicao, itens: ItemRequisicao[], c: Cotacao, f: Fornecedor | undefined) {
-  const preco = new Map(c.compras_cotacao_precos.map((x) => [x.item_id, Number(x.valor_unit)]));
-  const linhas = itens.map((i, n) => {
-    const v = preco.get(i.id) ?? 0;
-    return `<tr><td>${n + 1}</td><td>${esc(i.descricao)}${i.observacoes ? `<div class="obs">${esc(i.observacoes)}</div>` : ''}</td><td class="d">${num(i.quantidade)}</td><td>${esc(i.unidade)}</td><td class="d">${moeda(v)}</td><td class="d">${moeda(Math.round(i.quantidade * v * 100) / 100)}</td></tr>`;
+// Itens e preços vêm da própria OC (compras_pedido_itens, decisão 103).
+export function imprimirOrdem(p: Pedido, r: Requisicao, itens: ItemRequisicao[], f: Fornecedor | undefined) {
+  const porId = new Map(itens.map((i) => [i.id, i]));
+  const linhas = (p.compras_pedido_itens ?? []).map((x, n) => {
+    const i = porId.get(x.item_id);
+    const q = Number(x.quantidade);
+    const v = Number(x.valor_unit);
+    return `<tr><td>${n + 1}</td><td>${esc(i?.descricao)}${i?.observacoes ? `<div class="obs">${esc(i.observacoes)}</div>` : ''}</td><td class="d">${num(q)}</td><td>${esc(i?.unidade)}</td><td class="d">${moeda(v)}</td><td class="d">${moeda(Math.round(q * v * 100) / 100)}</td></tr>`;
   }).join('');
   const logo = `${location.origin}${import.meta.env.BASE_URL}marca/fabriaco-logo-cor.svg`;
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(p.codigo)} · ${esc(f?.nome)}</title>
@@ -44,12 +47,12 @@ export function imprimirOrdem(p: Pedido, r: Requisicao, itens: ItemRequisicao[],
 <table><thead><tr><th>#</th><th>Descrição</th><th class="d">Qtd.</th><th>Un.</th><th class="d">Unitário</th><th class="d">Total</th></tr></thead><tbody>${linhas}</tbody></table>
 <table class="totais"><tr><td>Itens</td><td class="d">${moeda(p.valor_itens)}</td></tr><tr><td>Frete</td><td class="d">${moeda(p.frete)}</td></tr><tr><td>Total</td><td class="d">${moeda(p.valor_total)}</td></tr></table>
 <div class="blocos">
-  <div class="bloco"><b>Entrega</b>Previsão: ${dataBR(p.previsao_entrega)}${c.prazo_dias != null ? ` (prazo de ${c.prazo_dias} dia(s))` : ''}</div>
-  <div class="bloco"><b>Pagamento</b>${esc(c.condicao_pagamento || (f ? ROTULO_PAGAMENTO[f.condicao_pagamento] : ''))}</div>
+  <div class="bloco"><b>Entrega</b>Previsão: ${dataBR(p.previsao_entrega)}</div>
+  <div class="bloco"><b>Pagamento</b>${esc(descreverCondicao(p.condicao_tipo, p.condicao_dias ?? []))}${p.condicao_texto ? `<br>${esc(p.condicao_texto)}` : ''}</div>
 </div>
-${p.observacoes || c.observacoes ? `<div class="bloco"><b>Observações</b>${esc([p.observacoes, c.observacoes].filter(Boolean).join(' · '))}</div>` : ''}
+${p.observacoes ? `<div class="bloco"><b>Observações</b>${esc(p.observacoes)}</div>` : ''}
 <div class="ass"><div>Compras · Fabriaço</div><div>Aceite do fornecedor</div></div>
-<footer>Informar o número ${esc(p.codigo)} na nota fiscal. Compra aprovada pelo Financeiro.</footer>
+<footer>Informar o número ${esc(p.codigo)} na nota fiscal.</footer>
 <script>window.onload = () => setTimeout(() => window.print(), 300);</script>
 </body></html>`;
   const w = window.open('', '_blank');

@@ -138,7 +138,7 @@ export async function listarSolicitacoes(projetoId: string): Promise<Solicitacao
 
 export async function solicitarCompra(projetoId: string, itens: LinhaImportada[], necessarioEm: string | null, prioridade: 'normal' | 'urgente', observacoes: string) {
   const r = ok(await supabase.rpc('engenharia_solicitar_compra', {
-    p_projeto: projetoId, p_itens: itens.map(({ grupo, descricao, quantidade, unidade, observacoes: o }) => ({ grupo, descricao, quantidade, unidade, observacoes: o })),
+    p_projeto: projetoId, p_itens: itens.map(({ grupo, descricao, quantidade, unidade, observacoes: o, bib_tipo, bib_id }) => ({ grupo, descricao, quantidade, unidade, observacoes: o, bib_tipo, bib_id })),
     p_necessario_em: necessarioEm, p_prioridade: prioridade, p_observacoes: observacoes,
   })) as { id: string; codigo: string; revisao: number; substituidas: string[] }[];
   return r[0];

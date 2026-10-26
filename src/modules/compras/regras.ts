@@ -1,37 +1,54 @@
 import { tipoDaPeca } from '@/modules/engenharia/biblioteca';
 import type { CodOp } from '@/modules/engenharia/regras';
 
-// Regras do módulo Compras (docs/PLANEJAMENTO_COMPRAS.md, decisão 101).
+// Regras do módulo Compras (docs/PLANEJAMENTO_COMPRAS.md e PLANEJAMENTO_COMPRAS_V2.md, decisões 101 e 103).
 
-export type StatusRequisicao = 'aberta' | 'em_cotacao' | 'aguardando_aprovacao' | 'aprovada' | 'pedido_emitido' | 'entregue' | 'cancelada';
-export type StatusPedido = 'aguardando_entrega' | 'entregue_parcial' | 'entregue';
+export type StatusRequisicao = 'aberta' | 'concluida' | 'cancelada';
+export type StatusItem = 'a_comprar' | 'comprado' | 'recebido' | 'cancelado';
+export type StatusPedido = 'aguardando_entrega' | 'entregue_parcial' | 'entregue' | 'cancelada';
+export type Origem = 'engenharia' | 'almoxarifado' | 'compras';
+export type CondicaoTipo = 'antecipado' | 'apos_recebimento' | 'parcelado' | 'a_combinar';
+export type BibTipo = 'chapa' | 'perfil' | 'item';
 export type GrupoItem = 'Chapas' | 'Perfis' | 'Comerciais' | 'Fixadores' | 'Consumíveis' | 'Serviços' | 'Outros';
 
 export const GRUPOS: GrupoItem[] = ['Chapas', 'Perfis', 'Comerciais', 'Fixadores', 'Consumíveis', 'Serviços', 'Outros'];
 export const UNIDADES = ['un', 'pç', 'kg', 'm', 'm²', 'barra', 'chapa', 'cx', 'L', 'h', 'serviço'];
 export const SETORES = ['Engenharia', 'Almoxarifado', 'Fabricação', 'Montagem em campo', 'Manutenção', 'Qualidade', 'Administrativo', 'Outro'];
 
-// Colunas do painel, na ordem do fluxo (cancelada fica fora do quadro).
-export const ETAPAS: { status: StatusRequisicao; rotulo: string }[] = [
-  { status: 'aberta', rotulo: 'Abertas' },
-  { status: 'em_cotacao', rotulo: 'Em cotação' },
-  { status: 'aguardando_aprovacao', rotulo: 'Aguardando aprovação' },
-  { status: 'aprovada', rotulo: 'Aprovadas' },
-  { status: 'pedido_emitido', rotulo: 'Pedido emitido' },
-  { status: 'entregue', rotulo: 'Entregues' },
+// Kanban por item (decisão 103): "em cotação" = à comprar com algum preço lançado.
+export type EtapaItem = 'a_comprar' | 'em_cotacao' | 'comprado' | 'recebido';
+export const ETAPAS: { etapa: EtapaItem; rotulo: string }[] = [
+  { etapa: 'a_comprar', rotulo: 'À comprar' },
+  { etapa: 'em_cotacao', rotulo: 'Em cotação' },
+  { etapa: 'comprado', rotulo: 'Comprado' },
+  { etapa: 'recebido', rotulo: 'Recebido' },
 ];
+export function etapaDoItem(status: StatusItem, temPreco: boolean): EtapaItem | null {
+  if (status === 'cancelado') return null;
+  if (status === 'a_comprar') return temPreco ? 'em_cotacao' : 'a_comprar';
+  return status;
+}
 
-export const ROTULO_STATUS: Record<StatusRequisicao, string> = {
-  aberta: 'Aberta', em_cotacao: 'Em cotação', aguardando_aprovacao: 'Aguardando aprovação', aprovada: 'Aprovada',
-  pedido_emitido: 'Pedido emitido', entregue: 'Entregue', cancelada: 'Cancelada',
-};
-export const ROTULO_PEDIDO: Record<StatusPedido, string> = { aguardando_entrega: 'Aguardando entrega', entregue_parcial: 'Entrega parcial', entregue: 'Entregue' };
+export const ROTULO_STATUS: Record<StatusRequisicao, string> = { aberta: 'Aberta', concluida: 'Concluída', cancelada: 'Cancelada' };
+export const ROTULO_ITEM: Record<StatusItem, string> = { a_comprar: 'À comprar', comprado: 'Comprado', recebido: 'Recebido', cancelado: 'Cancelado' };
+export const ROTULO_PEDIDO: Record<StatusPedido, string> = { aguardando_entrega: 'Aguardando entrega', entregue_parcial: 'Entrega parcial', entregue: 'Entregue', cancelada: 'Cancelada' };
+export const ROTULO_ORIGEM: Record<Origem, string> = { engenharia: 'Engenharia', almoxarifado: 'Almoxarifado', compras: 'Compras' };
 export const ROTULO_PAGAMENTO: Record<string, string> = { antecipado: 'Antecipado', apos_recebimento: 'Após o recebimento', a_combinar: 'A combinar' };
+export const ROTULO_CONDICAO: Record<CondicaoTipo, string> = { antecipado: 'Antecipado', apos_recebimento: 'Após o recebimento', parcelado: 'Parcelado', a_combinar: 'A combinar' };
 
-export const editavel = (s: StatusRequisicao) => s === 'aberta' || s === 'em_cotacao';
+// "28" ou "30/60/90" → [28] / [30, 60, 90].
+export function lerDias(t: string): number[] {
+  return t.split(/[^\d]+/).filter(Boolean).map(Number).filter((n) => n >= 0 && n <= 999);
+}
+export function descreverCondicao(tipo: CondicaoTipo, dias: number[]): string {
+  if (tipo === 'antecipado') return 'Antecipado';
+  if (tipo === 'a_combinar') return 'A combinar';
+  const d = dias.length ? `${dias.join('/')} dias` : '';
+  return tipo === 'parcelado' ? `Parcelado ${d} da emissão`.trim() : `${d || 'No'} após o recebimento`.trim();
+}
 
 export function pedidoAtrasado(p: { status: StatusPedido; previsao_entrega: string | null }, hoje: string): boolean {
-  return p.status !== 'entregue' && !!p.previsao_entrega && p.previsao_entrega < hoje;
+  return (p.status === 'aguardando_entrega' || p.status === 'entregue_parcial') && !!p.previsao_entrega && p.previsao_entrega < hoje;
 }
 
 // ---------- Comparação de cotações ----------
@@ -63,6 +80,20 @@ export function menoresPrecos(cotacoes: CotacaoComPrecos[], itens: ItemCotado[])
   return m;
 }
 
+// Sugestão de escolha: para cada item, a cotação com o menor preço unitário.
+export function sugerirEscolhas(cotacoes: CotacaoComPrecos[], itens: ItemCotado[]): Record<string, string> {
+  const r: Record<string, string> = {};
+  for (const i of itens) {
+    let melhor: { id: string; v: number } | null = null;
+    for (const c of cotacoes) {
+      const v = c.precos[i.id];
+      if (v != null && (!melhor || v < melhor.v)) melhor = { id: c.id, v };
+    }
+    if (melhor) r[i.id] = melhor.id;
+  }
+  return r;
+}
+
 // Cotação completa (todos os itens com preço) de menor total.
 export function melhorCotacao(cotacoes: CotacaoComPrecos[], itens: ItemCotado[]): string | null {
   let melhor: { id: string; total: number } | null = null;
@@ -78,10 +109,10 @@ export function melhorCotacao(cotacoes: CotacaoComPrecos[], itens: ItemCotado[])
 
 export interface PecaProjeto {
   descricao: string; cod_op: string[]; cod_mat: string | null; material: string | null; espessura: number | null; largura: number | null;
-  comprimento: number | null; peso_unit: number | null; bib_tipo: 'chapa' | 'perfil' | 'item' | null; bib_descricao: string | null;
+  comprimento: number | null; peso_unit: number | null; bib_tipo: BibTipo | null; bib_id?: string | null; bib_descricao: string | null;
   bib_grupo: string | null; bib_unidade: string | null; qtd_total: number;
 }
-export interface LinhaImportada { chave: string; grupo: GrupoItem; descricao: string; quantidade: number; unidade: string; observacoes: string }
+export interface LinhaImportada { chave: string; grupo: GrupoItem; descricao: string; quantidade: number; unidade: string; observacoes: string; bib_tipo: BibTipo | null; bib_id: string | null }
 
 const fmt = (n: number, casas = 2) => n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -90,8 +121,8 @@ const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 // itens comerciais em unidades. Mesma separação da lista de materiais (tipoDaPeca).
 export function agruparLista(pecas: PecaProjeto[]): LinhaImportada[] {
   const mapa = new Map<string, LinhaImportada & { pesoFalta: number }>();
-  const somar = (chave: string, base: Omit<LinhaImportada, 'chave' | 'quantidade' | 'observacoes'>, qtd: number, semPeso = 0) => {
-    const l = mapa.get(chave) ?? { ...base, chave, quantidade: 0, observacoes: '', pesoFalta: 0 };
+  const somar = (chave: string, base: Omit<LinhaImportada, 'chave' | 'quantidade' | 'observacoes' | 'bib_tipo' | 'bib_id'> & { bib_tipo?: BibTipo | null; bib_id?: string | null }, qtd: number, semPeso = 0) => {
+    const l = mapa.get(chave) ?? { bib_tipo: null, bib_id: null, ...base, chave, quantidade: 0, observacoes: '', pesoFalta: 0 };
     l.quantidade += qtd;
     l.pesoFalta += semPeso;
     mapa.set(chave, l);
@@ -104,16 +135,17 @@ export function agruparLista(pecas: PecaProjeto[]): LinhaImportada[] {
     if (tipo === 'item') {
       const desc = p.bib_descricao || p.descricao || '(sem descrição)';
       const grupo = (p.bib_grupo === 'Fixadores' || p.bib_grupo === 'Consumíveis' ? p.bib_grupo : 'Comerciais') as GrupoItem;
-      somar(`item|${norm(desc)}`, { grupo, descricao: desc, unidade: p.bib_unidade || 'un' }, qtd);
+      somar(p.bib_tipo === 'item' && p.bib_id ? `item|${p.bib_id}` : `item|${norm(desc)}`, { grupo, descricao: desc, unidade: p.bib_unidade || 'un', ...(p.bib_tipo === 'item' && p.bib_id ? { bib_tipo: 'item' as const, bib_id: p.bib_id } : {}) }, qtd);
     } else if (tipo === 'chapa') {
       const esp = Number(p.espessura) > 0 ? Number(p.espessura) : 0;
       const desc = esp ? `Chapa ${mat} ${fmt(esp)} mm` : `Chapa ${mat} (espessura não informada)`;
       const peso = Number(p.peso_unit) > 0 ? Number(p.peso_unit) * qtd : 0;
-      somar(`chapa|${norm(mat)}|${esp}`, { grupo: 'Chapas', descricao: desc, unidade: 'kg' }, peso, peso ? 0 : qtd);
+      if (p.bib_tipo === 'chapa' && p.bib_id) somar(`chapa|${p.bib_id}`, { grupo: 'Chapas', descricao: desc, unidade: 'kg', bib_tipo: 'chapa', bib_id: p.bib_id }, peso, peso ? 0 : qtd);
+      else somar(`chapa|${norm(mat)}|${esp}`, { grupo: 'Chapas', descricao: desc, unidade: 'kg' }, peso, peso ? 0 : qtd);
     } else if (tipo === 'perfil') {
       const desc = p.bib_descricao || [p.descricao, p.material].filter(Boolean).join(' · ') || '(perfil sem descrição)';
       const m = (Number(p.comprimento) || 0) / 1000 * qtd;
-      somar(`perfil|${norm(desc)}`, { grupo: 'Perfis', descricao: desc, unidade: 'm' }, m, m ? 0 : qtd);
+      somar(p.bib_tipo === 'perfil' && p.bib_id ? `perfil|${p.bib_id}` : `perfil|${norm(desc)}`, { grupo: 'Perfis', descricao: desc, unidade: 'm', ...(p.bib_tipo === 'perfil' && p.bib_id ? { bib_tipo: 'perfil' as const, bib_id: p.bib_id } : {}) }, m, m ? 0 : qtd);
     } else {
       const desc = p.descricao || '(sem descrição)';
       somar(`outro|${norm(desc)}|${norm(mat)}`, { grupo: 'Outros', descricao: desc, unidade: 'pç' }, qtd);
@@ -128,4 +160,36 @@ export function agruparLista(pecas: PecaProjeto[]): LinhaImportada[] {
       return quantidade > 0 ? { ...l, quantidade, observacoes: obs } : { ...l, quantidade: pesoFalta, unidade: 'pç', observacoes: obs };
     })
     .sort((a, b) => ordem.indexOf(a.grupo) - ordem.indexOf(b.grupo) || a.descricao.localeCompare(b.descricao));
+}
+
+// ---------- Ficha do produto (aba Produtos) ----------
+// Junta o cadastro (Biblioteca) com o histórico das OCs. Item comprado sem cadastro vira ficha pela descrição.
+export interface CompraHistorico { bib_tipo: BibTipo | null; bib_id: string | null; grupo: GrupoItem; descricao: string; unidade: string; emitido_em: string }
+export interface FichaProduto<H extends CompraHistorico = CompraHistorico> {
+  chave: string; tipo: BibTipo | null; id: string | null; descricao: string; grupo: GrupoItem; unidade: string; cadastrado: boolean;
+  compras: H[]; busca: string;
+}
+export function fichasDeProdutos<H extends CompraHistorico & { fornecedor_nome?: string; pedido_codigo?: string }>(
+  produtos: { tipo: BibTipo; id: string; descricao: string; grupo: GrupoItem; unidade: string }[], historico: H[],
+): FichaProduto<H>[] {
+  const mapa = new Map<string, FichaProduto<H>>();
+  for (const p of produtos) {
+    mapa.set(`${p.tipo}|${p.id}`, { chave: `${p.tipo}|${p.id}`, tipo: p.tipo, id: p.id, descricao: p.descricao, grupo: p.grupo, unidade: p.unidade, cadastrado: true, compras: [], busca: '' });
+  }
+  for (const h of historico) {
+    const chave = h.bib_tipo && h.bib_id && mapa.has(`${h.bib_tipo}|${h.bib_id}`) ? `${h.bib_tipo}|${h.bib_id}` : `d|${norm(h.descricao)}|${h.unidade}`;
+    let f = mapa.get(chave);
+    if (!f) {
+      f = { chave, tipo: null, id: null, descricao: h.descricao, grupo: h.grupo, unidade: h.unidade, cadastrado: false, compras: [], busca: '' };
+      mapa.set(chave, f);
+    }
+    f.compras.push(h);
+  }
+  return [...mapa.values()]
+    .map((f) => {
+      const compras = [...f.compras].sort((a, b) => b.emitido_em.localeCompare(a.emitido_em));
+      const extra = compras.map((c) => `${c.fornecedor_nome ?? ''} ${c.pedido_codigo ?? ''}`).join(' ');
+      return { ...f, compras, busca: norm(`${f.descricao} ${f.grupo} ${extra}`) };
+    })
+    .sort((a, b) => (b.compras[0]?.emitido_em ?? '').localeCompare(a.compras[0]?.emitido_em ?? '') || a.descricao.localeCompare(b.descricao));
 }

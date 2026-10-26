@@ -12,8 +12,8 @@ import {
   adicionarPeca, atualizarPeca, atualizarProjeto, excluirItem, listarCatalogo, listarConjuntos, listarEventos, listarImportacoesCad, listarPecas,
   listarRefsEng, listarSolicitacoes, listarUsuariosAtivos, obterProjeto, pausarProjeto, solicitarCompra,
 } from './api';
-import { agruparLista, mudouDesde, planoEnvio, type Solicitacao } from './compra';
-import { ROTULO_STATUS, type LinhaImportada, type PecaProjeto } from '@/modules/compras/regras';
+import { ROTULO_SOLICITACAO, agruparLista, mudouDesde, planoEnvio, type Solicitacao } from './compra';
+import { type LinhaImportada, type PecaProjeto } from '@/modules/compras/regras';
 import { LIMITE_DIFERENCA, blocoDaPeca, estimar, resumoCompra, type RefsEng } from './biblioteca';
 import { descricaoDoItem } from './CampoBiblioteca';
 import { ArvoreView } from './Arvore';
@@ -152,7 +152,7 @@ function ListaMateriais({ projeto, conjuntos, pecas }: { projeto: Projeto; conju
     return {
       descricao: l.descricao, cod_op: l.cod_op, cod_mat: l.cod_mat, material: catalogo.find((c) => c.cod_mat === l.cod_mat)?.nome || l.material || null,
       espessura: l.espessura ?? null, largura: l.largura ?? null, comprimento: l.comprimento ?? null, peso_unit: l.peso_unit ?? est.pesoBib ?? null,
-      bib_tipo: l.bib_id ? l.bib_tipo ?? null : null, bib_descricao: l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) : null,
+      bib_tipo: l.bib_id ? l.bib_tipo ?? null : null, bib_id: l.bib_id ?? null, bib_descricao: l.bib_id ? descricaoDoItem(refs, l.bib_tipo, l.bib_id) : null,
       bib_grupo: item?.grupo ?? null, bib_unidade: item?.unidade ?? null, qtd_total: l.qtdTotal,
     };
   })), [pecas, conjuntos, refs, catalogo]);
@@ -207,8 +207,9 @@ function ListaMateriais({ projeto, conjuntos, pecas }: { projeto: Projeto; conju
   );
 }
 
+// Compras v2 (decisão 103): "em compra" = a requisição já tem item comprado e não pode mais ser substituída.
 const COR_REQ: Record<Solicitacao['status'], 'cinza' | 'roxo' | 'verde' | 'vermelho' | 'amarelo' | 'azul'> = {
-  aberta: 'azul', em_cotacao: 'roxo', aguardando_aprovacao: 'amarelo', aprovada: 'verde', pedido_emitido: 'verde', entregue: 'verde', cancelada: 'cinza',
+  aberta: 'azul', em_compra: 'roxo', concluida: 'verde', cancelada: 'cinza',
 };
 const qtdBR = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 
@@ -235,7 +236,7 @@ function SolicitacaoCompra({ projeto, lista }: { projeto: Projeto; lista: LinhaI
           ) : (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-suave">
               <span className="font-mono font-semibold text-texto">{ultima.codigo}</span><span>· R{ultima.revisao}</span>
-              <Selo cor={COR_REQ[ultima.status]}>{ROTULO_STATUS[ultima.status]}</Selo>
+              <Selo cor={COR_REQ[ultima.status]}>{ROTULO_SOLICITACAO[ultima.status]}</Selo>
               <span>enviada em {dataHoraBR(ultima.criado_em)}{ultima.solicitante ? ` por ${ultima.solicitante}` : ''}</span>
               {ultima.necessario_em && <span>· precisa em {dataBR(ultima.necessario_em)}</span>}
               {ultima.prioridade === 'urgente' && <Selo cor="vermelho">Urgente</Selo>}
@@ -267,7 +268,7 @@ function SolicitarModal({ projeto, plano, onFechar }: { projeto: Projeto; plano:
   const complemento = plano.itens.some((i) => i.observacoes.includes('complemento'));
   const enviar = useMutation({
     mutationFn: () => {
-      const notas = [obs.trim(), complemento ? 'Complemento: parte da lista já está em aprovação ou comprada em outra requisição.' : '',
+      const notas = [obs.trim(), complemento ? 'Complemento: parte da lista já foi comprada em outra requisição.' : '',
         plano.reducoes.length ? `Itens que diminuíram ou saíram da lista depois de comprados: ${plano.reducoes.join('; ')}.` : ''].filter(Boolean).join('\n');
       return solicitarCompra(projeto.id, plano.itens, necessario || null, prioridade, notas);
     },
@@ -292,10 +293,10 @@ function SolicitarModal({ projeto, plano, onFechar }: { projeto: Projeto; plano:
     <Modal aberto titulo={`Solicitar compra · ${projeto.codigo} · R${plano.proximaRevisao}`} onFechar={onFechar} largura="max-w-3xl">
       <div className="space-y-3 text-sm">
         <p className="text-suave">Vai para Compras a lista inteira, somada por material: chapas em kg, perfis em metros e itens comerciais em unidades. Sem valores: preços e fornecedores ficam com Compras.</p>
-        {plano.substitui.length > 0 && <Aviso tipo="info">A requisição {plano.substitui.map((s) => `${s.codigo} (R${s.revisao})`).join(', ')} ainda não foi para aprovação e será cancelada e substituída por esta revisão.</Aviso>}
-        {complemento && <Aviso tipo="info">Parte da lista já está em aprovação ou comprada. Vai só o que falta, marcado como complemento.</Aviso>}
+        {plano.substitui.length > 0 && <Aviso tipo="info">A requisição {plano.substitui.map((s) => `${s.codigo} (R${s.revisao})`).join(', ')} ainda não teve nada comprado e será cancelada e substituída por esta revisão.</Aviso>}
+        {complemento && <Aviso tipo="info">Parte da lista já foi comprada. Vai só o que falta, marcado como complemento.</Aviso>}
         {plano.reducoes.length > 0 && (
-          <Aviso>Itens que já foram para aprovação ou compra e diminuíram ou saíram da lista (avise Compras se for preciso cancelar ou devolver):
+          <Aviso>Itens que já foram comprados e diminuíram ou saíram da lista (avise Compras se for preciso cancelar ou devolver):
             <ul className="mt-1 list-disc pl-5">{plano.reducoes.map((r) => <li key={r}>{r}</li>)}</ul>
           </Aviso>
         )}
@@ -344,7 +345,7 @@ function HistoricoSolicitacoes({ solicitacoes, onFechar }: { solicitacoes: Solic
           <div key={s.id} className="rounded-lg ring-1 ring-borda">
             <button onClick={() => setAberta(aberta === s.id ? null : s.id)} className="flex w-full flex-wrap items-center gap-2 px-3 py-2 text-left">
               <span className="font-semibold">R{s.revisao}</span><span className="font-mono text-xs">{s.codigo}</span>
-              <Selo cor={COR_REQ[s.status]}>{ROTULO_STATUS[s.status]}</Selo>
+              <Selo cor={COR_REQ[s.status]}>{ROTULO_SOLICITACAO[s.status]}</Selo>
               <span className="ml-auto text-xs text-suave">{dataHoraBR(s.criado_em)}{s.solicitante ? ` · ${s.solicitante}` : ''} · {s.itens.length} itens</span>
             </button>
             {aberta === s.id && (

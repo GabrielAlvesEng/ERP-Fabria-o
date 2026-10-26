@@ -36,6 +36,7 @@ import { PainelFinanceiro } from '@/modules/financeiro/PainelFinanceiro';
 import { ContasPage as ContasPagarPage } from '@/modules/financeiro/ContasPage';
 import { ContaPage as ContaPagarPage } from '@/modules/financeiro/ContaPage';
 import { FornecedoresPagamentoPage } from '@/modules/financeiro/FornecedoresPagamentoPage';
+import { ProdutosPage } from '@/modules/compras/ProdutosPage';
 import { RhLayout } from '@/modules/rh/RhLayout';
 import { FuncionariosPage } from '@/modules/rh/FuncionariosPage';
 import { FuncionarioPage } from '@/modules/rh/FuncionarioPage';
@@ -95,6 +96,7 @@ export function App() {
             <Route index element={<PainelCompras />} />
             <Route path="requisicoes/:id" element={<RequisicaoPage />} />
             <Route path="ordens" element={<OrdensPage />} />
+            <Route path="produtos" element={<ProdutosPage />} />
             <Route path="fornecedores" element={<FornecedoresPage />} />
           </Route>
           <Route path="/almoxarifado" element={<AlmoxarifadoLayout />}>

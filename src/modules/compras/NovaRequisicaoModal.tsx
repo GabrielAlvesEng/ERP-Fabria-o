@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Entrada, Modal, Selecao } from '@/shared/ui';
-import { criarRequisicao, listarProjetos, type DadosRequisicao } from './api';
+import { listarProjetos, solicitar, type DadosItem, type DadosRequisicao } from './api';
 import { SETORES } from './regras';
 import { ImportarListaModal } from './ImportarLista';
 
@@ -18,8 +18,8 @@ export function NovaRequisicaoModal({ onFechar, onCriada }: { onFechar: () => vo
   const projeto = projetos.find((p) => p.id === d.projeto_id);
   const set = <K extends keyof DadosRequisicao>(k: K, v: DadosRequisicao[K]) => setD((x) => ({ ...x, [k]: v }));
 
-  async function criar(itens: Parameters<typeof criarRequisicao>[1]) {
-    const id = await criarRequisicao({ ...d, titulo: d.titulo.trim() }, itens);
+  async function criar(itens: DadosItem[]) {
+    const id = await solicitar('compras', { ...d, titulo: d.titulo.trim() }, itens);
     await qc.invalidateQueries({ queryKey: ['compras'] });
     onCriada(id);
   }

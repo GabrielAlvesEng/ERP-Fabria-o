@@ -1,25 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, Caixa, Modal, Vazio } from '@/shared/ui';
 import { pecasDoProjeto, type DadosItem } from './api';
 import { agruparLista } from './regras';
 
-// Lista de materiais da Engenharia somada para compra (decisão 101). Compras escolhe as linhas que entram.
+// Lista de materiais da Engenharia somada para compra (decisões 101 e 103). Compras escolhe as linhas que entram;
+// cada linha leva o produto da Biblioteca quando a peça tem.
 export function ImportarListaModal({ projetoId, projetoNome, onFechar, onConfirmar }: {
   projetoId: string; projetoNome: string; onFechar: () => void; onConfirmar: (itens: DadosItem[]) => Promise<void>;
 }) {
   const { data: pecas, isLoading, error } = useQuery({ queryKey: ['compras', 'pecas', projetoId], queryFn: () => pecasDoProjeto(projetoId) });
-  const linhas = pecas ? agruparLista(pecas) : [];
+  const linhas = useMemo(() => (pecas ? agruparLista(pecas) : []), [pecas]);
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
-  useEffect(() => { if (pecas) setMarcadas(new Set(agruparLista(pecas).map((l) => l.chave))); }, [pecas]);
+  useEffect(() => { setMarcadas(new Set(linhas.map((l) => l.chave))); }, [linhas]);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   async function confirmar() {
     setSalvando(true); setErro('');
     try {
-      await onConfirmar(linhas.filter((l) => marcadas.has(l.chave)).map(({ grupo, descricao, quantidade, unidade, observacoes }) => ({ grupo, descricao, quantidade, unidade, observacoes })));
+      await onConfirmar(linhas.filter((l) => marcadas.has(l.chave)).map(({ grupo, descricao, quantidade, unidade, observacoes, bib_tipo, bib_id }) => ({ grupo, descricao, quantidade, unidade, observacoes, bib_tipo, bib_id })));
     } catch (e) { setErro(mensagemErro(e)); setSalvando(false); }
   }
 

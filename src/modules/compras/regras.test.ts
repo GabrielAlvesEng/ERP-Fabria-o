@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agruparLista, melhorCotacao, menoresPrecos, pedidoAtrasado, totalCotacao, type PecaProjeto } from './regras';
+import { agruparLista, descreverCondicao, etapaDoItem, fichasDeProdutos, lerDias, melhorCotacao, menoresPrecos, pedidoAtrasado, sugerirEscolhas, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -45,5 +45,38 @@ describe('lista de materiais do projeto', () => {
     const [l] = agruparLista([peca({ descricao: 'Chapa', cod_op: ['LC'], material: 'AISI 304', espessura: 2, qtd_total: 5 })]);
     expect([l.quantidade, l.unidade]).toEqual([5, 'pç']);
     expect(l.observacoes).toContain('sem peso');
+  });
+});
+
+describe('Compras v2 (decisão 103)', () => {
+  it('etapa do item no quadro', () => {
+    expect(etapaDoItem('a_comprar', false)).toBe('a_comprar');
+    expect(etapaDoItem('a_comprar', true)).toBe('em_cotacao');
+    expect(etapaDoItem('comprado', true)).toBe('comprado');
+    expect(etapaDoItem('cancelado', true)).toBeNull();
+  });
+  it('sugere o fornecedor de menor preço por item', () => {
+    const itens = [{ id: 'a', quantidade: 1 }, { id: 'b', quantidade: 1 }, { id: 'c', quantidade: 1 }];
+    const s = sugerirEscolhas([{ id: 'x', frete: 0, precos: { a: 10, b: 5 } }, { id: 'y', frete: 0, precos: { a: 8, b: 6 } }], itens);
+    expect(s).toEqual({ a: 'y', b: 'x' });
+  });
+  it('condição de pagamento', () => {
+    expect(lerDias('30/60/90')).toEqual([30, 60, 90]);
+    expect(descreverCondicao('apos_recebimento', [28])).toBe('28 dias após o recebimento');
+    expect(descreverCondicao('parcelado', [30, 60])).toBe('Parcelado 30/60 dias da emissão');
+  });
+  it('lista do projeto leva o produto da Biblioteca', () => {
+    const linhas = agruparLista([
+      peca({ descricao: 'Rodízio', cod_op: ['CM'], bib_tipo: 'item', bib_id: 'r1', bib_descricao: 'Rodízio 4"', bib_grupo: 'Comerciais', bib_unidade: 'pç', qtd_total: 6 }),
+      peca({ descricao: 'Chapa', cod_op: ['LC'], bib_tipo: 'chapa', bib_id: 'c1', bib_descricao: 'Chapa A36 1/4"', material: 'ASTM A36', espessura: 6.35, peso_unit: 10, qtd_total: 2 }),
+    ]);
+    expect(linhas.map((l) => [l.descricao, l.bib_tipo, l.bib_id, l.quantidade])).toEqual([['Chapa ASTM A36 6,35 mm', 'chapa', 'c1', 20], ['Rodízio 4"', 'item', 'r1', 6]]);
+  });
+  it('ficha do produto junta cadastro e histórico, a compra mais recente primeiro', () => {
+    const h = (emitido_em: string, valor: number) => ({ bib_tipo: 'item' as const, bib_id: 'p1', grupo: 'Consumíveis' as const, descricao: 'Disco de corte', unidade: 'un', emitido_em, valor_unit: valor, fornecedor_nome: 'F' });
+    const f = fichasDeProdutos([{ tipo: 'item', id: 'p1', descricao: 'Disco de corte', grupo: 'Consumíveis', unidade: 'un' }, { tipo: 'item', id: 'p2', descricao: 'Eletrodo', grupo: 'Consumíveis', unidade: 'kg' }],
+      [h('2026-09-01', 5), h('2026-10-01', 6), { ...h('2026-08-01', 1), bib_tipo: null, bib_id: null, descricao: 'Lixa 80' }]);
+    expect(f.map((x) => [x.descricao, x.cadastrado, x.compras.length])).toEqual([['Disco de corte', true, 2], ['Lixa 80', false, 1], ['Eletrodo', true, 0]]);
+    expect(f[0].compras[0].valor_unit).toBe(6);
   });
 });
