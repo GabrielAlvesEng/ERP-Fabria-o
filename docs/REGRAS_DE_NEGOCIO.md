@@ -352,6 +352,14 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Só o RH (`rh.ler`) vê o ponto de todos; cada funcionário vê só o seu. **Sócios ficam fora** (`funcionarios.bate_ponto`, desligado para Gabriel e Fabiano). O ponto vale a partir do dia em que a migration roda (`configuracoes.ponto.inicio`), para os dias anteriores não virarem falta.
    - Migration `20261027000076_rh_ponto.sql`.
 
+116. **Tarefas por pessoa (27/10/2026)** (pedido do Gabriel de 27/10: "Uma aba de tarefas que todo mundo tem a sua; tipo check box; eu posso colocar minhas tarefas, mas outra pessoa também pode me passar uma tarefa; se outra pessoa criou, aparece quem criou; urgência alto, médio e baixo; todo mundo visualiza a tarefa do outro, mas não pode alterar"; planejamento em `docs/PLANEJAMENTO_TAREFAS.md`, com as respostas dele):
+   - Menu **Tarefas** para todos os logados. Tem lista quem tem **login ativo no ERP**; "Minhas tarefas" fica no topo.
+   - Qualquer logado cria tarefa para si ou para outra pessoa, com urgência (alta, média, baixa) e **prazo opcional** (vencido fica em vermelho). Tarefa passada por outra pessoa mostra "Passada por Fulano".
+   - **Só o dono** marca como feita, muda texto, urgência e prazo e **reorganiza a ordem** (arrastar, ou "Organizar por urgência"). **O dono e quem criou** podem apagar (exclusão lógica). Os outros só veem. O banco confere tudo (funções `tarefa_*`).
+   - Tarefa nova entra no topo da lista do dono. O menu mostra quantas tarefas outra pessoa passou e o dono ainda não viu. As concluídas ficam no bloco "Concluídas" (últimos 60 dias).
+   - Aviso no celular: **depois** (resposta 3 do Gabriel).
+   - Migration `20261027000077_tarefas.sql`.
+
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:

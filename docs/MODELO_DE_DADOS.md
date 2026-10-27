@@ -236,3 +236,7 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `ponto_decisoes`: aprovado/abonado por funcionário e dia (`ponto_decidir_dia`); deixa de valer quando a batida ou a justificativa do dia muda.
 - `feriados`: data, nome, abrangência, ativo.
 - RLS: o RH (rh.ler) lê tudo; cada funcionário lê só o seu (`ponto_eh_meu`).
+
+## Tarefas por pessoa (`20261027000077_tarefas.sql`, decisão 116)
+- `tarefas`: dono (`dono_id` → usuarios), texto, urgência (alta/media/baixa), prazo, `ordem` (escolhida pelo dono; nova entra no topo), criado_por, feita_em, `vista_em` (dono viu a tarefa passada por outro), exclusão lógica (`excluido_em`, `excluido_por`). Auditoria e Realtime.
+- Todos os logados leem; ninguém grava direto. Funções: `tarefa_criar` (qualquer logado, dono com login ativo), `tarefa_editar`, `tarefa_marcar`, `tarefa_ordenar` (só o dono), `tarefa_apagar` (dono ou quem criou), `tarefas_marcar_vistas`.

@@ -27,7 +27,7 @@ Regra: um módulo por vez. Nenhum módulo começa sem autorização expressa do 
 | 5 | Preparação (corte a laser, dobra, calandra, usinagem) | Não iniciado |
 | 6 | Fabricação e Qualidade | Não iniciado |
 | 7 | Expedição, campo e Financeiro (faturamento e recebimento) | Não iniciado |
-| 8 | RH, Agenda, Tarefas e Frota | **RH: entregas 1 a 4 feitas e publicadas em 22/10/2026, aguardando validação do Gabriel** (decisão 69: o Gabriel decidiu em 22/10/2026 fazer o RH antes de seguir com a Engenharia; `docs/PLANEJAMENTO_RH.md`). Ponto eletrônico por localização feito em 27/10/2026 (decisão 115, `docs/PLANEJAMENTO_PONTO.md`), aguardando a migration e o teste do Gabriel. Frota feita (decisão 55). Agenda e Tarefas não iniciadas |
+| 8 | RH, Agenda, Tarefas e Frota | **RH: entregas 1 a 4 feitas e publicadas em 22/10/2026, aguardando validação do Gabriel** (decisão 69: o Gabriel decidiu em 22/10/2026 fazer o RH antes de seguir com a Engenharia; `docs/PLANEJAMENTO_RH.md`). Ponto eletrônico por localização feito em 27/10/2026 (decisão 115, `docs/PLANEJAMENTO_PONTO.md`), aguardando a migration e o teste do Gabriel. Frota feita (decisão 55). Tarefas por pessoa feitas em 27/10/2026 (decisão 116, `docs/PLANEJAMENTO_TAREFAS.md`). Agenda não iniciada |
 | 9 | Administração (usuários, permissões, senhas, auditoria) | Parte entra já em Vendas (permissões, senhas) |
 | 10 | Comunicação (avisos dos líderes por setor e comunicados gerais no celular) | **Feito e publicado em 22/10/2026, aguardando o teste do Gabriel em celular de verdade** (decisão 100, `docs/PLANEJAMENTO_COMUNICACAO.md`). Login por usuário para quem não tem e-mail feito em 26/10 (decisão 106). Falta o Gabriel cadastrar o secret `SMTP_SENHA` |
 

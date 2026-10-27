@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Clock, Cog, IdCard, Lock, LogOut, Megaphone, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Clock, Cog, IdCard, ListChecks, Lock, LogOut, Megaphone, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
@@ -15,6 +15,8 @@ import { ComunicadosSino, useComunicacaoAoVivo } from '@/modules/comunicacao/Com
 import { desativarNesteAparelho } from '@/modules/comunicacao/push';
 import { loginVisivel } from '@/shared/lib/login';
 import { useBatePonto } from '@/modules/ponto/api';
+import { useTarefas, useTarefasAoVivo } from '@/modules/tarefas/api';
+import { novasPara } from '@/modules/tarefas/regras';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 // Decisão 78: o menu é dividido em Operacionais (a operação dos projetos: Vendas, Engenharia, Fabricação...)
@@ -26,6 +28,8 @@ const modulos = [
   { to: '/almoxarifado', rotulo: 'Almoxarifado', icone: Warehouse, modulo: 'almoxarifado', grupo: 'operacional' },
   // Ponto (decisão 115): só quem bate ponto (ficha do RH ligada ao login, sócios fora).
   { to: '/ponto', rotulo: 'Ponto', icone: Clock, modulo: null, grupo: 'administrativo', ponto: true },
+  // Tarefas (decisão 116): todos os logados; cada um tem a sua lista e vê a dos outros.
+  { to: '/tarefas', rotulo: 'Tarefas', icone: ListChecks, modulo: null, grupo: 'administrativo' },
   // Comunicação: todos os logados (cada um tem a sua caixa de entrada); quem envia é decidido no banco.
   { to: '/comunicacao', rotulo: 'Comunicação', icone: Megaphone, modulo: null, grupo: 'administrativo' },
   { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh', grupo: 'administrativo' },
@@ -61,6 +65,9 @@ export function Layout() {
   const { ano, setAno } = useAno();
   useVendasAoVivo(); // decisão 83: telas de Vendas atualizam sozinhas quando outra pessoa altera
   useComunicacaoAoVivo();
+  useTarefasAoVivo();
+  const { data: tarefas = [] } = useTarefas();
+  const contadores: Record<string, number> = { '/tarefas': novasPara(tarefas, session?.user.id ?? '') };
   const [tema, setTema] = useState<Tema>(lerTema);
   useEffect(() => aplicarTema(tema), [tema]);
   // Celular: menu lateral que abre pelo botão ☰ e fecha ao trocar de tela, tocar fora ou apertar Esc.
@@ -81,7 +88,7 @@ export function Layout() {
       {/* Sidebar clara com borda fina (redesign, decisão 51); no escuro, grafite. */}
       <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-borda bg-superficie md:flex">
         <div className="px-5 py-5"><Marca /></div>
-        <ListaModulos menu={menu} />
+        <ListaModulos menu={menu} contadores={contadores} />
         <Rodape email={loginVisivel(session?.user.email)} sair={sair} />
       </aside>
 
@@ -116,7 +123,7 @@ export function Layout() {
                 <Marca />
                 <button onClick={() => setGaveta(false)} className="rounded-lg p-2 text-suave hover:bg-pagina dark:hover:bg-marinho-700" aria-label="Fechar menu"><X size={20} /></button>
               </div>
-              <ListaModulos menu={menu} grande />
+              <ListaModulos menu={menu} contadores={contadores} grande />
               <Rodape email={loginVisivel(session?.user.email)} sair={sair} />
             </aside>
           </div>
@@ -136,7 +143,8 @@ export function Layout() {
   );
 }
 
-function ListaModulos({ menu, grande = false }: { menu: typeof modulos; grande?: boolean }) {
+// contadores: número ao lado do item (ex.: tarefas novas que outra pessoa passou).
+function ListaModulos({ menu, contadores = {}, grande = false }: { menu: typeof modulos; contadores?: Record<string, number>; grande?: boolean }) {
   return (
     <nav className="flex-1 overflow-y-auto px-3">
       {GRUPOS.map(([grupo, titulo]) => {
@@ -158,7 +166,10 @@ function ListaModulos({ menu, grande = false }: { menu: typeof modulos; grande?:
                   ? 'bg-roxo-50 font-medium text-roxo-600 dark:bg-roxo-500/20 dark:text-roxo-100'
                   : 'text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700'}`}
               >
-                <m.icone size={grande ? 20 : 18} /> {m.rotulo}
+                <m.icone size={grande ? 20 : 18} /> <span className="flex-1">{m.rotulo}</span>
+                {(contadores[m.to] ?? 0) > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-roxo-500 px-1.5 text-[11px] font-bold text-white" title="Novas">{contadores[m.to]}</span>
+                )}
               </NavLink>
             ))}
           </div>

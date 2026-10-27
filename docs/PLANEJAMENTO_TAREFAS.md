@@ -1,6 +1,15 @@
 # Tarefas por pessoa
 
-Versão 1, 27/10/2026. **Estado: aguardando aprovação do Gabriel.**
+Versão 2, 27/10/2026. **Estado: aprovado com as respostas do Gabriel (decisão 116) e implementado.**
+
+Respostas do Gabriel (27/10):
+1. Todo mundo que tem login no ERP tem acesso às tarefas (a lista de pessoas é de quem tem login ativo).
+2. Prazo opcional: sim.
+3. Aviso no celular: depois.
+4. Mudar texto, urgência ou prazo: **só o dono**. Apagar: **o dono e quem criou**.
+5. (Novo) O dono pode mudar a ordem e organizar do jeito que quiser (arrastar; botão "Organizar por urgência"). Tarefa nova entra no topo.
+
+As seções abaixo são a v1; onde divergirem, valem as respostas acima.
 
 Pedido do Gabriel (27/10):
 - uma aba de tarefas em que todo mundo tem a sua;
