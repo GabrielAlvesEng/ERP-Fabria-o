@@ -240,3 +240,9 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 ## Tarefas por pessoa (`20261027000077_tarefas.sql`, decisão 116)
 - `tarefas`: dono (`dono_id` → usuarios), texto, urgência (alta/media/baixa), prazo, `ordem` (escolhida pelo dono; nova entra no topo), criado_por, feita_em, `vista_em` (dono viu a tarefa passada por outro), exclusão lógica (`excluido_em`, `excluido_por`). Auditoria e Realtime.
 - Todos os logados leem; ninguém grava direto. Funções: `tarefa_criar` (qualquer logado, dono com login ativo), `tarefa_editar`, `tarefa_marcar`, `tarefa_ordenar` (só o dono), `tarefa_apagar` (dono ou quem criou), `tarefas_marcar_vistas`.
+
+## Agenda (`20261027000079_agenda.sql`, decisão 118)
+- `compromissos`: titulo, inicio/fim (timestamptz; dia inteiro = meia-noite a meia-noite), dia_inteiro, local, descricao, cor, repetição (`repeticao` diaria/semanal/mensal/anual, `repetir_intervalo`, `repetir_dias` 0=domingo, `repetir_ate`, `excecoes` = dias pulados), criado_por, exclusão lógica (`excluido_em`). Auditoria e Realtime.
+- `compromisso_participantes` (compromisso_id, usuario_id): `visto_em` (número de novos no menu), `removido_em` (saiu ou foi tirado). Quem criou sempre está.
+- Leitura direta só de quem participa (RLS); ninguém grava direto. Funções: `agenda_listar(usuario, de, ate)` (sem detalhes quando eu não participo), `compromisso_salvar` (criar/mudar, com modo todos/este/seguintes), `compromisso_cancelar`, `compromisso_sair`, `agenda_marcar_vistos`. As ocorrências da repetição são calculadas na tela.
+

@@ -49,6 +49,7 @@ import { VencimentosPage } from '@/modules/rh/VencimentosPage';
 import { IntegracoesPage } from '@/modules/rh/IntegracoesPage';
 import { PontoPage } from '@/modules/ponto/PontoPage';
 import { TarefasPage } from '@/modules/tarefas/TarefasPage';
+import { AgendaPage } from '@/modules/agenda/AgendaPage';
 import { RhPontoPage } from '@/modules/ponto/rh/RhPontoPage';
 import { EspelhoRhPage } from '@/modules/ponto/rh/EspelhoRhPage';
 import { RelatorioPonto } from '@/modules/ponto/rh/RelatorioPonto';
@@ -141,6 +142,7 @@ export function App() {
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/ponto" element={<PontoPage />} />
           <Route path="/tarefas" element={<TarefasPage />} />
+          <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<SenhasPage />} />
             <Route path="excluidas" element={<ExcluidasPage />} />

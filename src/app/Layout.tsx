@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Clock, Cog, IdCard, ListChecks, Lock, LogOut, Megaphone, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Clock, Cog, IdCard, ListChecks, Lock, LogOut, Megaphone, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
@@ -17,6 +17,8 @@ import { loginVisivel } from '@/shared/lib/login';
 import { useBatePonto } from '@/modules/ponto/api';
 import { useTarefas, useTarefasAoVivo } from '@/modules/tarefas/api';
 import { novasPara } from '@/modules/tarefas/regras';
+import { useAgendaAoVivo, useNovosAgenda } from '@/modules/agenda/api';
+import { AgendaSino, LembretesAgenda } from '@/modules/agenda/Lembretes';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 // Decisão 78: o menu é dividido em Operacionais (a operação dos projetos: Vendas, Engenharia, Fabricação...)
@@ -30,6 +32,8 @@ const modulos = [
   { to: '/ponto', rotulo: 'Ponto', icone: Clock, modulo: null, grupo: 'administrativo', ponto: true },
   // Tarefas (decisão 116): todos os logados; cada um tem a sua lista e vê a dos outros.
   { to: '/tarefas', rotulo: 'Tarefas', icone: ListChecks, modulo: null, grupo: 'administrativo' },
+  // Agenda (decisão 118): todos os logados; cada um tem a sua e vê os horários ocupados dos outros.
+  { to: '/agenda', rotulo: 'Agenda', icone: CalendarDays, modulo: null, grupo: 'administrativo' },
   // Comunicação: todos os logados (cada um tem a sua caixa de entrada); quem envia é decidido no banco.
   { to: '/comunicacao', rotulo: 'Comunicação', icone: Megaphone, modulo: null, grupo: 'administrativo' },
   { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh', grupo: 'administrativo' },
@@ -67,7 +71,9 @@ export function Layout() {
   useComunicacaoAoVivo();
   useTarefasAoVivo();
   const { data: tarefas = [] } = useTarefas();
-  const contadores: Record<string, number> = { '/tarefas': novasPara(tarefas, session?.user.id ?? '') };
+  useAgendaAoVivo();
+  const novosAgenda = useNovosAgenda();
+  const contadores: Record<string, number> = { '/tarefas': novasPara(tarefas, session?.user.id ?? ''), '/agenda': novosAgenda };
   const [tema, setTema] = useState<Tema>(lerTema);
   useEffect(() => aplicarTema(tema), [tema]);
   // Celular: menu lateral que abre pelo botão ☰ e fecha ao trocar de tela, tocar fora ou apertar Esc.
@@ -105,6 +111,7 @@ export function Layout() {
             <button className="rounded-md p-1 text-suave hover:bg-pagina hover:text-texto dark:hover:bg-marinho-700" onClick={() => setAno(ano + 1)} aria-label="Próximo ano"><ChevronRight size={16} /></button>
           </div>
           <div className="flex items-center sm:gap-1">
+            <AgendaSino />
             <ComunicadosSino />
             <RetornosSino />
             <VencimentosSino />
@@ -138,6 +145,7 @@ export function Layout() {
           </main>
         </div>
       </div>
+      <LembretesAgenda />
     </div>
     </PresencaVendas>
   );

@@ -362,6 +362,15 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
 
 117. **Ponto: excluir local (27/10/2026)** (pedido do Gabriel: "Deixe um botão para excluir o local em Locais de ponto"): botão **Excluir** em RH → Ponto → Configurações → Locais de ponto, com confirmação. É exclusão lógica (`ponto_locais.excluido_em`, função `ponto_excluir_local`, rh.editar): o local some da lista e não aceita mais batidas, mas as batidas já feitas nele ficam no histórico. Migration `20261027000078_ponto_excluir_local.sql`.
 
+118. **Agenda de compromissos (27/10/2026)** (pedido do Gabriel: "tipo a agenda do email; tela principal com o calendário do mês; compromisso só pra mim ou incluindo várias pessoas; nome, data, hora que começa e acaba, local; mostrar o primeiro compromisso do outro dia um dia antes e os próximos do dia a cada hora e quando faltar 15 minutos"; planejamento em `docs/PLANEJAMENTO_AGENDA.md`, com as respostas dele):
+   - Menu **Agenda** para todos os logados. Tela principal = mês, com a hora e o nome de cada compromisso; também **Semana** e **Dia** em grade de horários.
+   - Compromisso: nome, início e fim (data e hora, ou **dia inteiro**), local, observações, cor e **participantes** (pessoas com login; quem marca sempre participa).
+   - **Só quem marcou** muda ou cancela; o participante pode **sair**. Quem é chamado já entra na agenda, **sem aceitar** (resposta 2), e o menu mostra o número de novos.
+   - Na agenda de outra pessoa aparece só **"Ocupado"** nos horários dos compromissos em que eu não estou (resposta 1).
+   - **Repetição** (resposta 3): todo dia, toda semana (escolhendo os dias), todo mês, todo ano, "a cada N" e "até" opcional. Mudar ou cancelar pergunta: só este dia, este e os seguintes, ou todos.
+   - **Lembretes dentro do ERP** (no canto da tela e no sino de agenda), enquanto o ERP estiver aberto: véspera a partir das **16:30** com o primeiro de amanhã (resposta 4), o próximo do dia **de hora em hora das 07:00 às 18:00** (resposta 5) e **faltando 15 minutos**, com som. Aviso com o ERP fechado (push do Comunicação): depois.
+   - Migration `20261027000079_agenda.sql`.
+
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
