@@ -360,6 +360,8 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Aviso no celular: **depois** (resposta 3 do Gabriel).
    - Migration `20261027000077_tarefas.sql`.
 
+117. **Ponto: excluir local (27/10/2026)** (pedido do Gabriel: "Deixe um botão para excluir o local em Locais de ponto"): botão **Excluir** em RH → Ponto → Configurações → Locais de ponto, com confirmação. É exclusão lógica (`ponto_locais.excluido_em`, função `ponto_excluir_local`, rh.editar): o local some da lista e não aceita mais batidas, mas as batidas já feitas nele ficam no histórico. Migration `20261027000078_ponto_excluir_local.sql`.
+
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:

@@ -39,7 +39,15 @@ export async function obterConfig(): Promise<ConfigPonto> {
 export const useConfigPonto = () => useQuery({ queryKey: ['ponto', 'config'], queryFn: obterConfig, staleTime: 5 * 60_000 });
 export const salvarConfig = async (c: ConfigPonto) => { ok(await supabase.rpc('ponto_salvar_config', { p_config: c })); };
 
-export const listarLocais = async (): Promise<LocalPonto[]> => ok(await supabase.from('ponto_locais').select('*').order('ativo', { ascending: false }).order('nome'));
+const COLUNAS_LOCAL = 'id, nome, latitude, longitude, raio_m, inicio, fim, ativo, observacoes';
+export async function listarLocais(): Promise<LocalPonto[]> {
+  const r = await supabase.from('ponto_locais').select(COLUNAS_LOCAL).is('excluido_em', null).order('ativo', { ascending: false }).order('nome');
+  // Antes da migration 78 a coluna excluido_em não existe: lista sem o filtro.
+  if (r.error && /excluido_em/.test(r.error.message)) return ok(await supabase.from('ponto_locais').select(COLUNAS_LOCAL).order('ativo', { ascending: false }).order('nome'));
+  return ok(r);
+}
+// Exclusão lógica (decisão 117): as batidas já feitas no local continuam no histórico.
+export const excluirLocal = async (id: string) => { ok(await supabase.rpc('ponto_excluir_local', { p_local: id })); };
 export async function salvarLocal(l: Omit<LocalPonto, 'id'> & { id?: string }): Promise<void> {
   const { id, ...dados } = l;
   ok(id ? await supabase.from('ponto_locais').update(dados).eq('id', id) : await supabase.from('ponto_locais').insert(dados));

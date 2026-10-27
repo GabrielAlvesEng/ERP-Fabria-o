@@ -4,7 +4,7 @@ import { ExternalLink, LocateFixed, Plus } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, mensagemErro } from '@/shared/lib/formato';
 import { Aviso, Botao, Caixa, Campo, CampoData, CampoInteiro, Entrada, Modal, Selecao, Selo } from '@/shared/ui';
-import { definirBatePonto, lerLocalizacao, listarFeriados, listarLocais, salvarConfig, salvarFeriado, salvarLocal, useConfigPonto, type Feriado, type LocalPonto, type PessoaPonto } from '../api';
+import { definirBatePonto, excluirLocal, lerLocalizacao, listarFeriados, listarLocais, salvarConfig, salvarFeriado, salvarLocal, useConfigPonto, type Feriado, type LocalPonto, type PessoaPonto } from '../api';
 import { coordenadasDoTexto, hhmm, minutos, type ConfigPonto } from '../calculo';
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -81,6 +81,13 @@ const localVazio = { nome: '', latitude: 0, longitude: 0, raio_m: 150, inicio: n
 function Locais({ editavel }: { editavel: boolean }) {
   const { data: locais = [] } = useQuery({ queryKey: ['ponto', 'locais'], queryFn: listarLocais });
   const [editando, setEditando] = useState<(Omit<LocalPonto, 'id'> & { id?: string }) | null>(null);
+  const qc = useQueryClient();
+  const [erro, setErro] = useState('');
+  const excluir = useMutation({
+    mutationFn: excluirLocal,
+    onSuccess: () => { setErro(''); void qc.invalidateQueries({ queryKey: ['ponto', 'locais'] }); },
+    onError: (e) => setErro(mensagemErro(e)),
+  });
   return (
     <Bloco titulo="Locais de ponto" detalhe="A empresa e as obras onde a equipe pode bater o ponto direto (ex.: obra na Gelita). Obra provisória tem data de início e fim."
       acoes={editavel && <Botao variante="secundario" tamanho="sm" onClick={() => setEditando({ ...localVazio })}><Plus size={14} /> Novo local</Botao>}>
@@ -94,9 +101,16 @@ function Locais({ editavel }: { editavel: boolean }) {
             <a href={`https://www.google.com/maps?q=${l.latitude},${l.longitude}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-roxo-600 hover:underline">ver no mapa <ExternalLink size={12} /></a>
             <span className="flex-1" />
             {editavel && <Botao tamanho="sm" variante="fantasma" onClick={() => setEditando(l)}>Editar</Botao>}
+            {editavel && (
+              <Botao tamanho="sm" variante="fantasma" className="text-red-600 hover:text-red-700" disabled={excluir.isPending}
+                onClick={() => window.confirm(`Excluir o local "${l.nome}"? Ninguém mais consegue bater ponto nele. As batidas já feitas lá continuam no histórico.`) && excluir.mutate(l.id)}>
+                Excluir
+              </Botao>
+            )}
           </div>
         ))}
       </div>
+      {erro && <div className="mt-3"><Aviso>{erro}</Aviso></div>}
       {editando && <LocalModal local={editando} onFechar={() => setEditando(null)} />}
     </Bloco>
   );
