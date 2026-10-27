@@ -1,6 +1,19 @@
 # Ponto eletrônico (dentro do RH)
 
-Versão 1, 27/10/2026. **Estado: aguardando aprovação do Gabriel (perguntas no fim).**
+Versão 2, 27/10/2026. **Estado: aprovado com as respostas do Gabriel (decisão 115) e implementado (entregas 1 a 4).**
+
+Respostas do Gabriel (27/10):
+1. Local: o portão da Fabriaço pelo link do Google Maps (-21.4687341, -47.0208632); raio 150 m.
+2. Quem trabalha fora: o RH lança manualmente depois, ou, em obra grande, cadastra um **local provisório** (ex.: Gelita) e a equipe bate o ponto direto lá.
+3. **Controle interno** por enquanto; no fim do mês o RH imprime o relatório e todos assinam.
+4. Pode ter sábado/hora extra: o funcionário bate, mas o **RH aprova** para ir ao relatório oficial.
+5. Tolerância de **5 min antes** e **10 min de atraso por dia**; fora disso, alerta no RH, que aprova para entrar no relatório oficial.
+6. O saldo **zera todo mês** e o relatório mostra a hora extra ou quanto ficou devendo.
+7. Só o RH vê; cada funcionário vê só o seu.
+8. Sócios ficam fora.
+9. Computador vale se a localização for boa.
+
+O que mudou em relação à v1: não há bloqueio de horário para bater (tudo fora do horário vira alerta para o RH); não há fechamento de mês nem banco de horas acumulado (resposta 6); o ponto vale a partir do dia em que a migration roda, para os dias anteriores não virarem falta; quem bate ponto entra no ERP direto na tela do ponto. As perguntas abaixo ficaram como registro.
 
 Pedido do Gabriel (27/10):
 - o funcionário chega na empresa, entra na sua conta do ERP (com a localização permitida);

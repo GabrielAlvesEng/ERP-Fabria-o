@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Cog, IdCard, Lock, LogOut, Megaphone, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Clock, Cog, IdCard, Lock, LogOut, Megaphone, Menu, Moon, ShieldCheck, ShoppingCart, Sun, Wallet, Warehouse, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { useAno } from './AnoContext';
 import { aplicarTema, lerTema, type Tema } from './tema';
@@ -14,6 +14,7 @@ import { PresencaVendas, useVendasAoVivo } from '@/modules/vendas/aoVivo';
 import { ComunicadosSino, useComunicacaoAoVivo } from '@/modules/comunicacao/ComunicadosSino';
 import { desativarNesteAparelho } from '@/modules/comunicacao/push';
 import { loginVisivel } from '@/shared/lib/login';
+import { useBatePonto } from '@/modules/ponto/api';
 
 // Um item por módulo. As áreas de cada módulo ficam em abas superiores dentro dele.
 // Decisão 78: o menu é dividido em Operacionais (a operação dos projetos: Vendas, Engenharia, Fabricação...)
@@ -23,6 +24,8 @@ const modulos = [
   { to: '/engenharia', rotulo: 'Engenharia', icone: Cog, modulo: 'engenharia', grupo: 'operacional' },
   { to: '/compras', rotulo: 'Compras', icone: ShoppingCart, modulo: 'compras', grupo: 'operacional' },
   { to: '/almoxarifado', rotulo: 'Almoxarifado', icone: Warehouse, modulo: 'almoxarifado', grupo: 'operacional' },
+  // Ponto (decisão 115): só quem bate ponto (ficha do RH ligada ao login, sócios fora).
+  { to: '/ponto', rotulo: 'Ponto', icone: Clock, modulo: null, grupo: 'administrativo', ponto: true },
   // Comunicação: todos os logados (cada um tem a sua caixa de entrada); quem envia é decidido no banco.
   { to: '/comunicacao', rotulo: 'Comunicação', icone: Megaphone, modulo: null, grupo: 'administrativo' },
   { to: '/rh', rotulo: 'RH', icone: IdCard, modulo: 'rh', grupo: 'administrativo' },
@@ -34,20 +37,25 @@ const modulos = [
 const BLOQUEADOS = new Set<string>();
 const GRUPOS = [['operacional', 'Módulos operacionais'], ['administrativo', 'Módulos administrativos']] as const;
 type Pode = ReturnType<typeof useAuth>['pode'];
-const visivel = (m: (typeof modulos)[number], pode: Pode) => m.modulo === null || pode(m.modulo, ('acao' in m && m.acao) || 'ler');
+const visivel = (m: (typeof modulos)[number], pode: Pode, batePonto = false) =>
+  'ponto' in m ? batePonto : m.modulo === null || pode(m.modulo, ('acao' in m && m.acao) || 'ler');
 
 // Endereço desconhecido ou a raiz: o primeiro módulo que a pessoa pode abrir (quem só tem o perfil Funcionário cai na
 // Comunicação).
 export function Inicio() {
   const { pode, permissoesProntas } = useAuth();
-  if (!permissoesProntas) return null;
+  const batePonto = useBatePonto();
+  if (!permissoesProntas || batePonto === undefined) return null;
+  // Quem bate ponto entra direto na tela do ponto (decisão 115).
+  if (batePonto) return <Navigate to="/ponto" replace />;
   const m = modulos.find((x) => x.modulo !== null && !BLOQUEADOS.has(x.to) && visivel(x, pode));
   return <Navigate to={m?.to ?? '/comunicacao'} replace />;
 }
 
 export function Layout() {
   const { session, sair: sairDoErp, pode } = useAuth();
-  const menu = modulos.filter((m) => visivel(m, pode));
+  const batePonto = useBatePonto();
+  const menu = modulos.filter((m) => visivel(m, pode, batePonto));
   // Ao sair, este aparelho deixa de receber os avisos (o próximo usuário do mesmo navegador não recebe os de outro).
   const sair = async () => { await desativarNesteAparelho().catch(() => {}); await sairDoErp(); };
   const { ano, setAno } = useAno();

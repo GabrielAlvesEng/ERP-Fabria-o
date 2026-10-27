@@ -47,6 +47,10 @@ import { SetoresPage } from '@/modules/rh/SetoresPage';
 import { TiposDocumentoPage } from '@/modules/rh/TiposDocumentoPage';
 import { VencimentosPage } from '@/modules/rh/VencimentosPage';
 import { IntegracoesPage } from '@/modules/rh/IntegracoesPage';
+import { PontoPage } from '@/modules/ponto/PontoPage';
+import { RhPontoPage } from '@/modules/ponto/rh/RhPontoPage';
+import { EspelhoRhPage } from '@/modules/ponto/rh/EspelhoRhPage';
+import { RelatorioPonto } from '@/modules/ponto/rh/RelatorioPonto';
 import { CaixaEntradaPage, ComunicacaoLayout, EnviadosPage } from '@/modules/comunicacao/ComunicacaoPages';
 
 export function App() {
@@ -82,6 +86,8 @@ export function App() {
     <AnoProvider>
       <BarraCarregamento />
       <Routes>
+        {/* Relatório do ponto para imprimir: fora do layout (decisão 115). */}
+        <Route path="/ponto/relatorio" element={<RelatorioPonto />} />
         <Route element={<Layout />}>
           <Route path="/vendas" element={<VendasLayout />}>
             <Route index element={<DashboardPage />} />
@@ -118,6 +124,8 @@ export function App() {
             <Route path="documentos" element={<TiposDocumentoPage />} />
             <Route path="vencimentos" element={<VencimentosPage />} />
             <Route path="integracoes" element={<IntegracoesPage />} />
+            <Route path="ponto" element={<RhPontoPage />} />
+            <Route path="ponto/:id" element={<EspelhoRhPage />} />
           </Route>
           <Route path="/comunicacao" element={<ComunicacaoLayout />}>
             <Route index element={<CaixaEntradaPage />} />
@@ -130,6 +138,7 @@ export function App() {
             <Route path="fornecedores" element={<FornecedoresPagamentoPage />} />
           </Route>
           <Route path="/perfil" element={<PerfilPage />} />
+          <Route path="/ponto" element={<PontoPage />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<SenhasPage />} />
             <Route path="excluidas" element={<ExcluidasPage />} />

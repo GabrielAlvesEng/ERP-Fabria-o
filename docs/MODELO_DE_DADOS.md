@@ -225,3 +225,14 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `compras_requisicao_itens.referencia_link` e `referencia_imagem`: a referência que veio da Engenharia.
 - Funções: `eng_nova_revisao(projeto, copiar)`, `eng_descartar_rascunho(lista)`, `eng_enviar_lista(lista, itens, necessário em, prioridade, observações)`.
 - Espaço privado `engenharia` (imagens de referência, pasta = id da revisão): envia quem tem `engenharia.editar` em rascunho; leem `engenharia.ler` e `compras.ler`.
+
+## RH: ponto eletrônico (`20261027000076_rh_ponto.sql`, decisão 115)
+- `configuracoes.ponto`: horários, dias da semana, tolerâncias, precisão do GPS e `inicio` (função `ponto_salvar_config`, rh.editar).
+- `funcionarios.bate_ponto`: quem bate ponto (sócios fora).
+- `ponto_locais`: nome, latitude, longitude, raio, vigência (obras provisórias), ativo.
+- `ponto_marcacoes`: batidas (hora do servidor, `dia` em Brasília, origem app/ajuste/rh, local, distância, precisão, aparelho). Só entra por `ponto_bater` (confere o raio), `ponto_decidir_ajuste` e `ponto_lancar_batida`; `ponto_desconsiderar` marca, nunca apaga.
+- `ponto_ajustes`: pedidos do funcionário (`ponto_pedir_ajuste`), decididos pelo RH.
+- `ponto_justificativas`: atestado, férias etc. por período (exclusão lógica).
+- `ponto_decisoes`: aprovado/abonado por funcionário e dia (`ponto_decidir_dia`); deixa de valer quando a batida ou a justificativa do dia muda.
+- `feriados`: data, nome, abrangência, ativo.
+- RLS: o RH (rh.ler) lê tudo; cada funcionário lê só o seu (`ponto_eh_meu`).

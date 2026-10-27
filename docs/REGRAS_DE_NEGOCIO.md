@@ -342,6 +342,16 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - As tabelas que alimentam o cadastro (preço por kg das chapas por material e tipo, base de pesos dos perfis e tipos/materiais de fixador) ficam no botão **"Tabelas de apoio"**, para não perder o que a Engenharia e as propostas usam.
    - Migration `20261026000075_compras_ipi.sql` (`compras_cotacao_precos.ipi`, `compras_pedido_itens.ipi`, view `compras_historico` com `ipi`, `compras_gerar_pedido_pacote` com IPI).
 
+115. **Ponto eletrônico por localização, dentro do RH (27/10/2026)** (pedido do Gabriel de 27/10, planejamento em `docs/PLANEJAMENTO_PONTO.md`, com as respostas dele):
+   - O funcionário bate o ponto no ERP (menu **Ponto**) só dentro do raio de um local ativo: a sede (link do Google Maps do Gabriel, raio 150 m) ou uma **obra provisória** que o RH cadastra com datas (ex.: Gelita). A hora é a do servidor. GPS impreciso (acima de 100 m) é recusado; pelo computador vale se a precisão for boa.
+   - Jornada 07:00–11:30 e 13:00–17:18, segunda a sexta (8h48 por dia, 44h por semana); 4 batidas por dia. Quem bate ponto entra no ERP direto na tela do ponto.
+   - Tolerância: até **5 min** antes da entrada/depois da saída não conta como extra; atrasos e saídas antecipadas que somam até **10 min** no dia não contam. Fora disso (hora extra, atraso, falta, batida faltando, trabalho no sábado ou feriado) o dia vai para **"Aguardando aprovação"** e só entra no relatório oficial depois que o RH **aprova** (vale o saldo) ou **abona** (conta como normal, com motivo).
+   - Nada é apagado: batida esquecida vira **pedido de ajuste** do funcionário (o RH aprova ou recusa) ou batida lançada pelo RH com motivo; batida errada é **desconsiderada** com motivo. Mudou uma batida ou justificativa, a decisão do RH daquele dia deixa de valer.
+   - **Justificativas** (atestado, férias, folga, afastamento…) por dia inteiro, manhã ou tarde tiram o dia do previsto. **Feriados** já carregados (nacionais e 9 de julho de 2026 e 2027); o RH acrescenta os de Mococa e as pontes.
+   - **Saldo zera todo mês**; o relatório mostra horas extras e quanto ficou devendo. É **controle interno**: no fim do mês o RH imprime o espelho de cada um (RH → Ponto → Resumo do mês → Imprimir) e pede a assinatura.
+   - Só o RH (`rh.ler`) vê o ponto de todos; cada funcionário vê só o seu. **Sócios ficam fora** (`funcionarios.bate_ponto`, desligado para Gabriel e Fabiano). O ponto vale a partir do dia em que a migration roda (`configuracoes.ponto.inicio`), para os dias anteriores não virarem falta.
+   - Migration `20261027000076_rh_ponto.sql`.
+
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
