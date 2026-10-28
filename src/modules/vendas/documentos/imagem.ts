@@ -33,13 +33,16 @@ export function dimensoesImagem(dataUrl: string): { largura: number; altura: num
   return null;
 }
 
-// Altura (pt) do card de cada imagem: a imagem ocupa a largura útil do card; a comprida cresce até "maxima".
-// Se a coluna toda passar de "coluna", volta todas para a altura padrão (para caber numa página).
+// Altura (pt) do card de cada imagem: a imagem ocupa a largura útil do card e a comprida cresce até "maxima".
+// Se a coluna toda passar de "coluna" (uma página), o que passa da altura padrão encolhe na mesma proporção;
+// a imagem nunca é cortada: o que não couber na largura fica um pouco mais estreito (decisão 119).
 export function alturasDasImagens(proporcoes: (number | null)[], o: { largura: number; padrao: number; maxima: number; coluna: number; espaco: number; extras: number[] }): number[] {
-  const alturas = proporcoes.map((p, k) => {
-    if (!p) return o.padrao;
-    return Math.min(o.maxima, Math.max(o.padrao, (o.largura - 10) * p + 10 + o.extras[k]));
-  });
+  const alturas = proporcoes.map((p, k) => (p ? Math.min(o.maxima, Math.max(o.padrao, (o.largura - 10) * p + 10 + o.extras[k])) : o.padrao));
   const total = alturas.reduce((a, h) => a + h, 0) + o.espaco * (alturas.length - 1);
-  return total > o.coluna ? alturas.map(() => o.padrao) : alturas;
+  if (total <= o.coluna) return alturas;
+  const sobra = alturas.reduce((a, h) => a + (h - o.padrao), 0);
+  const excesso = total - o.coluna;
+  if (sobra <= 0) return alturas;
+  const k = Math.max(0, 1 - excesso / sobra);
+  return alturas.map((h) => o.padrao + (h - o.padrao) * k);
 }

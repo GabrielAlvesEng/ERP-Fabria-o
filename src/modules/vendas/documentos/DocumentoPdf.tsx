@@ -48,7 +48,7 @@ const A4_ALTURA = 841.89;
 const MARCA = `${import.meta.env.BASE_URL}marca/pdf/`;
 // Cards de imagem ao lado do item (pt): 5 imagens por item cabem numa página.
 // alturaMaxima: imagem comprida (decisão 119); coluna: altura máxima da coluna de imagens, para caber numa página.
-const IMG = { largura: 178, altura: 104, alturaMaxima: 380, coluna: 640, espaco: 8, ligacao: 26, saida: 16, textoAoLado: 0 };
+const IMG = { largura: 178, altura: 104, alturaMaxima: 640, coluna: 640, espaco: 8, ligacao: 26, saida: 16, textoAoLado: 0 };
 // Largura do texto no card ao lado das imagens: página (595,28) − margens (2 × 46) − ligação − imagens − padding (2 × 10) − marcador (32).
 IMG.textoAoLado = 595.28 - 92 - IMG.ligacao - IMG.largura - 20 - 32;
 
@@ -424,7 +424,7 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
             <View style={{ width: IMG.largura }}>
               {figs.map((f, k) => (
                 <View key={k} style={{ height: alturas[k], marginTop: k ? IMG.espaco : 0, borderWidth: 0.5, borderColor: C.borda, borderRadius: 6, backgroundColor: '#ffffff', padding: 5 }}>
-                  <Image src={imagens[f.caminho]} style={{ flex: 1, objectFit: alturas[k] >= IMG.alturaMaxima ? 'cover' : 'contain' }} />
+                  <Image src={imagens[f.caminho]} style={{ flex: 1, objectFit: 'contain' }} />
                   {f.legenda.trim() ? <Text style={{ fontSize: 6.5, color: C.suave, marginTop: 3, textAlign: 'center', lineHeight: 1.2 }}>{f.legenda}</Text> : null}
                 </View>
               ))}

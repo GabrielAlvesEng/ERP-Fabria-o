@@ -22,8 +22,11 @@ describe('imagens do escopo (decisão 119)', () => {
     expect(alturasDasImagens([1080 / 1920, 1.5], o)).toEqual([168 * (1080 / 1920) + 10, 168 * 1.5 + 10]);
     expect(alturasDasImagens([null, 3], o)).toEqual([104, 300]);
   });
-  it('se a coluna não cabe na página, todas voltam ao padrão', () => {
-    const o = { largura: 178, padrao: 104, maxima: 300, coluna: 640, espaco: 8, extras: [0, 0, 0] };
-    expect(alturasDasImagens([3, 3, 3], o)).toEqual([104, 104, 104]);
+  it('se a coluna não cabe na página, o que passa do padrão encolhe na mesma proporção', () => {
+    const o = { largura: 178, padrao: 104, maxima: 640, coluna: 640, espaco: 8, extras: [0, 0, 0] };
+    const a = alturasDasImagens([3, 3, 3], o);
+    expect(a.reduce((x, h) => x + h, 0) + 16).toBeCloseTo(640, 6);
+    expect(a[0]).toBeCloseTo(a[2], 6);
+    expect(alturasDasImagens([null, null, null, null, null, null, null], o)).toEqual(Array(7).fill(104));
   });
 });
