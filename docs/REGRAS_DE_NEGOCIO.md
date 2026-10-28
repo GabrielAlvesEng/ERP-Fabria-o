@@ -370,6 +370,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - **Repetição** (resposta 3): todo dia, toda semana (escolhendo os dias), todo mês, todo ano, "a cada N" e "até" opcional. Mudar ou cancelar pergunta: só este dia, este e os seguintes, ou todos.
    - **Lembretes dentro do ERP** (no canto da tela e no sino de agenda), enquanto o ERP estiver aberto: véspera a partir das **16:30** com o primeiro de amanhã (resposta 4), o próximo do dia **de hora em hora das 07:00 às 18:00** (resposta 5) e **faltando 15 minutos**, com som. Aviso com o ERP fechado (push do Comunicação): depois.
    - Migration `20261027000079_agenda.sql`.
+119. **Imagens do Escopo com as laterais alinhadas (28/10/2026)** (pedido do Gabriel): no PDF, cada imagem ao lado de um item do Escopo ocupa a largura toda do card de imagem, então as laterais ficam alinhadas com as das outras imagens. A imagem comprida (em pé) deixa o card mais alto, até 380 pt; passando disso, ela é cortada em cima e embaixo para manter a largura. Se a coluna de imagens de um item não couber numa página, todas voltam para a altura padrão.
 
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 

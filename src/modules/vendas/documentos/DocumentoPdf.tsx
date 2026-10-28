@@ -11,6 +11,7 @@ import {
 } from './modelo';
 import { MAPA_SP } from './mapaSP';
 import { dividirTexto, larguraTexto } from './fluxo';
+import { alturasDasImagens, dimensoesImagem } from './imagem';
 
 // PDF da proposta (decisão 61; novo design na decisão 67). A prévia na tela e o arquivo gerado saem deste mesmo componente.
 // Técnica: capa + páginas com as seções numeradas. Comercial: 4 páginas (capa, visão geral, valores e encerramento).
@@ -46,7 +47,8 @@ const C = {
 const A4_ALTURA = 841.89;
 const MARCA = `${import.meta.env.BASE_URL}marca/pdf/`;
 // Cards de imagem ao lado do item (pt): 5 imagens por item cabem numa página.
-const IMG = { largura: 178, altura: 104, espaco: 8, ligacao: 26, saida: 16, textoAoLado: 0 };
+// alturaMaxima: imagem comprida (decisão 119); coluna: altura máxima da coluna de imagens, para caber numa página.
+const IMG = { largura: 178, altura: 104, alturaMaxima: 380, coluna: 640, espaco: 8, ligacao: 26, saida: 16, textoAoLado: 0 };
 // Largura do texto no card ao lado das imagens: página (595,28) − margens (2 × 46) − ligação − imagens − padding (2 × 10) − marcador (32).
 IMG.textoAoLado = 595.28 - 92 - IMG.ligacao - IMG.largura - 20 - 32;
 
@@ -398,8 +400,11 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
       const cartao = (c: Cartao, i: number) => {
         const figs = (c.imagens ?? []).filter((f) => imagens[f.caminho]);
         if (!figs.length) return <View key={i} wrap={false} style={{ ...caixaCartao, marginBottom: 7 }}>{miolo(c, i)}</View>;
-        const coluna = figs.length * IMG.altura + (figs.length - 1) * IMG.espaco;
-        const centros = figs.map((_, k) => k * (IMG.altura + IMG.espaco) + IMG.altura / 2);
+        // Decisão 119: cada imagem ocupa a largura do card (laterais alinhadas); a comprida deixa o card mais alto.
+        const alturas = alturasDasImagens(figs.map((f) => { const t = dimensoesImagem(imagens[f.caminho]); return t && t.largura ? t.altura / t.largura : null; }),
+          { largura: IMG.largura, padrao: IMG.altura, maxima: IMG.alturaMaxima, coluna: IMG.coluna, espaco: IMG.espaco, extras: figs.map((f) => (f.legenda.trim() ? 11 : 0)) });
+        const coluna = alturas.reduce((a, h) => a + h, 0) + (figs.length - 1) * IMG.espaco;
+        const centros = alturas.map((h, k) => alturas.slice(0, k).reduce((a, x) => a + x + IMG.espaco, 0) + h / 2);
         const ultimo = centros[centros.length - 1];
         const tronco = IMG.ligacao / 2;
         // Texto maior que a coluna de imagens: o que sobra continua numa faixa de largura total, por baixo das imagens.
@@ -418,8 +423,8 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
             </Svg>
             <View style={{ width: IMG.largura }}>
               {figs.map((f, k) => (
-                <View key={k} style={{ height: IMG.altura, marginTop: k ? IMG.espaco : 0, borderWidth: 0.5, borderColor: C.borda, borderRadius: 6, backgroundColor: '#ffffff', padding: 5 }}>
-                  <Image src={imagens[f.caminho]} style={{ flex: 1, objectFit: 'contain' }} />
+                <View key={k} style={{ height: alturas[k], marginTop: k ? IMG.espaco : 0, borderWidth: 0.5, borderColor: C.borda, borderRadius: 6, backgroundColor: '#ffffff', padding: 5 }}>
+                  <Image src={imagens[f.caminho]} style={{ flex: 1, objectFit: alturas[k] >= IMG.alturaMaxima ? 'cover' : 'contain' }} />
                   {f.legenda.trim() ? <Text style={{ fontSize: 6.5, color: C.suave, marginTop: 3, textAlign: 'center', lineHeight: 1.2 }}>{f.legenda}</Text> : null}
                 </View>
               ))}
