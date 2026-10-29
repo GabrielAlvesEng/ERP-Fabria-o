@@ -33,7 +33,7 @@ export interface DadosProposta {
   revisoes?: { numero: number; descricao: string; emissao: string }[];
   // id, manual e calculado servem ao editor (valor digitado na área Valores da comercial, decisão 71); o PDF usa só o valor.
   itens: { id?: string; letra: string; descricao: string; quantidade?: number; valor: number; manual?: boolean; calculado?: number; unitario?: number; calculadoUnitario?: number }[];
-  // Decisão 70: frete da aba Dados (o local de entrega é sempre o endereço do cliente) e os anexos da revisão (aba Arquivos).
+  // Decisão 70: frete da aba Dados (local de entrega da proposta ou, vazio, o endereço do cliente, decisão 120) e os anexos da revisão (aba Arquivos).
   frete?: 'CIF' | 'FOB';
   entrega?: string;
   anexos?: { tecnicos: ArquivoAnexo[]; comerciais: ArquivoAnexo[] };
@@ -554,11 +554,8 @@ function Moldura({ d, comercial, empresa }: { d: DadosProposta; comercial: boole
 
 function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; empresa: DadosEmpresaFabriaco; imagens: Record<string, string> }) {
   const comercial = doc.tipo === 'comercial';
-  // Fundo claro: economiza tinta na impressão (pedido do Gabriel); escuro é o visual dos modelos.
-  const claro = doc.capa.fundo === 'claro';
-  const T = claro
-    ? { fundo: '#ffffff', forma: '#f1eefc', circulo: '#e6f3f1', texto: C.texto, suave: C.suave, linha: C.borda, cartao: C.fundo, cartaoBorda: C.borda, destaque: C.roxo, sub: '#4b5263', logo: 'logo.png', quadro: 'transparent', traco: C.roxo }
-    : { fundo: C.navy, forma: C.navy2, circulo: C.teal, texto: '#ffffff', suave: '#aeb3c9', linha: '#2f3757', cartao: C.navy3, cartaoBorda: '#38406a', destaque: C.roxoClaro, sub: '#c7cbe0', logo: 'logo-escuro.png', quadro: '#ffffff', traco: C.roxoClaro };
+  // Capa sempre de fundo branco (decisão 120: o oficial). O fundo escuro antigo (doc.capa.fundo) não é mais usado.
+  const T = { fundo: '#ffffff', forma: '#f1eefc', circulo: '#e6f3f1', texto: C.texto, suave: C.suave, linha: C.borda, cartao: C.fundo, cartaoBorda: C.borda, destaque: C.roxo, sub: '#4b5263', logo: 'logo.png', quadro: 'transparent', traco: C.roxo };
   const ac = !comercial && d.contatoTecnico?.nome ? d.contatoTecnico.nome : d.contato.nome;
   const comImagem = Boolean(doc.capa.imagem && imagens[doc.capa.imagem]);
   return (
@@ -596,7 +593,7 @@ function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; 
         {comImagem ? (
           // Decisão 71: a imagem principal ocupa todo o espaço livre até o rodapé da capa. flexBasis 0 faz ela só usar a sobra,
           // sem encolher a logo, o título e os cartões.
-          <View style={{ marginTop: 14, marginBottom: 46, flexGrow: 1, flexBasis: 0, minHeight: 0, backgroundColor: T.quadro, borderRadius: 10, padding: claro ? 0 : 8 }}>
+          <View style={{ marginTop: 14, marginBottom: 46, flexGrow: 1, flexBasis: 0, minHeight: 0, backgroundColor: T.quadro, borderRadius: 10, padding: 0 }}>
             <Image src={imagens[doc.capa.imagem!]} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </View>
         ) : null}

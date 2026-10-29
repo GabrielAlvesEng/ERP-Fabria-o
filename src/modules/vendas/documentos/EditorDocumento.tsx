@@ -48,14 +48,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
       <div className="rounded-xl bg-pagina p-3 ring-1 ring-borda">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-semibold">Capa</span>
-          <div className="flex rounded-lg bg-superficie p-0.5 text-xs ring-1 ring-borda" title="Fundo claro gasta menos tinta na impressão">
-            {(['escuro', 'claro'] as const).map((f) => (
-              <button key={f} type="button" onClick={() => onChange({ ...doc, capa: { ...doc.capa, fundo: f } })}
-                className={`rounded-md px-2.5 py-1 ${(doc.capa.fundo ?? 'escuro') === f ? 'bg-roxo-600 font-semibold text-white' : 'text-suave'}`}>
-                {f === 'escuro' ? 'Fundo escuro' : 'Fundo claro (impressão)'}
-              </button>
-            ))}
-          </div>
+          {/* Decisão 120: a capa é sempre de fundo branco (o oficial); a escolha de fundo saiu. */}
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="rounded-lg bg-pagina px-3 py-2 text-sm ring-1 ring-borda sm:col-span-2">

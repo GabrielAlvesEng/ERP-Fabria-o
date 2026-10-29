@@ -59,7 +59,8 @@ export interface Proposta {
   empresa_id: string;
   contato_id: string;
   contato_tecnico_id?: string | null; // decisão 67: a técnica vai A/C dele e ele entra em C/C no envio
-  frete?: 'CIF' | 'FOB'; // decisão 70: o local de entrega é sempre o endereço da empresa cliente
+  frete?: 'CIF' | 'FOB'; // decisão 70
+  local_entrega?: string; // decisão 120: obra ou outra unidade; vazio = endereço da empresa cliente
   titulo: string;
   descricao: string;
   responsavel_id: string | null;

@@ -40,7 +40,7 @@ export async function salvarDocumento(revisaoId: string, tipo: TipoDocumento, co
   ok(await supabase.from('proposta_documentos').upsert({ revisao_id: revisaoId, tipo, conteudo }, { onConflict: 'revisao_id,tipo' }));
 }
 
-// Local de entrega (decisão 70): sempre o endereço da empresa cliente.
+// Local de entrega (decisões 70 e 120): o digitado na proposta ou, vazio, o endereço da empresa cliente.
 export const enderecoEntrega = (e: Pick<Empresa, 'logradouro' | 'numero' | 'bairro' | 'cidade' | 'uf'>) =>
   [[e.logradouro, e.numero].filter(Boolean).join(', '), e.bairro, [e.cidade, e.uf].filter(Boolean).join(' / ')].filter(Boolean).join(' – ');
 
@@ -74,7 +74,7 @@ export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoP
     contato: pessoa(contato)!,
     contatoTecnico: pessoa(tecnico),
     frete: p.frete ?? 'CIF',
-    entrega: enderecoEntrega(empresa),
+    entrega: p.local_entrega?.trim() || enderecoEntrega(empresa),
     anexos: {
       tecnicos: arquivos.filter((a) => a.tipo === 'documento_tecnico').map((a) => ({ nome: a.nome, tamanho: a.tamanho })),
       comerciais: arquivos.filter((a) => a.tipo === 'anexo').map((a) => ({ nome: a.nome, tamanho: a.tamanho })),

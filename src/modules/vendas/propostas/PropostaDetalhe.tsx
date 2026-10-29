@@ -166,7 +166,7 @@ function QuemEstaAqui({ presentes, aba }: { presentes: Presente[]; aba: string }
 }
 
 // Campos da aba Dados que vão ao vivo enquanto se digita (decisão 85).
-const CAMPOS_DADOS = ['titulo', 'responsavel_id', 'descricao', 'valor', 'prazo_previsto', 'validade_dias', 'condicoes_comerciais', 'observacoes', 'data_emissao', 'contato_tecnico_id', 'frete'] as const satisfies readonly (keyof Proposta)[];
+const CAMPOS_DADOS = ['titulo', 'responsavel_id', 'descricao', 'valor', 'prazo_previsto', 'validade_dias', 'condicoes_comerciais', 'observacoes', 'data_emissao', 'contato_tecnico_id', 'frete', 'local_entrega'] as const satisfies readonly (keyof Proposta)[];
 const juntarCampos = (a: Partial<Proposta> | null, b: Partial<Proposta>) => ({ ...a, ...b });
 
 function AbaDados({ p }: { p: Proposta }) {
@@ -186,7 +186,7 @@ function AbaDados({ p }: { p: Proposta }) {
   const dadosDe = (x: Proposta) => ({
     titulo: x.titulo, responsavel_id: x.responsavel_id, descricao: x.descricao, valor: Number(numeroBR(String(x.valor)) || 0), prazo_previsto: x.prazo_previsto,
     validade_dias: x.validade_dias || null, condicoes_comerciais: x.condicoes_comerciais, observacoes: x.observacoes, data_emissao: x.data_emissao,
-    contato_tecnico_id: x.contato_tecnico_id || null, frete: x.frete ?? 'CIF',
+    contato_tecnico_id: x.contato_tecnico_id || null, frete: x.frete ?? 'CIF', local_entrega: (x.local_entrega ?? '').trim(),
   });
   const chave = (x: Proposta) => JSON.stringify(dadosDe(x));
   // Dados que vieram do banco: o formulário só é trocado por eles se não houver alteração ainda não salva.
@@ -251,14 +251,20 @@ function AbaDados({ p }: { p: Proposta }) {
             {daEmpresa.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.cargo ? ` · ${c.cargo}` : ''}</option>)}
           </Selecao>
         </Campo>
-        {/* Frete (decisão 70): CIF ou FOB; o local de entrega é sempre o endereço da empresa cliente. */}
+        {/* Frete (decisão 70): CIF ou FOB. Local de entrega (decisão 120): vazio = endereço da empresa cliente. */}
         <Campo rotulo="Frete">
           <Selecao value={f.frete ?? 'CIF'} onChange={(e) => setF({ ...f, frete: e.target.value as 'CIF' | 'FOB' })} disabled={!editavel}>
             <option value="CIF">CIF · frete por conta da Fabriaço</option>
             <option value="FOB">FOB · frete por conta do cliente</option>
           </Selecao>
         </Campo>
-        <Campo rotulo="Local de entrega (endereço da empresa)"><Entrada value={empresa ? enderecoEntrega(empresa) || 'Endereço não cadastrado na empresa' : '—'} disabled /></Campo>
+        <Campo rotulo="Local de entrega (obra ou outra unidade; vazio = endereço da empresa)">
+          <Entrada value={f.local_entrega ?? ''} onChange={set('local_entrega')} disabled={!editavel} maxLength={300}
+            placeholder={empresa ? enderecoEntrega(empresa) || 'Endereço não cadastrado na empresa' : '—'} />
+          {f.local_entrega?.trim() && editavel && (
+            <button type="button" onClick={() => setF({ ...f, local_entrega: '' })} className="mt-1 text-xs font-medium text-roxo-600 hover:underline dark:text-roxo-100">Usar o endereço da empresa</button>
+          )}
+        </Campo>
         <Campo rotulo="Descrição (subtítulo da capa das propostas)" className="sm:col-span-2"><AreaTexto value={f.descricao} onChange={set('descricao')} disabled={!editavel} /></Campo>
         <Campo rotulo="Valor (R$)"><EntradaMoeda value={String(f.valor)} onChange={(v) => set('valor')({ target: { value: v } })} disabled={!editavel} /></Campo>
         <Campo rotulo="Data de emissão"><CampoData value={f.data_emissao} onChange={(v) => setF({ ...f, data_emissao: v })} disabled={!editavel} /></Campo>
