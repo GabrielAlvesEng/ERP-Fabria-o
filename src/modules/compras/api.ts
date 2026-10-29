@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
-import type { BibTipo, CondicaoTipo, GrupoItem, Origem, PecaProjeto, StatusItem, StatusPacote, StatusPedido, StatusRequisicao } from './regras';
+import type { BibTipo, CondicaoTipo, GrupoItem, Origem, OrigemPreco, PecaProjeto, StatusItem, StatusPacote, StatusPedido, StatusRequisicao, TipoProduto } from './regras';
 
 // Compras (decisões 101, 107 e 111). Situações mudam só pelas funções do banco (compras_*).
 
@@ -78,9 +78,58 @@ export async function listarProdutos(): Promise<Produto[]> {
     ...(ok(i) as { id: string; descricao: string; grupo: GrupoItem; unidade: string }[]).map((x) => ({ tipo: 'item' as const, id: x.id, descricao: x.descricao, grupo: x.grupo, unidade: x.unidade || 'un' })),
   ];
 }
-// Cadastro rápido de item comercial, fixador ou consumível a partir do À comprar (chapas e perfis vão pela aba Produtos).
-export async function cadastrarItemBiblioteca(d: { grupo: 'Comerciais' | 'Fixadores' | 'Consumíveis'; descricao: string; unidade: string }): Promise<string> {
-  return (ok(await supabase.from('bib_itens').insert({ ...d, descricao: d.descricao.trim() }).select('id').single()) as { id: string }).id;
+// Cadastro rápido a partir do À comprar: produto sem preço, que fica ligado ao item.
+export async function cadastrarItemBiblioteca(d: { grupo: TipoProduto; descricao: string; unidade: string }): Promise<string> {
+  return salvarProduto(null, { ...d, valor: 0, ipi: 0, fornecedor_id: null, data: null });
+}
+
+// ---------- Produtos simplificados (decisão 121) ----------
+export interface ProdutoCompras {
+  id: string; grupo: TipoProduto; descricao: string; unidade: string; valor: number; ipi: number;
+  fornecedor_id: string | null; preco_data: string | null; preco_origem: OrigemPreco | null; fornecedores?: { nome: string } | null;
+}
+export interface PrecoProduto {
+  id: string; item_id: string; origem: OrigemPreco; fornecedor_id: string | null; valor_unit: number; ipi: number; data: string;
+  documento: string; cotacao_id: string | null; pedido_id: string | null; observacoes: string; criado_em: string;
+  fornecedores?: { nome: string } | null; compras_pedidos?: { codigo: string } | null; usuarios?: { nome: string } | null;
+}
+export interface DadosProduto { grupo: TipoProduto; descricao: string; unidade: string; valor: number; ipi: number; fornecedor_id: string | null; data: string | null }
+
+export const listarCatalogo = async (): Promise<ProdutoCompras[]> =>
+  ok(await supabase.from('bib_itens').select('id, grupo, descricao, unidade, valor, ipi, fornecedor_id, preco_data, preco_origem, fornecedores(nome)')
+    .eq('ativo', true).order('descricao').limit(10000)) as unknown as ProdutoCompras[];
+export const precosDoProduto = async (id: string): Promise<PrecoProduto[]> =>
+  ok(await supabase.from('bib_item_precos').select('*, fornecedores(nome), compras_pedidos(codigo), usuarios:criado_por(nome)')
+    .eq('item_id', id).order('data', { ascending: false }).order('criado_em', { ascending: false }));
+export async function salvarProduto(id: string | null, d: DadosProduto): Promise<string> {
+  return ok(await supabase.rpc('compras_salvar_produto', { p_id: id, p_dados: d })) as string;
+}
+export async function desativarProduto(id: string): Promise<void> {
+  ok(await supabase.from('bib_itens').update({ ativo: false }).eq('id', id));
+}
+
+// Orçamento do fornecedor lido pela IA (Edge Function compras-ler-orcamento): o PDF vai para o espaço "compras" e volta um rascunho.
+export interface ItemLido { descricao_original: string; tipo: TipoProduto; descricao: string; unidade: 'un' | 'm' | 'kg'; quantidade: number; valor_unit: number; ipi: number }
+export interface OrcamentoLido {
+  fornecedor: string; cnpj: string; data: string; numero: string; condicao_pagamento: string; prazo_entrega: string; frete: string; itens: ItemLido[];
+}
+export async function lerOrcamento(arquivo: File): Promise<{ caminho: string; orcamento: OrcamentoLido }> {
+  const nome = arquivo.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_');
+  const caminho = `orcamentos/${Date.now()}_${nome}`;
+  const { error } = await supabase.storage.from('compras').upload(caminho, arquivo, { contentType: arquivo.type || 'application/pdf' });
+  if (error) throw error;
+  const { data, error: erro } = await supabase.functions.invoke('compras-ler-orcamento', { body: { caminho } });
+  if (erro) {
+    // A função devolve { erro } com a explicação; o cliente só traz o status.
+    const corpo = await (erro as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(corpo?.erro ?? 'Não consegui ler o orçamento agora. Tente de novo em instantes.');
+  }
+  if (data?.erro) throw new Error(data.erro);
+  return { caminho, orcamento: data.orcamento as OrcamentoLido };
+}
+export async function gravarOrcamento(fornecedor: string, data: string | null, documento: string,
+  linhas: { produto_id: string | null; grupo: TipoProduto; descricao: string; unidade: string; valor_unit: number; ipi: number }[]): Promise<number> {
+  return ok(await supabase.rpc('compras_gravar_orcamento', { p_fornecedor: fornecedor, p_data: data, p_documento: documento, p_linhas: linhas })) as number;
 }
 export const listarHistorico = async (): Promise<Historico[]> => ok(await supabase.from('compras_historico').select('*').order('emitido_em', { ascending: false }).limit(5000));
 

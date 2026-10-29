@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { valorComIpi, agruparAComprar, agruparLista, descreverCondicao, fichasDeProdutos, lerDias, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
+import { valorComIpi, agruparAComprar, agruparLista, casarProduto, comImpostos, descreverCondicao, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -61,13 +61,6 @@ describe('Compras v2 (decisão 103)', () => {
     ]);
     expect(linhas.map((l) => [l.descricao, l.bib_tipo, l.bib_id, l.quantidade])).toEqual([['Chapa ASTM A36 6,35 mm', 'chapa', 'c1', 20], ['Rodízio 4"', 'item', 'r1', 6]]);
   });
-  it('ficha do produto junta cadastro e histórico, a compra mais recente primeiro', () => {
-    const h = (emitido_em: string, valor: number) => ({ bib_tipo: 'item' as const, bib_id: 'p1', grupo: 'Consumíveis' as const, descricao: 'Disco de corte', unidade: 'un', emitido_em, valor_unit: valor, fornecedor_nome: 'F' });
-    const f = fichasDeProdutos([{ tipo: 'item', id: 'p1', descricao: 'Disco de corte', grupo: 'Consumíveis', unidade: 'un' }, { tipo: 'item', id: 'p2', descricao: 'Eletrodo', grupo: 'Consumíveis', unidade: 'kg' }],
-      [h('2026-09-01', 5), h('2026-10-01', 6), { ...h('2026-08-01', 1), bib_tipo: null, bib_id: null, descricao: 'Lixa 80' }]);
-    expect(f.map((x) => [x.descricao, x.cadastrado, x.compras.length])).toEqual([['Disco de corte', true, 2], ['Lixa 80', false, 1], ['Eletrodo', true, 0]]);
-    expect(f[0].compras[0].valor_unit).toBe(6);
-  });
 });
 
 describe('À comprar e pacotes (decisão 111)', () => {
@@ -97,5 +90,21 @@ describe('IPI no orçamento (decisão 114)', () => {
     expect(totalCotacao(x, itens)).toEqual({ itens: 410, ipi: 10, total: 440, faltam: 0 });
     const y = { id: 'y', frete: 0, precos: { a: 20.5, b: 100 }, ipis: {} };
     expect(menoresPrecos([x, y], itens).a).toBe(20.5);
+  });
+});
+
+describe('Produtos simplificados (decisão 121)', () => {
+  it('valor com impostos', () => {
+    expect(comImpostos(32.5, 3.25)).toBe(33.5563);
+    expect(comImpostos(10, 0)).toBe(10);
+  });
+  it('acha o produto pela descrição, sem diferença de maiúsculas, acentos e espaços', () => {
+    const ps = [{ id: '1', grupo: 'Chapas', descricao: 'Chapa lisa 5,00 x 1250 x 3000 (304)' }, { id: '2', grupo: 'Perfis', descricao: 'Tubo quadrado 30 x 30 x 1,50 (304)' }];
+    expect(casarProduto(ps, 'Chapas', 'chapa  lisa 5,00 x 1250 x 3000 (304) ')?.id).toBe('1');
+    expect(casarProduto(ps, 'Barras', 'Tubo quadrado 30 x 30 x 1,50 (304)')?.id).toBe('2');
+    expect(casarProduto(ps, 'Chapas', 'Chapa lisa 6,35 x 1250 x 3000 (304)')).toBeUndefined();
+  });
+  it('unidade do fornecedor vira un, m ou kg', () => {
+    expect(['KG', 'MT', 'M', 'PC', 'PÇ', 'UN', 'BR'].map(unidadeDoProduto)).toEqual(['kg', 'm', 'm', 'un', 'un', 'un', 'un']);
   });
 });

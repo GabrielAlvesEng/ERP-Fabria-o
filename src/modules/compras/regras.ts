@@ -9,9 +9,34 @@ export type StatusPedido = 'aguardando_entrega' | 'entregue_parcial' | 'entregue
 export type Origem = 'engenharia' | 'almoxarifado' | 'compras';
 export type CondicaoTipo = 'antecipado' | 'apos_recebimento' | 'parcelado' | 'a_combinar';
 export type BibTipo = 'chapa' | 'perfil' | 'item';
-export type GrupoItem = 'Chapas' | 'Perfis' | 'Comerciais' | 'Fixadores' | 'Consumíveis' | 'Serviços' | 'Outros';
+export type GrupoItem = 'Chapas' | 'Perfis' | 'Barras' | 'Comerciais' | 'Fixadores' | 'Consumíveis' | 'Serviços' | 'Outros';
 
-export const GRUPOS: GrupoItem[] = ['Chapas', 'Perfis', 'Comerciais', 'Fixadores', 'Consumíveis', 'Serviços', 'Outros'];
+export const GRUPOS: GrupoItem[] = ['Chapas', 'Perfis', 'Barras', 'Comerciais', 'Fixadores', 'Consumíveis', 'Serviços', 'Outros'];
+
+// ---------- Produtos (decisão 121) ----------
+// O produto é tipo + descrição (material entre parênteses) + unidade + preço atual; o preço vem do histórico.
+export type TipoProduto = 'Chapas' | 'Perfis' | 'Barras' | 'Comerciais' | 'Fixadores' | 'Consumíveis';
+export const TIPOS_PRODUTO: TipoProduto[] = ['Chapas', 'Perfis', 'Barras', 'Comerciais', 'Fixadores', 'Consumíveis'];
+export const ROTULO_TIPO: Record<TipoProduto, string> = {
+  Chapas: 'Chapa', Perfis: 'Perfil', Barras: 'Barra', Comerciais: 'Item comercial', Fixadores: 'Fixador', Consumíveis: 'Consumível',
+};
+export const UNIDADES_PRODUTO = [{ valor: 'un', rotulo: 'Unidade' }, { valor: 'm', rotulo: 'Metros' }, { valor: 'kg', rotulo: 'Peso (kg)' }] as const;
+export type OrigemPreco = 'estimado' | 'cotado' | 'comprado';
+export const ROTULO_PRECO: Record<OrigemPreco, string> = { estimado: 'Estimado', cotado: 'Cotado', comprado: 'Comprado' };
+// Valor unitário com o IPI (preço de uma unidade).
+export const comImpostos = (valor: number, ipi: number) => Math.round(Number(valor) * (1 + Number(ipi) / 100) * 10000) / 10000;
+// Produto ativo com a mesma descrição (sem diferença de maiúsculas, acentos e espaços) e do mesmo tipo.
+export function casarProduto<P extends { id: string; grupo: string; descricao: string }>(produtos: P[], grupo: string, descricao: string): P | undefined {
+  const d = norm(descricao);
+  return produtos.find((p) => p.grupo === grupo && norm(p.descricao) === d) ?? produtos.find((p) => norm(p.descricao) === d);
+}
+// Unidade que o fornecedor escreve (KG, MT, PC...) → unidade do cadastro.
+export function unidadeDoProduto(u: string): 'un' | 'm' | 'kg' {
+  const x = norm(u).replace(/[^a-z]/g, '');
+  if (x === 'kg' || x === 'quilo' || x === 'peso') return 'kg';
+  if (x === 'm' || x === 'mt' || x === 'mts' || x === 'metro' || x === 'metros' || x === 'ml') return 'm';
+  return 'un';
+}
 export const UNIDADES = ['un', 'pç', 'kg', 'm', 'm²', 'barra', 'chapa', 'cx', 'L', 'h', 'serviço'];
 export const SETORES = ['Engenharia', 'Almoxarifado', 'Fabricação', 'Montagem em campo', 'Manutenção', 'Qualidade', 'Administrativo', 'Outro'];
 
@@ -181,34 +206,3 @@ export function agruparLista(pecas: PecaProjeto[]): LinhaImportada[] {
     .sort((a, b) => ordem.indexOf(a.grupo) - ordem.indexOf(b.grupo) || a.descricao.localeCompare(b.descricao));
 }
 
-// ---------- Ficha do produto (aba Produtos) ----------
-// Junta o cadastro (Biblioteca) com o histórico das OCs. Item comprado sem cadastro vira ficha pela descrição.
-export interface CompraHistorico { bib_tipo: BibTipo | null; bib_id: string | null; grupo: GrupoItem; descricao: string; unidade: string; emitido_em: string }
-export interface FichaProduto<H extends CompraHistorico = CompraHistorico> {
-  chave: string; tipo: BibTipo | null; id: string | null; descricao: string; grupo: GrupoItem; unidade: string; cadastrado: boolean;
-  compras: H[]; busca: string;
-}
-export function fichasDeProdutos<H extends CompraHistorico & { fornecedor_nome?: string; pedido_codigo?: string }>(
-  produtos: { tipo: BibTipo; id: string; descricao: string; grupo: GrupoItem; unidade: string }[], historico: H[],
-): FichaProduto<H>[] {
-  const mapa = new Map<string, FichaProduto<H>>();
-  for (const p of produtos) {
-    mapa.set(`${p.tipo}|${p.id}`, { chave: `${p.tipo}|${p.id}`, tipo: p.tipo, id: p.id, descricao: p.descricao, grupo: p.grupo, unidade: p.unidade, cadastrado: true, compras: [], busca: '' });
-  }
-  for (const h of historico) {
-    const chave = h.bib_tipo && h.bib_id && mapa.has(`${h.bib_tipo}|${h.bib_id}`) ? `${h.bib_tipo}|${h.bib_id}` : `d|${norm(h.descricao)}|${h.unidade}`;
-    let f = mapa.get(chave);
-    if (!f) {
-      f = { chave, tipo: null, id: null, descricao: h.descricao, grupo: h.grupo, unidade: h.unidade, cadastrado: false, compras: [], busca: '' };
-      mapa.set(chave, f);
-    }
-    f.compras.push(h);
-  }
-  return [...mapa.values()]
-    .map((f) => {
-      const compras = [...f.compras].sort((a, b) => b.emitido_em.localeCompare(a.emitido_em));
-      const extra = compras.map((c) => `${c.fornecedor_nome ?? ''} ${c.pedido_codigo ?? ''}`).join(' ');
-      return { ...f, compras, busca: norm(`${f.descricao} ${f.grupo} ${extra}`) };
-    })
-    .sort((a, b) => (b.compras[0]?.emitido_em ?? '').localeCompare(a.compras[0]?.emitido_em ?? '') || a.descricao.localeCompare(b.descricao));
-}

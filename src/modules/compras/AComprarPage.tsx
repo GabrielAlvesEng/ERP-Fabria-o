@@ -8,7 +8,7 @@ import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, CampoCelula, CampoEsc
 import {
   adicionarAoPacote, atualizarItem, cadastrarItemBiblioteca, criarPacote, listarAComprar, listarProdutos, pacotesAbertos, type ItemComSolicitacao,
 } from './api';
-import { GRUPOS, ROTULO_DESTINO, UNIDADES, agruparAComprar, destinoDe, rotuloDestino, type Destino, type GrupoItem } from './regras';
+import { GRUPOS, ROTULO_DESTINO, ROTULO_TIPO, TIPOS_PRODUTO, UNIDADES, agruparAComprar, destinoDe, rotuloDestino, type Destino, type GrupoItem, type TipoProduto } from './regras';
 import { NovaRequisicaoModal } from './NovaRequisicaoModal';
 import { Referencia } from './comum';
 
@@ -272,26 +272,21 @@ function NovoPacote({ itens, onFechar, onCriar }: { itens: ItemComSolicitacao[];
   );
 }
 
-// Cadastro rápido na Biblioteca de Materiais: itens comerciais, fixadores e consumíveis. Chapas e perfis têm material e
-// medidas, então vão pela aba Produtos.
+// Cadastro rápido do produto (decisão 121): o item fica ligado a ele. O preço vem depois, pela cotação ou em Produtos.
 function CadastrarProduto({ item, onFechar, onSalvar }: {
-  item: ItemComSolicitacao; onFechar: () => void; onSalvar: (d: { grupo: 'Comerciais' | 'Fixadores' | 'Consumíveis'; descricao: string; unidade: string }) => Promise<boolean>;
+  item: ItemComSolicitacao; onFechar: () => void; onSalvar: (d: { grupo: TipoProduto; descricao: string; unidade: string }) => Promise<boolean>;
 }) {
-  const simples = item.grupo === 'Comerciais' || item.grupo === 'Fixadores' || item.grupo === 'Consumíveis';
-  const [d, setD] = useState({ grupo: (simples ? item.grupo : 'Comerciais') as 'Comerciais' | 'Fixadores' | 'Consumíveis', descricao: item.descricao, unidade: item.unidade || 'un' });
+  const [d, setD] = useState({ grupo: ((TIPOS_PRODUTO as string[]).includes(item.grupo) ? item.grupo : 'Comerciais') as TipoProduto, descricao: item.descricao, unidade: item.unidade || 'un' });
   const [salvando, setSalvando] = useState(false);
   return (
     <Modal aberto titulo="Cadastrar produto" onFechar={onFechar}>
       <div className="space-y-3 text-sm">
-        {!simples && (
-          <Aviso tipo="info">Chapas e perfis são cadastrados com material e medidas em <Link to="/compras/produtos" className="font-medium text-roxo-600 underline dark:text-roxo-100">Produtos</Link>. Depois, é só escolher o produto na linha do item. Aqui dá para cadastrar como item comercial, fixador ou consumível.</Aviso>
-        )}
-        <Campo rotulo="Descrição no cadastro"><Entrada value={d.descricao} onChange={(e) => setD({ ...d, descricao: e.target.value })} autoFocus /></Campo>
+        <Campo rotulo="Descrição no cadastro (com o material entre parênteses)"><Entrada value={d.descricao} onChange={(e) => setD({ ...d, descricao: e.target.value })} autoFocus /></Campo>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Campo rotulo="Categoria"><Selecao value={d.grupo} onChange={(e) => setD({ ...d, grupo: e.target.value as typeof d.grupo })}><option>Comerciais</option><option>Fixadores</option><option>Consumíveis</option></Selecao></Campo>
+          <Campo rotulo="Tipo"><Selecao value={d.grupo} onChange={(e) => setD({ ...d, grupo: e.target.value as TipoProduto })}>{TIPOS_PRODUTO.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}</Selecao></Campo>
           <Campo rotulo="Unidade"><Entrada list="compras-unidades" value={d.unidade} onChange={(e) => setD({ ...d, unidade: e.target.value })} /></Campo>
         </div>
-        <p className="text-xs text-suave">O produto entra na Biblioteca de Materiais (aba Produtos) e este item fica ligado a ele.</p>
+        <p className="text-xs text-suave">O produto entra em Produtos, sem preço, e este item fica ligado a ele.</p>
         <div className="flex justify-end gap-2">
           <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
           <Botao disabled={salvando || d.descricao.trim().length < 2} onClick={async () => { setSalvando(true); if (await onSalvar({ ...d, unidade: d.unidade.trim() || 'un' })) onFechar(); setSalvando(false); }}>Cadastrar</Botao>
