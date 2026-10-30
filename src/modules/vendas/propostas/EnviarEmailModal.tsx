@@ -1,12 +1,13 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Mail, X } from 'lucide-react';
+import { FileText, Mail, Plus, X } from 'lucide-react';
 import { supabase } from '@/shared/lib/supabase';
 import { hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Entrada, Modal } from '@/shared/ui';
 import { listarArquivos, listarContatos, listarRevisoes, moverProposta } from '../api';
 import type { Proposta } from '../types';
 import { PreviaAssinatura, useMinhaAssinatura } from '../vendedores/AssinaturaModal';
+import { semEmail } from '@/shared/lib/login';
 import { assuntoProposta, baixarArquivo, blobParaBase64, codigoComRevisao, corpoPadrao, emailValido, montarEml, separarEmails, type Anexo } from './email';
 
 export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; onFechar: () => void }) {
@@ -57,13 +58,15 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
       .map((c) => ({ chave: c.id, nome: c.nome, email: c.email, grupo: nomeEmpresa }));
     const vistos = new Set(doCliente.map((o) => o.email.toLowerCase()));
     const daEquipe = equipe
-      .filter((f) => !vistos.has(f.email.toLowerCase()))
+      .filter((f) => !semEmail(f.email) && !vistos.has(f.email.toLowerCase()))
       .sort((a, b) => a.nome.localeCompare(b.nome))
       .map((f) => ({ chave: `equipe:${f.email}`, nome: f.nome, email: f.email, grupo: 'Fabriaço' }));
     return [...doCliente, ...daEquipe];
   }, [contatos, equipe, proposta.contato_id, empresaCc, nomeEmpresa]);
   const [buscaCc, setBuscaCc] = useState('');
   const filtradosCc = opcoesCc.filter((o) => !cc.includes(o.email) && (!buscaCc || `${o.nome} ${o.email} ${o.grupo}`.toLowerCase().includes(buscaCc.toLowerCase())));
+  // Decisão 122: as sugestões ficam sempre à vista, em dois grupos (cliente e Fabriaço), com "Todos" por grupo.
+  const gruposCc = [...new Set(filtradosCc.map((o) => o.grupo))].map((g) => ({ grupo: g, itens: filtradosCc.filter((o) => o.grupo === g) }));
 
   // Decisão 88: sem vendedor a proposta não sai (o banco também recusa).
   const semVendedor = !proposta.responsavel_id;
@@ -131,23 +134,29 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
                 </div>
                 {opcoesCc.length === 0 && <div className="px-1 py-1 text-xs text-suave">Nenhum outro contato com e-mail em {nomeEmpresa} nem na equipe da Fabriaço.</div>}
                 {opcoesCc.length > 0 && <input value={buscaCc} onChange={(e) => setBuscaCc(e.target.value)} placeholder={`Buscar contato de ${nomeEmpresa} ou da Fabriaço…`} className="w-full bg-transparent px-1 py-1 text-sm outline-none" />}
-                {buscaCc !== '' || cc.length === 0 ? (
-                  <div className="mt-1 max-h-48 overflow-y-auto">
-                    {filtradosCc.length === 0 && buscaCc !== '' && <div className="px-2 py-1 text-xs text-suave">Ninguém encontrado. Digite o e-mail em "Outros e-mails".</div>}
-                    {filtradosCc.map((o, i) => (
-                      <div key={o.chave}>
-                        {(i === 0 || filtradosCc[i - 1].grupo !== o.grupo) && (
-                          <div className="px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-suave">{o.grupo}</div>
+                <div className="mt-1 max-h-56 space-y-2 overflow-y-auto">
+                  {filtradosCc.length === 0 && buscaCc !== '' && <div className="px-2 py-1 text-xs text-suave">Ninguém encontrado. Digite o e-mail em "Outros e-mails".</div>}
+                  {gruposCc.map(({ grupo, itens }) => (
+                    <div key={grupo}>
+                      <div className="flex items-center justify-between px-1 pb-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-suave">{grupo}</span>
+                        {itens.length > 1 && (
+                          <button type="button" onClick={() => setCc([...cc, ...itens.map((o) => o.email)])} className="text-xs font-medium text-roxo-700 hover:underline dark:text-roxo-100">
+                            Copiar todos ({itens.length})
+                          </button>
                         )}
-                        <button type="button" onClick={() => { setCc([...cc, o.email]); setBuscaCc(''); }}
-                          className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-marinho-700">
-                          <span className="truncate">{o.nome}</span>
-                          <span className="truncate text-xs text-suave">{o.email}</span>
-                        </button>
                       </div>
-                    ))}
-                  </div>
-                ) : null}
+                      <div className="flex flex-wrap gap-1">
+                        {itens.map((o) => (
+                          <button key={o.chave} type="button" title={o.email} onClick={() => { setCc([...cc, o.email]); setBuscaCc(''); }}
+                            className="inline-flex items-center gap-1 rounded-full border border-borda px-2 py-0.5 text-xs hover:border-roxo-300 hover:bg-roxo-50 dark:hover:bg-marinho-700">
+                            <Plus size={12} /> {o.nome}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <input value={ccLivre} onChange={(e) => setCcLivre(e.target.value)} placeholder="Outros e-mails (separe por vírgula)" className="mt-1 w-full border-t border-borda bg-transparent px-1 pt-2 text-sm outline-none" />
               </div>
             </Campo>
