@@ -8,6 +8,9 @@ import { listarArquivos, listarContatos, listarRevisoes, moverProposta } from '.
 import type { Proposta } from '../types';
 import { PreviaAssinatura, useMinhaAssinatura } from '../vendedores/AssinaturaModal';
 import { semEmail } from '@/shared/lib/login';
+import { lerDocumentos } from '../documentos/api';
+import { gerarEAnexarPdfs } from '../documentos/gerarPdfs';
+import { nomeArquivo } from '../documentos/modelo';
 import { assuntoProposta, baixarArquivo, blobParaBase64, codigoComRevisao, corpoPadrao, emailValido, montarEml, separarEmails, type Anexo } from './email';
 
 export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; onFechar: () => void }) {
@@ -16,6 +19,13 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
   const { data: revisoes = [] } = useQuery({ queryKey: ['proposta', proposta.id, 'revisoes', proposta.revisao_atual, proposta.status], queryFn: () => listarRevisoes(proposta.id) });
   const rev = revisoes.find((r) => r.numero === proposta.revisao_atual);
   const { data: arquivos = [] } = useQuery({ queryKey: ['proposta', proposta.id, 'arquivos', rev?.id], queryFn: () => listarArquivos([rev!.id]).then((l) => l.filter((a) => a.tipo !== 'imagem_documento')), enabled: Boolean(rev) });
+
+  // Decisão 124: ao enviar, os PDFs da técnica e da comercial são gerados na hora e anexados (só os documentos já salvos).
+  const { data: salvos } = useQuery({ queryKey: ['proposta_documentos', rev?.id], queryFn: () => lerDocumentos(rev!.id), enabled: Boolean(rev) });
+  const tiposSalvos = (['tecnica', 'comercial'] as const).filter((t) => salvos?.[t]);
+  const [gerarPdfs, setGerarPdfs] = useState(true);
+  const geraAgora = (tipo: string) => gerarPdfs && (tiposSalvos as readonly string[]).includes(tipo);
+  const [etapa, setEtapa] = useState('');
 
   const { data: minhaAssinatura } = useMinhaAssinatura();
   const contato = contatos.find((c) => c.id === proposta.contato_id);
@@ -37,8 +47,8 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
   const corpoValor = corpo ?? corpoPadrao(contato?.nome ?? '', proposta.codigo, proposta.revisao_atual, proposta.titulo);
   const propostasPdf = arquivos.filter((a) => a.tipo === 'comercial' || a.tipo === 'tecnica');
   const anexoMarcado = (id: string, tipo: string) => anexosSel[id] ?? (tipo === 'comercial' || tipo === 'tecnica');
-  const faltaComercial = !arquivos.some((a) => a.tipo === 'comercial');
-  const faltaTecnica = !arquivos.some((a) => a.tipo === 'tecnica');
+  const faltaComercial = !geraAgora('comercial') && !arquivos.some((a) => a.tipo === 'comercial');
+  const faltaTecnica = !geraAgora('tecnica') && !arquivos.some((a) => a.tipo === 'tecnica');
 
   // CC (decisão 87): os contatos (com e-mail) da mesma empresa do contato da proposta e a equipe da Fabriaço.
   const empresaCc = contato?.empresa_id ?? proposta.empresa_id;
@@ -81,11 +91,19 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
         const invalido = [...paraLista, ...ccLista].find((e) => !emailValido(e));
         if (invalido) throw new Error(`E-mail inválido: ${invalido}`);
       }
-      // 1) prepara o e-mail com os anexos (se algo falhar aqui, a proposta não muda de etapa)
+      // 1) gera e anexa os PDFs (decisão 124) e prepara o e-mail (se algo falhar aqui, a proposta não muda de etapa)
+      let gerados: Awaited<ReturnType<typeof gerarEAnexarPdfs>> = [];
+      if (gerarPdfs && rev && tiposSalvos.length) {
+        setEtapa('Gerando os PDFs…');
+        gerados = await gerarEAnexarPdfs(proposta, rev.id);
+        qc.invalidateQueries({ queryKey: ['proposta', proposta.id] });
+      }
+      setEtapa('Enviando…');
       let eml = '';
       if (gerarEmail) {
         const anexos: Anexo[] = [];
-        for (const a of arquivos.filter((x) => anexoMarcado(x.id, x.tipo))) {
+        for (const g of gerados) anexos.push({ nome: g.arquivo.name, tipo: 'application/pdf', base64: await blobParaBase64(g.arquivo) });
+        for (const a of arquivos.filter((x) => !gerados.some((g) => g.tipo === x.tipo) && anexoMarcado(x.id, x.tipo))) {
           const { data: blob, error } = await supabase.storage.from('vendas').download(a.caminho);
           if (error || !blob) throw new Error(`Não foi possível baixar o anexo ${a.nome}.`);
           anexos.push({ nome: a.nome, tipo: blob.type || 'application/pdf', base64: await blobParaBase64(blob) });
@@ -108,7 +126,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
       qc.invalidateQueries({ queryKey: ['proposta'] });
       onFechar();
     },
-    onError: (e) => setErro(mensagemErro(e)),
+    onError: (e) => { setErro(mensagemErro(e)); setEtapa(''); },
   });
 
   return (
@@ -118,6 +136,11 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
         {semVendedor && <Aviso>Esta proposta está sem vendedor. Escolha o vendedor na aba Dados antes de enviar.</Aviso>}
         {erro && <Aviso>{erro}</Aviso>}
 
+        {tiposSalvos.length > 0 && (
+          <Caixa marcado={gerarPdfs} onChange={setGerarPdfs}>
+            Gerar e anexar agora o PDF da {tiposSalvos.map((t) => (t === 'tecnica' ? 'técnica' : 'comercial')).join(' e da ')} (como estão na aba Documentos)
+          </Caixa>
+        )}
         <Caixa marcado={gerarEmail} onChange={setGerarEmail}>Gerar o e-mail com os anexos</Caixa>
 
         {gerarEmail && (
@@ -171,9 +194,15 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
 
             <div>
               <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Anexos da R{proposta.revisao_atual}</div>
-              {arquivos.length === 0 && <div className="text-sm text-suave">Nenhum arquivo anexado nesta revisão.</div>}
+              {arquivos.length === 0 && !tiposSalvos.some(geraAgora) && <div className="text-sm text-suave">Nenhum arquivo anexado nesta revisão.</div>}
               <div className="space-y-1">
-                {arquivos.map((a) => (
+                {tiposSalvos.filter(geraAgora).map((t) => (
+                  <div key={t} className="flex items-center gap-2 text-sm">
+                    <FileText size={14} className="text-roxo-600" /> {nomeArquivo(proposta.codigo, proposta.revisao_atual, proposta.titulo, t)}
+                    <span className="text-xs text-suave">(proposta {t === 'tecnica' ? 'técnica' : 'comercial'}, gerada ao enviar)</span>
+                  </div>
+                ))}
+                {arquivos.filter((a) => !geraAgora(a.tipo)).map((a) => (
                   <Caixa key={a.id} marcado={anexoMarcado(a.id, a.tipo)} onChange={(v) => setAnexosSel({ ...anexosSel, [a.id]: v })}>
                     <FileText size={14} className="text-slate-400" /> {a.nome} <span className="text-xs text-suave">({a.tipo === 'comercial' ? 'proposta comercial' : a.tipo === 'tecnica' ? 'proposta técnica' : a.tipo === 'documento_tecnico' ? 'documento técnico' : 'anexo'})</span>
                   </Caixa>
@@ -206,7 +235,7 @@ export function EnviarEmailModal({ proposta, onFechar }: { proposta: Proposta; o
 
         <div className="flex justify-end gap-2 pt-1">
           <Botao type="button" variante="secundario" onClick={onFechar}>Cancelar</Botao>
-          <Botao type="submit" disabled={m.isPending || semVendedor}>{m.isPending ? 'Preparando…' : gerarEmail ? 'Enviar e abrir e-mail' : 'Marcar como enviada'}</Botao>
+          <Botao type="submit" disabled={m.isPending || semVendedor}>{m.isPending ? etapa || 'Preparando…' : gerarEmail ? 'Enviar e abrir e-mail' : 'Marcar como enviada'}</Botao>
         </div>
       </form>
     </Modal>
