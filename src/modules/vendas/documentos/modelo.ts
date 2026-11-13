@@ -14,7 +14,7 @@ export interface Etapa { nome: string; dias: number }
 
 export type Secao = { id: string; titulo: string; ativo: boolean; escolher?: boolean } & ( // escolher: o vendedor ainda não disse se entra (decisão 98)
   | { tipo: 'texto'; texto: string; dica?: string }
-  | { tipo: 'cartoes'; intro: string; cartoes: Cartao[]; fecho: string; marcador: 'numero' | 'letra'; destaque?: string; dica?: string; figuras?: Figura[] }
+  | { tipo: 'cartoes'; intro: string; cartoes: Cartao[]; fecho: string; marcador: 'numero' | 'letra'; destaque?: string; dica?: string; figuras?: Figura[]; imagemIntro?: Figura } // imagemIntro: imagem grande embaixo da introdução (decisão 123)
   | { tipo: 'dados_empresas' }
   | { tipo: 'competencias'; itens: { nome: string; valor: Marca3 }[] }
   | { tipo: 'matriz'; itens: LinhaMatriz[] } // versão 3 (Responsabilidades e Documentações separadas)
@@ -329,10 +329,10 @@ export function aplicarTextosIA(doc: Documento, t: TextosIA): Documento {
   };
 }
 
-// Caminhos das imagens usadas no documento (capa, figuras da seção e imagens dos itens), para baixar antes de montar o PDF.
+// Caminhos das imagens usadas no documento (capa, imagem da introdução, figuras da seção e imagens dos itens), para baixar antes de montar o PDF.
 export const imagensDoDocumento = (d: Documento): string[] =>
   [d.capa.imagem, ...d.secoes.flatMap((s) => (s.tipo === 'cartoes'
-    ? [...(s.figuras ?? []), ...s.cartoes.flatMap((c) => c.imagens ?? [])].map((f) => f.caminho) : []))].filter((c): c is string => Boolean(c));
+    ? [...(s.imagemIntro ? [s.imagemIntro] : []), ...(s.figuras ?? []), ...s.cartoes.flatMap((c) => c.imagens ?? [])].map((f) => f.caminho) : []))].filter((c): c is string => Boolean(c));
 
 // Decisão 74: os itens do Escopo da técnica são os itens da aba Custos, na mesma ordem e com o mesmo nome (sem edição).
 // Cada item guarda o texto e as imagens que já tinha na posição; sem itens nos Custos, o Escopo fica como está.

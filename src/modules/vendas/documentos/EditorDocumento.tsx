@@ -144,6 +144,14 @@ function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: {
       return (
         <div className="space-y-2">
           <Rotulo texto="Introdução"><TextoFormatado rows={3} value={s.intro} onChange={(v) => onChange({ ...s, intro: v })} /></Rotulo>
+          {/* Decisão 123: uma imagem grande, na largura da página, embaixo do texto da introdução. */}
+          {imagens && (s.imagemIntro ? (
+            <div className="flex items-center gap-2 rounded-lg bg-pagina p-2 ring-1 ring-borda">
+              {imagens.urls[s.imagemIntro.caminho] ? <img src={imagens.urls[s.imagemIntro.caminho]} alt="" className="h-16 w-24 shrink-0 rounded object-contain ring-1 ring-borda" /> : <div className="h-16 w-24 shrink-0 rounded bg-superficie ring-1 ring-borda" />}
+              <Entrada value={s.imagemIntro.legenda} placeholder="Legenda da imagem da introdução (opcional)" onChange={(e) => onChange({ ...s, imagemIntro: { ...s.imagemIntro!, legenda: e.target.value } })} />
+              <button type="button" onClick={() => onChange({ ...s, imagemIntro: undefined })} className="rounded p-1 text-suave hover:text-red-600" title="Tirar a imagem da introdução"><Trash2 size={14} /></button>
+            </div>
+          ) : <EscolherImagem imagens={imagens} rotulo="Adicionar imagem grande embaixo da introdução" onEscolher={(cam) => onChange({ ...s, imagemIntro: { caminho: cam, legenda: '' } })} />)}
           {s.destaque !== undefined && <Rotulo texto="Destaque"><TextoFormatado rows={2} value={s.destaque} onChange={(v) => onChange({ ...s, destaque: v })} /></Rotulo>}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-medium text-suave">Itens{imagens ? ' · cada item pode ter suas imagens, que saem em cards ao lado do texto' : ''}</span>

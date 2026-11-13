@@ -48,6 +48,8 @@ const A4_ALTURA = 841.89;
 const MARCA = `${import.meta.env.BASE_URL}marca/pdf/`;
 // Cards de imagem ao lado do item (pt): 5 imagens por item cabem numa página.
 // alturaMaxima: imagem comprida (decisão 119); coluna: altura máxima da coluna de imagens, para caber numa página.
+// Imagem grande da introdução (decisão 123): largura da página; a comprida para em alturaMaxima e estreita, sem corte.
+const INTRO = { largura: 503, alturaMaxima: 480, textoJunto: 700 }; // textoJunto: introdução até esse tamanho vai na mesma página da imagem
 const IMG = { largura: 178, altura: 104, alturaMaxima: 640, coluna: 640, espaco: 8, ligacao: 26, saida: 16, textoAoLado: 0 };
 // Largura do texto no card ao lado das imagens: página (595,28) − margens (2 × 46) − ligação − imagens − padding (2 × 10) − marcador (32).
 IMG.textoAoLado = 595.28 - 92 - IMG.ligacao - IMG.largura - 20 - 32;
@@ -447,12 +449,23 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
       const destaque = comDestaque && (
         <View style={{ backgroundColor: C.lavanda, borderLeftWidth: 3, borderLeftColor: C.roxo, borderRadius: 4, padding: 10, marginBottom: 8 }}><TextoRico texto={secao.destaque!} v={v} /></View>
       );
+      const fig = secao.imagemIntro && imagens[secao.imagemIntro.caminho] ? secao.imagemIntro : null;
+      const tamIntro = fig ? dimensoesImagem(imagens[fig.caminho]) : null;
+      const alturaIntro = Math.min(INTRO.alturaMaxima, tamIntro?.largura ? (INTRO.largura - 12) * (tamIntro.altura / tamIntro.largura) + 12 : 300);
+      const imagemIntro = fig && (
+        <View wrap={false} style={{ borderWidth: 0.5, borderColor: C.borda, borderRadius: 8, backgroundColor: '#ffffff', padding: 6, marginBottom: 10 }}>
+          <Image src={imagens[fig.caminho]} style={{ height: alturaIntro - 12, objectFit: 'contain' }} />
+          {fig.legenda.trim() ? <Text style={{ fontSize: 7, color: C.suave, marginTop: 4, textAlign: 'center' }}>{fig.legenda}</Text> : null}
+        </View>
+      );
       return (
         <View>
-          {comIntro && <TextoRico texto={secao.intro} v={v} topo={topo} />}
-          {comDestaque && (comIntro ? destaque : <View wrap={false}>{topo}{destaque}</View>)}
-          {secao.cartoes.map((c, i) => (i === 0 && !comIntro && !comDestaque ? <View key={i} wrap={false}>{topo}{cartao(c, i)}</View> : cartao(c, i)))}
-          {!comIntro && !comDestaque && !secao.cartoes.length && <View wrap={false}>{topo}</View>}
+          {imagemIntro && (!comIntro || secao.intro.length <= INTRO.textoJunto)
+            ? <View wrap={false}>{comIntro ? <TextoRico texto={secao.intro} v={v} topo={topo} /> : topo}{imagemIntro}</View>
+            : <>{comIntro && <TextoRico texto={secao.intro} v={v} topo={topo} />}{imagemIntro}</>}
+          {comDestaque && (comIntro || fig ? destaque : <View wrap={false}>{topo}{destaque}</View>)}
+          {secao.cartoes.map((c, i) => (i === 0 && !comIntro && !fig && !comDestaque ? <View key={i} wrap={false}>{topo}{cartao(c, i)}</View> : cartao(c, i)))}
+          {!comIntro && !fig && !comDestaque && !secao.cartoes.length && <View wrap={false}>{topo}</View>}
           {(secao.figuras ?? []).some((f) => imagens[f.caminho]) && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 2 }}>
               {(secao.figuras ?? []).filter((f) => imagens[f.caminho]).map((f, i) => (
