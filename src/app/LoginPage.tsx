@@ -4,12 +4,12 @@ import { supabase } from '@/shared/lib/supabase';
 import { emailDoLogin } from '@/shared/lib/login';
 import { Aviso, Botao, Campo, Entrada } from '@/shared/ui';
 
-export function LoginPage({ erroLink }: { erroLink?: string | null }) {
+export function LoginPage({ erroLink, recado }: { erroLink?: string | null; recado?: string }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   // Link de convite ou de nova senha vencido ou já usado: o RH gera outro.
   const [erro, setErro] = useState(erroLink ? 'O link expirou ou já foi usado. Peça ao RH um link novo ou use "Esqueci minha senha".' : '');
-  const [aviso, setAviso] = useState('');
+  const [aviso, setAviso] = useState(recado ?? '');
   const [enviando, setEnviando] = useState(false);
 
   async function entrar(e: FormEvent) {
