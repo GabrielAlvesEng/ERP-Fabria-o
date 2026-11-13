@@ -7,6 +7,8 @@ import { AnoProvider } from './AnoContext';
 import { Inicio, Layout } from './Layout';
 import { LoginPage } from './LoginPage';
 import { DefinirSenhaPage } from './DefinirSenhaPage';
+import { SolidAutoLoginPage } from './SolidAutoLoginPage';
+import { guardarPedidoSolidAuto, pedidoSolidAutoInicial } from '@/shared/lib/solidauto';
 import { VendasLayout } from '@/modules/vendas/VendasLayout';
 import { DashboardPage } from '@/modules/vendas/dashboard/DashboardPage';
 import { EmpresasPage } from '@/modules/vendas/empresas/EmpresasPage';
@@ -60,6 +62,9 @@ export function App() {
   // Veio de um link de convite ou de nova senha: pede a senha antes de abrir o ERP.
   const [definirSenha, setDefinirSenha] = useState<'invite' | 'recovery' | null>(linkAuth.tipo);
   const [linkCodigo, setLinkCodigo] = useState(linkAuth.tokenHash);
+  // "Entrar com o ERP" do SolidAuto: depois do login (se precisar), confirma e devolve o acesso ao app.
+  const [pedidoSolidAuto, setPedidoSolidAuto] = useState(pedidoSolidAutoInicial);
+  useEffect(() => { guardarPedidoSolidAuto(pedidoSolidAuto); }, [pedidoSolidAuto]);
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((e) => { if (e === 'PASSWORD_RECOVERY') setDefinirSenha('recovery'); });
     return () => data.subscription.unsubscribe();
@@ -77,6 +82,9 @@ export function App() {
   if (carregando) return null;
   if (linkCodigo) return <DefinirSenhaPage convite={linkCodigo.tipo === 'invite'} email={session?.user.email ?? ''} codigo={linkCodigo} onPronto={() => setLinkCodigo(null)} />;
   if (!session) return <LoginPage erroLink={linkAuth.erro} />;
+  if (pedidoSolidAuto && !definirSenha && !session.user.user_metadata?.trocar_senha) {
+    return <SolidAutoLoginPage pedido={pedidoSolidAuto} onFim={() => { setPedidoSolidAuto(null); history.replaceState(null, '', window.location.pathname); }} />;
+  }
   if (definirSenha) return <DefinirSenhaPage convite={definirSenha === 'invite'} email={session.user.email ?? ''} onPronto={() => setDefinirSenha(null)} />;
   // Entrou com a senha provisória que o RH entregou: troca antes de abrir o ERP. Ao salvar, o Auth avisa
   // USER_UPDATED com trocar_senha falso e a sessão nova abre o ERP.
