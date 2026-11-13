@@ -385,6 +385,10 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
     - **Impacto na Engenharia:** sem kg/m e peso das chapas no cadastro, o peso da lista de material vem só do SolidWorks. "Barras" passou a valer também nos itens das solicitações e nas listas da Engenharia.
     - Migration `20261029000081_compras_produtos_simples.sql`.
 
+127. **Unidade predefinida na lista de materiais da Engenharia (13/11/2026)** (pedido do Gabriel: "a unidade de medida tem que ser já pré-definida, sendo un, mt, kg, mm por enquanto"; ajusta a decisão 113):
+   - Na lista de materiais (rascunho e "Item sem cadastro"), a unidade é escolhida numa lista: **un, mt, kg ou mm**. Não dá mais para digitar.
+   - Produto do cadastro entra com a unidade convertida (m → mt; pç, barra e outras → un). Revisões já enviadas não mudam. Ao copiar para uma nova revisão, e nos rascunhos abertos em 13/11, a unidade antiga é convertida do mesmo jeito.
+   - No banco, o gatilho da lista recusa outra unidade (função `eng_unidade` faz a conversão). Migration `20261113000083_engenharia_unidades.sql`, aplicada e testada com o usuário do Gabriel em transação desfeita.
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:

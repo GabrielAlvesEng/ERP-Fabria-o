@@ -111,3 +111,12 @@ export function linhasDaRevisao(itens: ItemRevisao[]): LinhaRevisao[] {
   }
   return [...m.values()];
 }
+
+// Unidades da lista de materiais (decisão 127: "un, mt, kg, mm por enquanto"). Igual à eng_unidade do banco.
+export const UNIDADES_LISTA = ['un', 'mt', 'kg', 'mm'] as const;
+export function unidadeLista(u: string | null | undefined): string {
+  const t = (u ?? '').trim().toLowerCase();
+  if (t === 'kg' || t === 'mm') return t;
+  if (t === 'mt' || t === 'm' || t === 'metro' || t === 'metros') return 'mt';
+  return 'un';
+}

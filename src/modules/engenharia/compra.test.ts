@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linhasDaRevisao, mudouDesde, planoEnvio, type ItemRevisao, type Solicitacao } from './compra';
+import { linhasDaRevisao, mudouDesde, planoEnvio, unidadeLista, type ItemRevisao, type Solicitacao } from './compra';
 import type { LinhaImportada } from '@/modules/compras/regras';
 
 const l = (descricao: string, quantidade: number, grupo: LinhaImportada['grupo'] = 'Chapas', unidade = 'kg'): LinhaImportada => ({ chave: descricao, grupo, descricao, quantidade, unidade, observacoes: '', bib_tipo: null, bib_id: null });
@@ -57,5 +57,11 @@ describe('itens da revisão em rascunho (decisão 113)', () => {
   it('a revisão passa pelo mesmo plano de envio (era × agora) e leva o link junto', () => {
     const p = planoEnvio(linhasDaRevisao([it0('Motor 2cv', 2, { link: 'https://a' })]), [s(0, 'aberta', [{ ...l('Motor 2cv', 1, 'Comerciais', 'un') }])]);
     expect(p.itens.map((i) => [i.quantidade, i.observacoes, i.link])).toEqual([[2, 'era 1 un, agora 2 un', 'https://a']]);
+  });
+});
+
+describe('unidades da lista (decisão 127)', () => {
+  it('converte para un, mt, kg ou mm', () => {
+    expect(['m', 'Metro', 'kg', 'mm', 'pç', 'barra', '', 'MT'].map(unidadeLista)).toEqual(['mt', 'mt', 'kg', 'mm', 'un', 'un', 'un', 'mt']);
   });
 });

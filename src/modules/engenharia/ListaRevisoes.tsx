@@ -11,7 +11,7 @@ import {
   atualizarItemLista, descartarRascunho, enviarImagemRef, enviarLista, excluirItemLista, incluirItemLista, listarItensLista, listarListas,
   listarRefsEng, listarSolicitacoes, novaRevisao, urlImagemRef, type ItemLista, type ListaRevisao,
 } from './api';
-import { ROTULO_SOLICITACAO, linhasDaRevisao, planoEnvio, type LinhaRevisao, type PlanoEnvio, type Solicitacao } from './compra';
+import { ROTULO_SOLICITACAO, UNIDADES_LISTA, linhasDaRevisao, planoEnvio, unidadeLista, type LinhaRevisao, type PlanoEnvio, type Solicitacao } from './compra';
 import type { RefsEng } from './biblioteca';
 import type { Projeto } from './regras';
 
@@ -26,13 +26,15 @@ const REFS_VAZIAS: RefsEng = { chapas: [], perfis: [], itens: [], tipos: [], pre
 const qtdBR = (n: number) => Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 const textoQtd = (n: number) => String(n).replace('.', ',');
 const ordemGrupo = (g: string) => GRUPOS.indexOf(g as GrupoItem);
+// un, mt, kg, mm (decisão 127). Item antigo com outra unidade mostra a dele até ser trocada.
+const opcoesUnidade = (atual: string) => [...(UNIDADES_LISTA.includes(atual as never) ? [] : [atual]), ...UNIDADES_LISTA].map((u) => <option key={u} value={u}>{u}</option>);
 
 interface Produto { id: string; bib_tipo: 'chapa' | 'perfil' | 'item'; bib_id: string; grupo: GrupoItem; descricao: string; unidade: string }
 function produtosDoCadastro(refs: RefsEng): Produto[] {
   return [
-    ...refs.chapas.map((c) => ({ id: `chapa:${c.id}`, bib_tipo: 'chapa' as const, bib_id: c.id, grupo: 'Chapas' as GrupoItem, descricao: c.descricao, unidade: unidadePadrao('chapa', '') })),
-    ...refs.perfis.map((p) => ({ id: `perfil:${p.id}`, bib_tipo: 'perfil' as const, bib_id: p.id, grupo: 'Perfis' as GrupoItem, descricao: p.descricao, unidade: unidadePadrao('perfil', '') })),
-    ...refs.itens.map((i) => ({ id: `item:${i.id}`, bib_tipo: 'item' as const, bib_id: i.id, grupo: i.grupo as GrupoItem, descricao: i.descricao, unidade: unidadePadrao('item', i.unidade) })),
+    ...refs.chapas.map((c) => ({ id: `chapa:${c.id}`, bib_tipo: 'chapa' as const, bib_id: c.id, grupo: 'Chapas' as GrupoItem, descricao: c.descricao, unidade: unidadeLista(unidadePadrao('chapa', '')) })),
+    ...refs.perfis.map((p) => ({ id: `perfil:${p.id}`, bib_tipo: 'perfil' as const, bib_id: p.id, grupo: 'Perfis' as GrupoItem, descricao: p.descricao, unidade: unidadeLista(unidadePadrao('perfil', '')) })),
+    ...refs.itens.map((i) => ({ id: `item:${i.id}`, bib_tipo: 'item' as const, bib_id: i.id, grupo: i.grupo as GrupoItem, descricao: i.descricao, unidade: unidadeLista(unidadePadrao('item', i.unidade)) })),
   ];
 }
 
@@ -182,7 +184,7 @@ function Revisao({ projeto, lista, solicitacao, solicitacoes, editavel }: { proj
                     <>
                       <td className="min-w-[6rem] px-2 py-1.5"><CampoTexto valor={textoQtd(i.quantidade)} className="text-right" rotulo="Quantidade"
                         onSalvar={(v) => { const q = lerQuantidade(v); if (q == null || q <= 0) { setErro('A quantidade precisa ser maior que zero.'); return; } tentar(() => atualizarItemLista(i.id, { quantidade: q })); }} /></td>
-                      <td className="min-w-[5rem] px-2 py-1.5"><CampoTexto valor={i.unidade} rotulo="Unidade" onSalvar={(v) => v.trim() && tentar(() => atualizarItemLista(i.id, { unidade: v.trim() }))} /></td>
+                      <td className="min-w-[5.5rem] px-2 py-1.5"><Selecao compacto aria-label="Unidade" value={i.unidade} onChange={(e) => tentar(() => atualizarItemLista(i.id, { unidade: e.target.value }))}>{opcoesUnidade(i.unidade)}</Selecao></td>
                       <td className="min-w-[11rem] px-2 py-1.5"><CampoTexto valor={i.observacoes} rotulo="Observação" placeholder="marca, medida…" onSalvar={(v) => tentar(() => atualizarItemLista(i.id, { observacoes: v.trim() }))} /></td>
                     </>
                   ) : (
@@ -261,7 +263,7 @@ function ItemDigitadoModal({ lista, ordem, onFechar, onSalvo }: { lista: ListaRe
       if (descricao.trim().length < 2) throw new Error('Descreva o item.');
       if (q == null || q <= 0) throw new Error('A quantidade precisa ser maior que zero.');
       if (link.trim() && !/^https?:\/\//i.test(link.trim())) throw new Error('O link precisa começar com http:// ou https://.');
-      await incluirItemLista({ lista_id: lista.id, ordem, grupo, descricao: descricao.trim(), quantidade: q, unidade: unidade.trim() || 'un', bib_tipo: null, bib_id: null, observacoes: obs.trim(), link: link.trim() });
+      await incluirItemLista({ lista_id: lista.id, ordem, grupo, descricao: descricao.trim(), quantidade: q, unidade, bib_tipo: null, bib_id: null, observacoes: obs.trim(), link: link.trim() });
     },
     onSuccess: () => { onSalvo(); onFechar(); },
     onError: (e) => setErro(mensagemErro(e)),
@@ -273,7 +275,7 @@ function ItemDigitadoModal({ lista, ordem, onFechar, onSalvo }: { lista: ListaRe
         <div className="grid grid-cols-3 gap-3">
           <Campo rotulo="Grupo"><Selecao value={grupo} onChange={(e) => setGrupo(e.target.value as GrupoItem)}>{GRUPOS.map((g) => <option key={g}>{g}</option>)}</Selecao></Campo>
           <Campo rotulo="Quantidade"><Entrada value={quantidade} onChange={(e) => setQuantidade(e.target.value)} inputMode="decimal" className="text-right" /></Campo>
-          <Campo rotulo="Unidade"><Entrada value={unidade} onChange={(e) => setUnidade(e.target.value)} /></Campo>
+          <Campo rotulo="Unidade"><Selecao value={unidade} onChange={(e) => setUnidade(e.target.value)}>{opcoesUnidade(unidade)}</Selecao></Campo>
         </div>
         <Campo rotulo="Observação"><Entrada value={obs} onChange={(e) => setObs(e.target.value)} placeholder="marca, modelo, medida…" /></Campo>
         <Campo rotulo="Link de referência (opcional)"><Entrada value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" inputMode="url" /></Campo>

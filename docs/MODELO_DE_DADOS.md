@@ -249,4 +249,4 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `compromissos`: titulo, inicio/fim (timestamptz; dia inteiro = meia-noite a meia-noite), dia_inteiro, local, descricao, cor, repetição (`repeticao` diaria/semanal/mensal/anual, `repetir_intervalo`, `repetir_dias` 0=domingo, `repetir_ate`, `excecoes` = dias pulados), criado_por, exclusão lógica (`excluido_em`). Auditoria e Realtime.
 - `compromisso_participantes` (compromisso_id, usuario_id): `visto_em` (número de novos no menu), `removido_em` (saiu ou foi tirado). Quem criou sempre está.
 - Leitura direta só de quem participa (RLS); ninguém grava direto. Funções: `agenda_listar(usuario, de, ate)` (sem detalhes quando eu não participo), `compromisso_salvar` (criar/mudar, com modo todos/este/seguintes), `compromisso_cancelar`, `compromisso_sair`, `agenda_marcar_vistos`. As ocorrências da repetição são calculadas na tela.
-
+- `eng_lista_itens.unidade`: só un, mt, kg ou mm em item novo ou unidade trocada (decisão 127, gatilho `eng_item_antes` + `eng_unidade`, migration 83).
