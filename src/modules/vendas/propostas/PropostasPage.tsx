@@ -187,7 +187,6 @@ function Card({ p, hoje, onAbrir, onFollowup }: { p: Proposta; hoje: string; onA
       </div>
       <div className="mt-1 line-clamp-2 font-medium">{p.titulo}</div>
       <div className="mt-1 text-xs text-suave">{p.empresas?.nome_fantasia} · {p.contatos?.nome}</div>
-      {nomeVendedor(p) && <div className="mt-0.5 text-[11px] text-suave">Vendedor: <span className="font-medium text-texto">{nomeVendedor(p)}</span></div>}
       <div className="mt-2 flex items-center justify-between text-xs">
         <span className="font-semibold">{moeda(p.valor)}</span>
         {aguardando && (

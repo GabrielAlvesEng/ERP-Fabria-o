@@ -1,4 +1,4 @@
--- Migration 82 (decisão 124): parte do SolidAuto no banco do ERP. Aplicada pelo Gabriel no SQL Editor em 13/11/2026.
+-- Migration 82 (decisão 126): parte do SolidAuto no banco do ERP. Aplicada pelo Gabriel no SQL Editor em 13/11/2026.
 -- Fonte: repositório SolidAuto, supabase/migrations/20261113170000_solidauto.sql.
 -- SolidAuto no banco do ERP Fabriaço.
 -- Os projetos, a árvore (projeto_conjuntos) e as peças (projeto_pecas) são as tabelas do ERP.
