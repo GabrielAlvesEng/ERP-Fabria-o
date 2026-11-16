@@ -389,6 +389,10 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Na lista de materiais (rascunho e "Item sem cadastro"), a unidade é escolhida numa lista: **un, mt, kg ou mm**. Não dá mais para digitar.
    - Produto do cadastro entra com a unidade convertida (m → mt; pç, barra e outras → un). Revisões já enviadas não mudam. Ao copiar para uma nova revisão, e nos rascunhos abertos em 13/11, a unidade antiga é convertida do mesmo jeito.
    - No banco, o gatilho da lista recusa outra unidade (função `eng_unidade` faz a conversão). Migration `20261113000083_engenharia_unidades.sql`, aplicada e testada com o usuário do Gabriel em transação desfeita.
+128. **Sequência manual dos itens na lista de materiais da Engenharia (16/11/2026)** (pedido do Gabriel: "Tem que ser possível organizar a sequencia manualmente dos itens"; ajusta a decisão 113):
+   - No rascunho, o engenheiro muda a ordem dos itens arrastando pela alça (⋮⋮) ou pelas setas subir/descer. A lista não é mais ordenada por grupo: vale a sequência definida, numerada (#) na tabela.
+   - A ordem fica gravada em cada item (`eng_lista_itens.ordem`) e vai na mesma sequência para a RC de Compras. Revisão enviada fica travada e mostra a ordem com que foi enviada. Item novo entra no fim; nova revisão copia a ordem da anterior.
+   - Sem migration: o banco já tinha o campo `ordem` e só deixa alterar em rascunho (testado com o usuário do Gabriel em transação desfeita).
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:

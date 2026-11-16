@@ -271,3 +271,6 @@
 
 ## 2026-11-13 (SolidAuto)
 - **Decisão 126:** o SolidAuto usa o banco do ERP. Migration 82 (`solidauto_vinculos` e funções `solidauto_*`) aplicada pelo Gabriel no SQL Editor e testada com o usuário dele em transação desfeita (importação, reenvio sem mudanças, revisão). "Entrar com o ERP": página de confirmação `?solidauto=<porta>&estado=<texto>` e Edge Function `solidauto-login` (código de uso único por link mágico, sem e-mail, só com engenharia.ler). 4 testes novos e typecheck ok. Edge Function `solidauto-login` publicada no projeto iobfyuscyzyjxmcwcqwj em 13/11 (verify_jwt ligado); ainda não conferida com login real.
+
+## 2026-11-16 (Engenharia)
+- **Decisão 128:** lista de materiais com sequência manual dos itens no rascunho (arrastar pela alça ou setas subir/descer); a tabela segue a ordem gravada em vez do grupo, e a RC recebe a mesma sequência. Sem migration (alteração da ordem testada no banco: aceita em rascunho, recusada em revisão enviada). Typecheck, testes e build ok. Não conferido no navegador com login real.

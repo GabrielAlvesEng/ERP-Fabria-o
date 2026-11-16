@@ -1,6 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, ImagePlus, Link2, Plus, Send, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ExternalLink, GripVertical, ImagePlus, Link2, Plus, Send, Trash2 } from 'lucide-react';
+import { DndContext, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
@@ -25,7 +28,6 @@ const COR_REQ: Record<Solicitacao['status'], 'cinza' | 'roxo' | 'verde' | 'verme
 const REFS_VAZIAS: RefsEng = { chapas: [], perfis: [], itens: [], tipos: [], precosChapa: [] };
 const qtdBR = (n: number) => Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 const textoQtd = (n: number) => String(n).replace('.', ',');
-const ordemGrupo = (g: string) => GRUPOS.indexOf(g as GrupoItem);
 // un, mt, kg, mm (decisão 127). Item antigo com outra unidade mostra a dele até ser trocada.
 const opcoesUnidade = (atual: string) => [...(UNIDADES_LISTA.includes(atual as never) ? [] : [atual]), ...UNIDADES_LISTA].map((u) => <option key={u} value={u}>{u}</option>);
 
@@ -104,6 +106,17 @@ function NovaRevisaoModal({ projeto, temEnviada, onFechar, onCriada }: { projeto
   );
 }
 
+function LinhaOrdenavel({ id, editavel, children }: { id: string; editavel: boolean; children: (alca: Record<string, unknown>) => ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !editavel });
+  const alca = { ref: setActivatorNodeRef, ...attributes, ...listeners };
+  return (
+    <tr ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={`border-t border-borda align-top ${isDragging ? 'relative z-10 bg-superficie shadow-lg' : ''}`}>
+      {children(alca)}
+    </tr>
+  );
+}
+
 function Revisao({ projeto, lista, solicitacao, solicitacoes, editavel }: { projeto: Projeto; lista: ListaRevisao; solicitacao?: Solicitacao; solicitacoes: Solicitacao[]; editavel: boolean }) {
   const qc = useQueryClient();
   const { data: itens = [], isLoading } = useQuery({ queryKey: ['eng', lista.id, 'itens'], queryFn: () => listarItensLista(lista.id) });
@@ -114,7 +127,24 @@ function Revisao({ projeto, lista, solicitacao, solicitacoes, editavel }: { proj
   const [enviando, setEnviando] = useState(false);
   const [descartar, setDescartar] = useState(false);
   const [erro, setErro] = useState('');
-  const ordenados = [...itens].sort((a, b) => ordemGrupo(a.grupo) - ordemGrupo(b.grupo) || a.ordem - b.ordem);
+  // Decisão 128: a sequência é a que o engenheiro definiu (campo ordem), não o grupo.
+  const ordenados = itens;
+  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }));
+  async function reordenar(nova: ItemLista[]) {
+    const chave = ['eng', lista.id, 'itens'];
+    const mudou = nova.map((it, k) => ({ it, ordem: k + 1 })).filter(({ it, ordem }) => it.ordem !== ordem);
+    if (!mudou.length) return;
+    qc.setQueryData<ItemLista[]>(chave, nova.map((it, k) => ({ ...it, ordem: k + 1 })));
+    await tentar(() => Promise.all(mudou.map(({ it, ordem }) => atualizarItemLista(it.id, { ordem }))));
+  }
+  function aoSoltar(e: DragEndEvent) {
+    if (!e.over || e.active.id === e.over.id) return;
+    const de = ordenados.findIndex((i) => i.id === e.active.id);
+    const para = ordenados.findIndex((i) => i.id === e.over!.id);
+    if (de < 0 || para < 0) return;
+    reordenar(arrayMove(ordenados, de, para));
+  }
+  const mover = (idx: number, d: number) => { const para = idx + d; if (para >= 0 && para < ordenados.length) reordenar(arrayMove(ordenados, idx, para)); };
   const atualizar = () => qc.invalidateQueries({ queryKey: ['eng', lista.id, 'itens'] });
   const tentar = async (f: () => Promise<unknown>) => { setErro(''); try { await f(); await atualizar(); } catch (e) { setErro(mensagemErro(e)); } };
   const proximaOrdem = () => itens.reduce((m, i) => Math.max(m, i.ordem), 0) + 1;
@@ -169,15 +199,30 @@ function Revisao({ projeto, lista, solicitacao, solicitacoes, editavel }: { proj
           <table className="w-full text-sm">
             <thead className="bg-pagina text-left text-xs uppercase text-suave">
               <tr>
+                <th className="w-8 px-2 py-2 text-center">#</th>
                 <th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Material / item</th>
                 <th className="px-3 py-2 text-right">Qtd</th><th className="px-3 py-2">Un.</th>
                 <th className="px-3 py-2">Observação</th><th className="px-3 py-2">Referência</th>
                 {editavel && <th className="px-3 py-2" />}
               </tr>
             </thead>
+            <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={aoSoltar}>
+            <SortableContext items={ordenados.map((i) => i.id)} strategy={verticalListSortingStrategy}>
             <tbody>
-              {ordenados.map((i) => (
-                <tr key={i.id} className="border-t border-borda align-top">
+              {ordenados.map((i, idx) => (
+                <LinhaOrdenavel key={i.id} id={i.id} editavel={editavel}>{(alca) => (<>
+                  <td className="whitespace-nowrap px-1 py-2 text-center text-suave">
+                    {editavel ? (
+                      <div className="flex items-center gap-0.5">
+                        <button {...alca} title="Arrastar para mudar a sequência" aria-label="Arrastar" className="cursor-grab touch-none rounded p-0.5 text-slate-400 hover:text-roxo-600 active:cursor-grabbing"><GripVertical size={14} /></button>
+                        <span className="w-5 text-xs tabular-nums">{idx + 1}</span>
+                        <div className="flex flex-col">
+                          <button title="Subir" aria-label="Subir" disabled={idx === 0} onClick={() => mover(idx, -1)} className="rounded text-slate-400 hover:text-roxo-600 disabled:opacity-30"><ArrowUp size={12} /></button>
+                          <button title="Descer" aria-label="Descer" disabled={idx === ordenados.length - 1} onClick={() => mover(idx, 1)} className="rounded text-slate-400 hover:text-roxo-600 disabled:opacity-30"><ArrowDown size={12} /></button>
+                        </div>
+                      </div>
+                    ) : <span className="text-xs tabular-nums">{idx + 1}</span>}
+                  </td>
                   <td className="whitespace-nowrap px-3 py-2 text-suave">{i.grupo}</td>
                   <td className="min-w-[12rem] px-3 py-2">{i.descricao}{!i.bib_id && <div className="text-[11px] text-amber-600 dark:text-amber-400">sem cadastro</div>}</td>
                   {editavel ? (
@@ -207,9 +252,11 @@ function Revisao({ projeto, lista, solicitacao, solicitacoes, editavel }: { proj
                       <button title="Tirar da lista" onClick={() => tentar(() => excluirItemLista(i.id))} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-marinho-700"><Trash2 size={14} /></button>
                     </td>
                   )}
-                </tr>
+                </>)}</LinhaOrdenavel>
               ))}
             </tbody>
+            </SortableContext>
+            </DndContext>
           </table>
         </div>
       )}
