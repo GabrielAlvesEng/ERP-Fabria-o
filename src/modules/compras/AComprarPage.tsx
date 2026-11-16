@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, PackagePlus, Plus, Search, X } from 'lucide-react';
+import { AlertTriangle, PackagePlus, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Entrada, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
-  adicionarAoPacote, atualizarItem, cadastrarItemBiblioteca, criarPacote, listarAComprar, listarProdutos, pacotesAbertos, type ItemComSolicitacao,
+  adicionarAoPacote, atualizarItem, cadastrarItemBiblioteca, cancelarItem, criarPacote, listarAComprar, listarProdutos, pacotesAbertos, type ItemComSolicitacao,
 } from './api';
 import { GRUPOS, ROTULO_DESTINO, ROTULO_TIPO, TIPOS_PRODUTO, UNIDADES, agruparAComprar, destinoDe, rotuloDestino, type Destino, type GrupoItem, type TipoProduto } from './regras';
 import { NovaRequisicaoModal } from './NovaRequisicaoModal';
@@ -31,7 +31,7 @@ export function AComprarPage() {
   const [soSemCadastro, setSoSemCadastro] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [erro, setErro] = useState('');
-  const [modal, setModal] = useState<null | 'nova' | 'pacote' | { cadastrar: ItemComSolicitacao }>(null);
+  const [modal, setModal] = useState<null | 'nova' | 'pacote' | { cadastrar: ItemComSolicitacao } | { excluir: ItemComSolicitacao }>(null);
   const [pacoteDestino, setPacoteDestino] = useState('');
   const podeEditar = pode('compras', 'editar');
   const hoje = hojeISO();
@@ -121,11 +121,12 @@ export function AComprarPage() {
                       {podeEditar && <th className="w-9 px-3 py-2" />}
                       <th className="px-2 py-2">Produto</th><th className="w-32 px-2 py-2">Categoria</th><th className="w-28 px-2 py-2 text-right">Quantidade</th>
                       <th className="w-20 px-2 py-2">Unidade</th><th className="w-40 px-2 py-2">Para</th><th className="w-40 px-2 py-2">Solicitação</th><th className="w-28 px-2 py-2">Precisa em</th>
+                      {podeEditar && <th className="w-10 px-2 py-2" />}
                     </tr></thead>
                     <tbody className="divide-y divide-borda">
                       {g.itens.map((i) => (
                         <LinhaItem key={i.id} i={i} produtos={produtos} hoje={hoje} podeEditar={podeEditar} marcado={sel.has(i.id)}
-                          onMarcar={(v) => marcar([i.id], v)} agir={agir} cadastrar={() => setModal({ cadastrar: i })} />
+                          onMarcar={(v) => marcar([i.id], v)} agir={agir} cadastrar={() => setModal({ cadastrar: i })} excluir={() => setModal({ excluir: i })} />
                       ))}
                     </tbody>
                   </table>
@@ -171,7 +172,14 @@ export function AComprarPage() {
             } catch (e) { return mensagemErro(e); }
           }} />
       )}
-      {modal && typeof modal === 'object' && (
+      {modal && typeof modal === 'object' && 'excluir' in modal && (
+        <ExcluirItem item={modal.excluir} onFechar={() => setModal(null)}
+          onExcluir={async (motivo) => {
+            const ok = await agir(() => cancelarItem(modal.excluir.id, motivo));
+            if (ok) { setSel((s) => { const n = new Set(s); n.delete(modal.excluir.id); return n; }); setModal(null); }
+          }} />
+      )}
+      {modal && typeof modal === 'object' && 'cadastrar' in modal && (
         <CadastrarProduto item={modal.cadastrar} onFechar={() => setModal(null)}
           onSalvar={(d) => agir(async () => {
             const bib = await cadastrarItemBiblioteca(d);
@@ -182,9 +190,9 @@ export function AComprarPage() {
   );
 }
 
-function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, cadastrar }: {
+function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, cadastrar, excluir }: {
   i: ItemComSolicitacao; produtos: Awaited<ReturnType<typeof listarProdutos>>; hoje: string; podeEditar: boolean; marcado: boolean;
-  onMarcar: (v: boolean) => void; agir: (f: () => Promise<unknown>) => Promise<boolean>; cadastrar: () => void;
+  onMarcar: (v: boolean) => void; agir: (f: () => Promise<unknown>) => Promise<boolean>; cadastrar: () => void; excluir: () => void;
 }) {
   const r = i.compras_requisicoes;
   const opcoes = useMemo(() => produtos.map((p) => ({ valor: p.descricao, detalhe: p.grupo })), [produtos]);
@@ -225,7 +233,32 @@ function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, cad
         {r.prioridade === 'urgente' && <Selo cor="vermelho">Urgente</Selo>}
         <span className={`block ${atrasado ? 'font-medium text-red-600' : 'text-suave'}`}>{r.necessario_em ? dataBR(r.necessario_em) : '—'}</span>
       </td>
+      {podeEditar && (
+        <td className="px-2 py-1 text-right">
+          <button type="button" title="Excluir item" aria-label="Excluir item" onClick={excluir} className="rounded p-1 text-slate-400 hover:bg-pagina hover:text-red-600"><Trash2 size={14} /></button>
+        </td>
+      )}
     </tr>
+  );
+}
+
+// Exclusão lógica (decisão 132): o item fica "cancelado" na requisição, com o motivo no histórico.
+function ExcluirItem({ item, onFechar, onExcluir }: { item: ItemComSolicitacao; onFechar: () => void; onExcluir: (motivo: string) => Promise<void> }) {
+  const [motivo, setMotivo] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  return (
+    <Modal aberto titulo="Excluir item" onFechar={onFechar}>
+      <div className="space-y-3 text-sm">
+        <p><span className="font-medium">{item.descricao}</span> · {Number(item.quantidade).toLocaleString('pt-BR')} {item.unidade}
+          <span className="block text-xs text-suave">{item.compras_requisicoes.codigo} · {item.compras_requisicoes.titulo}</span></p>
+        <p className="text-suave">O item sai do À comprar e fica como cancelado na requisição, com o motivo no histórico. Nada é apagado.</p>
+        <Campo rotulo="Motivo (opcional)"><Entrada value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: já tem no estoque, pedido em duplicidade…" autoFocus /></Campo>
+        <div className="flex justify-end gap-2">
+          <Botao variante="secundario" onClick={onFechar}>Voltar</Botao>
+          <Botao variante="perigo" disabled={salvando} onClick={async () => { setSalvando(true); await onExcluir(motivo.trim()); setSalvando(false); }}><Trash2 size={14} /> Excluir item</Botao>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

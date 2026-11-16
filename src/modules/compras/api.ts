@@ -163,6 +163,10 @@ export async function adicionarItens(req: string, itens: DadosItem[], ordemInici
 export async function atualizarItem(id: string, d: Partial<DadosItem> & { cotacao_escolhida_id?: string | null }): Promise<void> {
   ok(await supabase.from('compras_requisicao_itens').update(d).eq('id', id));
 }
+// Decisão 132: exclusão lógica do item à comprar (vira "cancelado", com evento e motivo).
+export async function cancelarItem(id: string, motivo: string): Promise<void> {
+  ok(await supabase.rpc('compras_cancelar_item', { p_item: id, p_motivo: motivo }));
+}
 export async function removerItem(id: string): Promise<void> {
   ok(await supabase.from('compras_requisicao_itens').delete().eq('id', id));
 }

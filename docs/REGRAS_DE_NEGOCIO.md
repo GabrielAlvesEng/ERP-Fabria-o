@@ -402,6 +402,10 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - O cadastro de produtos de Compras (tipos de produto) não mudou.
    - Migration `20261116000084_grupos_conexoes_valvulas.sql`, aplicada e testada com o usuário do Gabriel em transação desfeita.
 131. **"Item sem cadastro" sem valores prontos (16/11/2026)** (pedido do Gabriel: "quando abrir, tem que vim sem estar preenchido o Grupo e Quantidade, e não deixar a pessoa adicionar o material sem colocar a descrição, grupo e quantidade"): o formulário abre com Grupo e Quantidade vazios, e o botão Adicionar só fica ativo com descrição, grupo e quantidade maior que zero preenchidos. A unidade continua começando em un.
+132. **Excluir item no À comprar (16/11/2026)** (pedido do Gabriel: "Deixe um botão para excluir o item lá em À comprar de compras"):
+   - Cada linha do À comprar tem uma lixeira (só para quem tem compras.editar). Ela pede confirmação e um motivo opcional.
+   - A exclusão é lógica: o item vira **cancelado** na requisição, sai do À comprar e o motivo fica no histórico da requisição. Nada é apagado. Se era o último item pendente, a requisição é concluída.
+   - Só vale para item à comprar e fora de pacote de cotação. Função `compras_cancelar_item`, migration `20261116000085_compras_excluir_item.sql`, aplicada e testada com o usuário do Gabriel em transação desfeita.
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
