@@ -223,7 +223,12 @@ function Revisao({ projeto, lista, solicitacao, solicitacoes, editavel }: { proj
                       </div>
                     ) : <span className="text-xs tabular-nums">{idx + 1}</span>}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-suave">{i.grupo}</td>
+                  {editavel ? (
+                    <td className="min-w-[8.5rem] px-2 py-1.5"><Selecao compacto aria-label="Grupo" value={i.grupo} onChange={(e) => tentar(() => atualizarItemLista(i.id, { grupo: e.target.value as GrupoItem }))}>
+                      {(GRUPOS as string[]).includes(i.grupo) ? null : <option value={i.grupo}>{i.grupo}</option>}
+                      {GRUPOS.map((g) => <option key={g} value={g}>{g}</option>)}
+                    </Selecao></td>
+                  ) : <td className="whitespace-nowrap px-3 py-2 text-suave">{i.grupo}</td>}
                   <td className="min-w-[12rem] px-3 py-2">{i.descricao}{!i.bib_id && <div className="text-[11px] text-amber-600 dark:text-amber-400">sem cadastro</div>}</td>
                   {editavel ? (
                     <>

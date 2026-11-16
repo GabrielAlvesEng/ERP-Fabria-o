@@ -274,3 +274,4 @@
 
 ## 2026-11-16 (Engenharia)
 - **Decisão 128:** lista de materiais com sequência manual dos itens no rascunho (arrastar pela alça ou setas subir/descer); a tabela segue a ordem gravada em vez do grupo, e a RC recebe a mesma sequência. Sem migration (alteração da ordem testada no banco: aceita em rascunho, recusada em revisão enviada). Typecheck, testes e build ok. Não conferido no navegador com login real.
+- **Decisão 129:** grupo de cada item editável no rascunho da lista de materiais (lista de escolha com os grupos de Compras); vale só para o item, não muda o cadastro. Sem migration (testado no banco). Typecheck, 250 testes e build ok.

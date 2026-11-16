@@ -393,6 +393,10 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - No rascunho, o engenheiro muda a ordem dos itens arrastando pela alça (⋮⋮) ou pelas setas subir/descer. A lista não é mais ordenada por grupo: vale a sequência definida, numerada (#) na tabela.
    - A ordem fica gravada em cada item (`eng_lista_itens.ordem`) e vai na mesma sequência para a RC de Compras. Revisão enviada fica travada e mostra a ordem com que foi enviada. Item novo entra no fim; nova revisão copia a ordem da anterior.
    - Sem migration: o banco já tinha o campo `ordem` e só deixa alterar em rascunho (testado com o usuário do Gabriel em transação desfeita).
+129. **Grupo editável em cada item da lista de materiais da Engenharia (16/11/2026)** (pedido do Gabriel: "Tem que ser possível alterar o tipo de grupo de cada itens na lista"; ajusta a decisão 113):
+   - No rascunho, a coluna Grupo vira uma lista de escolha por item (Chapas, Perfis, Barras, Comerciais, Fixadores, Consumíveis, Serviços, Outros), também para item que veio do cadastro de Compras. A mudança vale só para aquele item da lista; o cadastro do produto não muda.
+   - O grupo escolhido vai para a RC e é por ele que o item aparece em Compras. Revisão enviada fica travada.
+   - Sem migration (o banco já aceitava esses grupos; testado com o usuário do Gabriel em transação desfeita: Barras aceito, grupo inexistente recusado).
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
