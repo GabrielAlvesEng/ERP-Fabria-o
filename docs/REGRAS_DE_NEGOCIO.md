@@ -401,6 +401,7 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - A lista de grupos passa a ser: Chapas, Perfis, Barras, Comerciais, **Conexões**, **Válvulas**, Fixadores, Consumíveis, Serviços e Outros. Vale na lista de materiais da Engenharia e nos itens das solicitações de Compras (À comprar mostra as duas categorias novas).
    - O cadastro de produtos de Compras (tipos de produto) não mudou.
    - Migration `20261116000084_grupos_conexoes_valvulas.sql`, aplicada e testada com o usuário do Gabriel em transação desfeita.
+131. **"Item sem cadastro" sem valores prontos (16/11/2026)** (pedido do Gabriel: "quando abrir, tem que vim sem estar preenchido o Grupo e Quantidade, e não deixar a pessoa adicionar o material sem colocar a descrição, grupo e quantidade"): o formulário abre com Grupo e Quantidade vazios, e o botão Adicionar só fica ativo com descrição, grupo e quantidade maior que zero preenchidos. A unidade continua começando em un.
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:

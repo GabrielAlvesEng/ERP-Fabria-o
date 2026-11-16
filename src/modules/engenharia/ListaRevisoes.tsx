@@ -303,8 +303,8 @@ function MiniaturaRef({ caminho }: { caminho: string }) {
 
 function ItemDigitadoModal({ lista, ordem, onFechar, onSalvo }: { lista: ListaRevisao; ordem: number; onFechar: () => void; onSalvo: () => void }) {
   const [descricao, setDescricao] = useState('');
-  const [grupo, setGrupo] = useState<GrupoItem>('Comerciais');
-  const [quantidade, setQuantidade] = useState('1');
+  const [grupo, setGrupo] = useState<GrupoItem | ''>('');
+  const [quantidade, setQuantidade] = useState('');
   const [unidade, setUnidade] = useState('un');
   const [obs, setObs] = useState('');
   const [link, setLink] = useState('');
@@ -313,20 +313,23 @@ function ItemDigitadoModal({ lista, ordem, onFechar, onSalvo }: { lista: ListaRe
     mutationFn: async () => {
       const q = lerQuantidade(quantidade);
       if (descricao.trim().length < 2) throw new Error('Descreva o item.');
+      if (!grupo) throw new Error('Escolha o grupo.');
       if (q == null || q <= 0) throw new Error('A quantidade precisa ser maior que zero.');
       if (link.trim() && !/^https?:\/\//i.test(link.trim())) throw new Error('O link precisa começar com http:// ou https://.');
-      await incluirItemLista({ lista_id: lista.id, ordem, grupo, descricao: descricao.trim(), quantidade: q, unidade, bib_tipo: null, bib_id: null, observacoes: obs.trim(), link: link.trim() });
+      await incluirItemLista({ lista_id: lista.id, ordem, grupo: grupo as GrupoItem, descricao: descricao.trim(), quantidade: q, unidade, bib_tipo: null, bib_id: null, observacoes: obs.trim(), link: link.trim() });
     },
     onSuccess: () => { onSalvo(); onFechar(); },
     onError: (e) => setErro(mensagemErro(e)),
   });
+  const qtd = lerQuantidade(quantidade);
+  const completo = descricao.trim().length >= 2 && !!grupo && qtd != null && qtd > 0;
   return (
     <Modal aberto titulo="Item sem cadastro" onFechar={onFechar}>
       <div className="space-y-3 text-sm">
         <Campo rotulo="Descrição"><Entrada value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Motorredutor 0,5 cv 1:30 eixo 25 mm" autoFocus /></Campo>
         <div className="grid grid-cols-3 gap-3">
-          <Campo rotulo="Grupo"><Selecao value={grupo} onChange={(e) => setGrupo(e.target.value as GrupoItem)}>{GRUPOS.map((g) => <option key={g}>{g}</option>)}</Selecao></Campo>
-          <Campo rotulo="Quantidade"><Entrada value={quantidade} onChange={(e) => setQuantidade(e.target.value)} inputMode="decimal" className="text-right" /></Campo>
+          <Campo rotulo="Grupo"><Selecao value={grupo} onChange={(e) => setGrupo(e.target.value as GrupoItem | '')}><option value="" disabled>Escolha…</option>{GRUPOS.map((g) => <option key={g}>{g}</option>)}</Selecao></Campo>
+          <Campo rotulo="Quantidade"><Entrada value={quantidade} onChange={(e) => setQuantidade(e.target.value)} inputMode="decimal" className="text-right" placeholder="0" /></Campo>
           <Campo rotulo="Unidade"><Selecao value={unidade} onChange={(e) => setUnidade(e.target.value)}>{opcoesUnidade(unidade)}</Selecao></Campo>
         </div>
         <Campo rotulo="Observação"><Entrada value={obs} onChange={(e) => setObs(e.target.value)} placeholder="marca, modelo, medida…" /></Campo>
@@ -335,7 +338,7 @@ function ItemDigitadoModal({ lista, ordem, onFechar, onSalvo }: { lista: ListaRe
         {erro && <Aviso>{erro}</Aviso>}
         <div className="flex justify-end gap-2">
           <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
-          <Botao disabled={salvar.isPending} onClick={() => { setErro(''); salvar.mutate(); }}>Adicionar</Botao>
+          <Botao disabled={salvar.isPending || !completo} title={completo ? undefined : 'Preencha descrição, grupo e quantidade'} onClick={() => { setErro(''); salvar.mutate(); }}>Adicionar</Botao>
         </div>
       </div>
     </Modal>
