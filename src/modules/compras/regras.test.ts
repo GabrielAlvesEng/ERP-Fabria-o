@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { valorComIpi, agruparAComprar, agruparLista, casarProduto, comImpostos, descreverCondicao, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
+import { valorComIpi, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -106,5 +106,22 @@ describe('Produtos simplificados (decisão 121)', () => {
   });
   it('unidade do fornecedor vira un, m ou kg', () => {
     expect(['KG', 'MT', 'M', 'PC', 'PÇ', 'UN', 'BR'].map(unidadeDoProduto)).toEqual(['kg', 'm', 'm', 'un', 'un', 'un', 'un']);
+  });
+});
+
+describe('produtosParecidos (decisão 133)', () => {
+  const ps = [
+    { id: '1', grupo: 'Perfis', descricao: 'Tubo 1/2" SCH 80 (304)' },
+    { id: '2', grupo: 'Perfis', descricao: 'Tubo 1" SCH 40 (304)' },
+    { id: '3', grupo: 'Conexões', descricao: 'Cotovelo 90° 1/2" BSP (304)' },
+    { id: '4', grupo: 'Consumíveis', descricao: 'Disco de corte 7"' },
+  ];
+  it('acha o mais parecido primeiro e ignora os que não têm nada em comum', () => {
+    const r = produtosParecidos(ps, 'TUBO 1/2" SCH 80 EXTREMIDADE LISA', 'Perfis');
+    expect(r[0].id).toBe('1');
+    expect(r.map((p) => p.id)).not.toContain('4');
+  });
+  it('sem nada em comum, não sugere', () => {
+    expect(produtosParecidos(ps, 'Motorredutor 0,5 cv')).toEqual([]);
   });
 });

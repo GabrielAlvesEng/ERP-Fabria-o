@@ -149,7 +149,6 @@ function Itens({ itens, produtos, pacotes, podeItens, agir }: { itens: ItemRequi
               <tr key={i.id}>
                 <td className="px-1 py-1">
                   {ed ? <CampoEscolha valor={i.descricao} opcoes={opcoes} placeholder="Produto" onConfirmar={(v) => trocarDescricao(i, v)} /> : <span className="px-2">{i.descricao}</span>}
-                  {!i.bib_id && <span className="block px-2 text-[11px] text-amber-600">sem cadastro de produto</span>}
                   <Referencia link={i.referencia_link} imagem={i.referencia_imagem} />
                 </td>
                 <td className="px-1 py-1">{ed ? (

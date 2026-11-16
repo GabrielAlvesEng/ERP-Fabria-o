@@ -13,6 +13,7 @@ import {
 import { ROTULO_ITEM, ROTULO_PACOTE, descreverCondicao, melhorCotacao, menoresPrecos, rotuloDestino, totalCotacao, valorComIpi, type StatusPacote } from './regras';
 import { COR_ITEM, CotacaoModal, Historico, Justificar, OrdemCartao, PrecoCelula, Referencia, Secao, type Cor } from './comum';
 import { imprimirPedidoCotacao } from './ordemPdf';
+import { ProdutosDaOrdem, precisaProduto } from './ProdutosDaOrdem';
 
 const COR_PACOTE: Record<StatusPacote, Cor> = { aberto: 'azul', comprado: 'verde', cancelado: 'vermelho' };
 const precosDe = (c: Cotacao) => ({
@@ -176,7 +177,7 @@ function ItensPacote({ itens, podeCotar, retirar }: { itens: ItemComSolicitacao[
         <tbody className="divide-y divide-borda">
           {itens.map((i) => (
             <tr key={i.id} className={i.status === 'cancelado' ? 'opacity-50' : ''}>
-              <td className="px-2 py-1.5">{i.descricao}{!i.bib_id && <span className="block text-[11px] text-amber-600">sem cadastro de produto</span>}{i.observacoes && <span className="block text-[11px] text-suave">{i.observacoes}</span>}<Referencia link={i.referencia_link} imagem={i.referencia_imagem} /></td>
+              <td className="px-2 py-1.5">{i.descricao}{i.observacoes && <span className="block text-[11px] text-suave">{i.observacoes}</span>}<Referencia link={i.referencia_link} imagem={i.referencia_imagem} /></td>
               <td className="px-2 py-1.5 text-xs">{i.grupo}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString('pt-BR')} {i.unidade}</td>
               <td className="px-2 py-1.5 text-xs">{rotuloDestino(i.compras_requisicoes)}</td>
@@ -289,6 +290,7 @@ function GerarOrdem({ cotacao, itens, onFechar, onConfirmar }: {
   const p = precosDe(cotacao);
   const com = itens.filter((i) => p.precos[i.id] != null);
   const sem = itens.filter((i) => p.precos[i.id] == null);
+  const pendentes = com.filter(precisaProduto);
   const total = totalCotacao(p, com.map((i) => ({ id: i.id, quantidade: Number(i.quantidade) }))).total;
   const sugerida = cotacao.prazo_dias != null ? new Date(Date.now() + cotacao.prazo_dias * 864e5).toISOString().slice(0, 10) : null;
   const [previsao, setPrevisao] = useState<string | null>(sugerida);
@@ -304,6 +306,7 @@ function GerarOrdem({ cotacao, itens, onFechar, onConfirmar }: {
         {sem.length > 0 && (
           <p className="text-xs text-amber-600">Sem preço deste fornecedor, {sem.length} item(ns) voltam para À comprar: {sem.map((i) => i.descricao).join(', ')}.</p>
         )}
+        {pendentes.length > 0 && <ProdutosDaOrdem itens={pendentes} precos={p.precos} />}
         <p className="text-xs text-suave">A ordem vai para o Financeiro pagar, com o orçamento anexado, e para o Almoxarifado receber. O pacote fica como comprado.</p>
         <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
           <Campo rotulo="Previsão de entrega"><CampoData value={previsao} onChange={(v) => setPrevisao(v || null)} /></Campo>
@@ -311,7 +314,7 @@ function GerarOrdem({ cotacao, itens, onFechar, onConfirmar }: {
         </div>
         <div className="flex justify-end gap-2">
           <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
-          <Botao disabled={enviando || !com.length} onClick={async () => { setEnviando(true); if (await onConfirmar(previsao, obs)) onFechar(); setEnviando(false); }}><Send size={15} /> Gerar ordem de compra</Botao>
+          <Botao disabled={enviando || !com.length || pendentes.length > 0} title={pendentes.length ? 'Ligue os itens a produtos do cadastro primeiro' : undefined} onClick={async () => { setEnviando(true); if (await onConfirmar(previsao, obs)) onFechar(); setEnviando(false); }}><Send size={15} /> Gerar ordem de compra</Botao>
         </div>
       </div>
     </Modal>

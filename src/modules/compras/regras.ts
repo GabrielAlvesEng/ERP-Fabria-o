@@ -15,10 +15,10 @@ export const GRUPOS: GrupoItem[] = ['Chapas', 'Perfis', 'Barras', 'Comerciais', 
 
 // ---------- Produtos (decisão 121) ----------
 // O produto é tipo + descrição (material entre parênteses) + unidade + preço atual; o preço vem do histórico.
-export type TipoProduto = 'Chapas' | 'Perfis' | 'Barras' | 'Comerciais' | 'Fixadores' | 'Consumíveis';
-export const TIPOS_PRODUTO: TipoProduto[] = ['Chapas', 'Perfis', 'Barras', 'Comerciais', 'Fixadores', 'Consumíveis'];
+export type TipoProduto = 'Chapas' | 'Perfis' | 'Barras' | 'Comerciais' | 'Conexões' | 'Válvulas' | 'Fixadores' | 'Consumíveis';
+export const TIPOS_PRODUTO: TipoProduto[] = ['Chapas', 'Perfis', 'Barras', 'Comerciais', 'Conexões', 'Válvulas', 'Fixadores', 'Consumíveis'];
 export const ROTULO_TIPO: Record<TipoProduto, string> = {
-  Chapas: 'Chapa', Perfis: 'Perfil', Barras: 'Barra', Comerciais: 'Item comercial', Fixadores: 'Fixador', Consumíveis: 'Consumível',
+  Chapas: 'Chapa', Perfis: 'Perfil', Barras: 'Barra', Comerciais: 'Item comercial', Conexões: 'Conexão', Válvulas: 'Válvula', Fixadores: 'Fixador', Consumíveis: 'Consumível',
 };
 export const UNIDADES_PRODUTO = [{ valor: 'un', rotulo: 'Unidade' }, { valor: 'm', rotulo: 'Metros' }, { valor: 'kg', rotulo: 'Peso (kg)' }] as const;
 export type OrigemPreco = 'estimado' | 'cotado' | 'comprado';
@@ -29,6 +29,24 @@ export const comImpostos = (valor: number, ipi: number) => Math.round(Number(val
 export function casarProduto<P extends { id: string; grupo: string; descricao: string }>(produtos: P[], grupo: string, descricao: string): P | undefined {
   const d = norm(descricao);
   return produtos.find((p) => p.grupo === grupo && norm(p.descricao) === d) ?? produtos.find((p) => norm(p.descricao) === d);
+}
+// Decisão 133: na emissão da OC, produtos do cadastro parecidos com a descrição do item (palavras e medidas em comum).
+export function produtosParecidos<P extends { id: string; grupo: string; descricao: string }>(produtos: P[], descricao: string, grupo = '', max = 5): P[] {
+  const palavras = (t: string) => new Set(norm(t).replace(/[^a-z0-9/.,"]+/g, ' ').split(' ').filter((w) => w.length >= 2 || /\d/.test(w)));
+  const alvo = palavras(descricao);
+  if (!alvo.size) return [];
+  return produtos
+    .map((p) => {
+      const ws = palavras(p.descricao);
+      let comum = 0;
+      ws.forEach((w) => { if (alvo.has(w)) comum += /\d/.test(w) ? 2 : 1; });
+      const nota = comum / Math.max(alvo.size, ws.size) + (grupo && p.grupo === grupo ? 0.1 : 0);
+      return { p, comum, nota };
+    })
+    .filter((x) => x.comum >= 2 || (x.comum >= 1 && x.nota >= 0.5))
+    .sort((a, b) => b.nota - a.nota)
+    .slice(0, max)
+    .map((x) => x.p);
 }
 // Unidade que o fornecedor escreve (KG, MT, PC...) → unidade do cadastro.
 export function unidadeDoProduto(u: string): 'un' | 'm' | 'kg' {

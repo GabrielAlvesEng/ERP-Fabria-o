@@ -11,9 +11,9 @@ import { ROTULO_TIPO, TIPOS_PRODUTO, UNIDADES_PRODUTO, comImpostos, type TipoPro
 // O material vai na descrição, entre parênteses. O preço digitado entra no histórico: sem fornecedor é "estimado".
 const EXEMPLO: Record<TipoProduto, string> = {
   Chapas: 'Chapa lisa 5,00 x 1250 x 3000 (304)', Perfis: 'Tubo quadrado 30 x 30 x 1,50 (304)', Barras: 'Barra redonda 5/16" (304)',
-  Comerciais: 'Rolamento 6205 2RS', Fixadores: 'Parafuso sextavado M12 x 40 (inox 304)', Consumíveis: 'Disco de corte 7" x 1,6 mm',
+  Comerciais: 'Rolamento 6205 2RS', Conexões: 'Cotovelo 90° 1/2" BSP (304)', Válvulas: 'Válvula esfera 1" tripartida (316)', Fixadores: 'Parafuso sextavado M12 x 40 (inox 304)', Consumíveis: 'Disco de corte 7" x 1,6 mm',
 };
-const UNIDADE_PADRAO: Record<TipoProduto, string> = { Chapas: 'kg', Perfis: 'm', Barras: 'm', Comerciais: 'un', Fixadores: 'un', Consumíveis: 'un' };
+const UNIDADE_PADRAO: Record<TipoProduto, string> = { Chapas: 'kg', Perfis: 'm', Barras: 'm', Comerciais: 'un', Conexões: 'un', Válvulas: 'un', Fixadores: 'un', Consumíveis: 'un' };
 
 export function CadastroProdutoModal({ produto, onFechar, onSalvo }: { produto?: ProdutoCompras | null; onFechar: () => void; onSalvo: (id: string) => void }) {
   const { data: fornecedores = [] } = useQuery({ queryKey: ['compras', 'fornecedores'], queryFn: listarFornecedores });

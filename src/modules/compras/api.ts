@@ -78,9 +78,9 @@ export async function listarProdutos(): Promise<Produto[]> {
     ...(ok(i) as { id: string; descricao: string; grupo: GrupoItem; unidade: string }[]).map((x) => ({ tipo: 'item' as const, id: x.id, descricao: x.descricao, grupo: x.grupo, unidade: x.unidade || 'un' })),
   ];
 }
-// Cadastro rápido a partir do À comprar: produto sem preço, que fica ligado ao item.
-export async function cadastrarItemBiblioteca(d: { grupo: TipoProduto; descricao: string; unidade: string }): Promise<string> {
-  return salvarProduto(null, { ...d, valor: 0, ipi: 0, fornecedor_id: null, data: null });
+// Decisão 133: na emissão da OC, liga o item a um produto do cadastro (os preços cotados entram no histórico).
+export async function vincularProduto(item: string, produto: string): Promise<void> {
+  ok(await supabase.rpc('compras_vincular_produto', { p_item: item, p_produto: produto }));
 }
 
 // ---------- Produtos simplificados (decisão 121) ----------

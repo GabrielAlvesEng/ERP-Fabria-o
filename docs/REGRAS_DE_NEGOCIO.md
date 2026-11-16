@@ -406,6 +406,13 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - Cada linha do À comprar tem uma lixeira (só para quem tem compras.editar). Ela pede confirmação e um motivo opcional.
    - A exclusão é lógica: o item vira **cancelado** na requisição, sai do À comprar e o motivo fica no histórico da requisição. Nada é apagado. Se era o último item pendente, a requisição é concluída.
    - Só vale para item à comprar e fora de pacote de cotação. Função `compras_cancelar_item`, migration `20261116000085_compras_excluir_item.sql`, aplicada e testada com o usuário do Gabriel em transação desfeita.
+133. **Cadastro do produto na emissão da ordem de compra (16/11/2026)** (Gabriel: "acho que deveria fazer o cadastro do produto só depois que emitir o pedido de compra (realizar a compra realmente)"; aprovou o plano com "Faça isso então" e "Serviços fica de fora"; ajusta a decisão 121):
+   - No À comprar e nas Cotações, item sem cadastro é o normal: saíram o botão "Cadastrar", o indicador "Sem cadastro de produto", o filtro "Só sem cadastro" e os avisos. Se quem pediu já escolheu um produto do cadastro, o vínculo continua.
+   - Em "Gerar ordem de compra", cada item sem produto aparece em "Produtos desta OC" com os produtos parecidos do cadastro (para não duplicar), uma busca no cadastro e "Cadastrar novo" (descrição, tipo e unidade já preenchidos pelo item). A OC só é gerada com todos os itens ligados. Itens do grupo **Serviços** ficam fora dessa obrigação.
+   - Ao ligar, o item passa a usar a descrição e o tipo do produto (quantidade e unidade ficam). Os preços do item nos orçamentos do pacote entram no histórico do produto como "cotado"; o preço da OC entra como "comprado".
+   - Com isso toda OC (fora Serviços) chega ao Almoxarifado com produto cadastrado, e a entrada no estoque encontra o cadastro.
+   - Conexões e Válvulas também viraram tipos de produto.
+   - Banco: função `compras_vincular_produto` e `compras_gerar_pedido_pacote` recusando item sem produto. Migration `20261116000086_compras_cadastro_na_oc.sql`, aplicada e testada com o usuário do Gabriel em transação desfeita (OC sem produto recusada; depois de ligar, preço cotado e comprado no histórico).
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:

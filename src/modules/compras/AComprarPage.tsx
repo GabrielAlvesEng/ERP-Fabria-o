@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, PackagePlus, Plus, Search, Trash2, X } from 'lucide-react';
+import { PackagePlus, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Entrada, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
-  adicionarAoPacote, atualizarItem, cadastrarItemBiblioteca, cancelarItem, criarPacote, listarAComprar, listarProdutos, pacotesAbertos, type ItemComSolicitacao,
+  adicionarAoPacote, atualizarItem, cancelarItem, criarPacote, listarAComprar, listarProdutos, pacotesAbertos, type ItemComSolicitacao,
 } from './api';
-import { GRUPOS, ROTULO_DESTINO, ROTULO_TIPO, TIPOS_PRODUTO, UNIDADES, agruparAComprar, destinoDe, rotuloDestino, type Destino, type GrupoItem, type TipoProduto } from './regras';
+import { GRUPOS, ROTULO_DESTINO, UNIDADES, agruparAComprar, destinoDe, rotuloDestino, type Destino, type GrupoItem } from './regras';
 import { NovaRequisicaoModal } from './NovaRequisicaoModal';
 import { Referencia } from './comum';
 
@@ -28,10 +28,9 @@ export function AComprarPage() {
   const [destino, setDestino] = useState<Destino | ''>('');
   const [grupo, setGrupo] = useState<GrupoItem | ''>('');
   const [soUrgente, setSoUrgente] = useState(false);
-  const [soSemCadastro, setSoSemCadastro] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [erro, setErro] = useState('');
-  const [modal, setModal] = useState<null | 'nova' | 'pacote' | { cadastrar: ItemComSolicitacao } | { excluir: ItemComSolicitacao }>(null);
+  const [modal, setModal] = useState<null | 'nova' | 'pacote' | { excluir: ItemComSolicitacao }>(null);
   const [pacoteDestino, setPacoteDestino] = useState('');
   const podeEditar = pode('compras', 'editar');
   const hoje = hojeISO();
@@ -45,13 +44,11 @@ export function AComprarPage() {
   const visiveis = itens.filter((i) => {
     const r = i.compras_requisicoes;
     return (!destino || destinoDe(r) === destino) && (!grupo || i.grupo === grupo) && (!soUrgente || r.prioridade === 'urgente')
-      && (!soSemCadastro || !i.bib_id)
       && (!termo || norm(`${i.descricao} ${r.codigo} ${r.titulo} ${r.projeto_codigo} ${r.setor}`).includes(termo));
   });
   const grupos = agruparAComprar(visiveis);
   // Itens que saíram da lista (foram para pacote por outra tela) deixam de contar na seleção.
   const selecionados = itens.filter((i) => sel.has(i.id));
-  const semCadastroSel = selecionados.filter((i) => !i.bib_id).length;
 
   const marcar = (ids: string[], v: boolean) => setSel((s) => { const n = new Set(s); ids.forEach((id) => (v ? n.add(id) : n.delete(id))); return n; });
 
@@ -62,7 +59,6 @@ export function AComprarPage() {
 
   const indicadores: [string, number, string?][] = [
     ['Itens à comprar', itens.length],
-    ['Sem cadastro de produto', itens.filter((i) => !i.bib_id).length, 'text-amber-600'],
     ['Urgentes', itens.filter((i) => i.compras_requisicoes.prioridade === 'urgente').length, 'text-red-600 dark:text-red-300'],
     ['Atrasados', itens.filter((i) => i.compras_requisicoes.necessario_em && i.compras_requisicoes.necessario_em < hoje).length, 'text-red-600 dark:text-red-300'],
     ['Pacotes em cotação', abertos.length],
@@ -94,7 +90,6 @@ export function AComprarPage() {
           {GRUPOS.map((g) => <option key={g} value={g}>{g}</option>)}
         </Selecao>
         <Caixa marcado={soUrgente} onChange={setSoUrgente}>Só urgentes</Caixa>
-        <Caixa marcado={soSemCadastro} onChange={setSoSemCadastro}>Só sem cadastro</Caixa>
       </div>
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
       {error && <Aviso>{mensagemErro(error)}</Aviso>}
@@ -126,7 +121,7 @@ export function AComprarPage() {
                     <tbody className="divide-y divide-borda">
                       {g.itens.map((i) => (
                         <LinhaItem key={i.id} i={i} produtos={produtos} hoje={hoje} podeEditar={podeEditar} marcado={sel.has(i.id)}
-                          onMarcar={(v) => marcar([i.id], v)} agir={agir} cadastrar={() => setModal({ cadastrar: i })} excluir={() => setModal({ excluir: i })} />
+                          onMarcar={(v) => marcar([i.id], v)} agir={agir} excluir={() => setModal({ excluir: i })} />
                       ))}
                     </tbody>
                   </table>
@@ -142,7 +137,6 @@ export function AComprarPage() {
         <div className="sticky bottom-3 z-20 mt-3 rounded-xl bg-superficie/95 px-4 py-3 shadow-lg ring-1 ring-roxo-200 backdrop-blur dark:ring-roxo-700">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium">{selecionados.length} item(ns) selecionado(s)</span>
-            {semCadastroSel > 0 && <span className="flex items-center gap-1 text-xs text-amber-600"><AlertTriangle size={13} /> {semCadastroSel} sem cadastro</span>}
             <button type="button" onClick={() => setSel(new Set())} className="inline-flex items-center gap-1 text-xs text-suave hover:text-texto"><X size={13} /> Limpar</button>
             <span className="flex-1" />
             {abertos.length > 0 && (
@@ -179,20 +173,13 @@ export function AComprarPage() {
             if (ok) { setSel((s) => { const n = new Set(s); n.delete(modal.excluir.id); return n; }); setModal(null); }
           }} />
       )}
-      {modal && typeof modal === 'object' && 'cadastrar' in modal && (
-        <CadastrarProduto item={modal.cadastrar} onFechar={() => setModal(null)}
-          onSalvar={(d) => agir(async () => {
-            const bib = await cadastrarItemBiblioteca(d);
-            await atualizarItem(modal.cadastrar.id, { descricao: d.descricao.trim(), grupo: d.grupo, unidade: d.unidade, bib_tipo: 'item', bib_id: bib });
-          })} />
-      )}
     </>
   );
 }
 
-function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, cadastrar, excluir }: {
+function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, excluir }: {
   i: ItemComSolicitacao; produtos: Awaited<ReturnType<typeof listarProdutos>>; hoje: string; podeEditar: boolean; marcado: boolean;
-  onMarcar: (v: boolean) => void; agir: (f: () => Promise<unknown>) => Promise<boolean>; cadastrar: () => void; excluir: () => void;
+  onMarcar: (v: boolean) => void; agir: (f: () => Promise<unknown>) => Promise<boolean>; excluir: () => void;
 }) {
   const r = i.compras_requisicoes;
   const opcoes = useMemo(() => produtos.map((p) => ({ valor: p.descricao, detalhe: p.grupo })), [produtos]);
@@ -211,11 +198,6 @@ function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, cad
       {podeEditar && <td className="px-3 py-1"><Caixa marcado={marcado} onChange={onMarcar} /></td>}
       <td className="px-1 py-1">
         {podeEditar ? <CampoEscolha valor={i.descricao} opcoes={opcoes} placeholder="Produto" onConfirmar={trocarDescricao} /> : <span className="px-2">{i.descricao}</span>}
-        {!i.bib_id && (
-          <span className="flex items-center gap-2 px-2 text-[11px] text-amber-600">sem cadastro de produto
-            {podeEditar && <button type="button" onClick={cadastrar} className="font-medium text-roxo-600 hover:underline dark:text-roxo-100">Cadastrar</button>}
-          </span>
-        )}
         {i.observacoes && <span className="block px-2 text-[11px] text-suave">{i.observacoes}</span>}
         <Referencia link={i.referencia_link} imagem={i.referencia_imagem} />
       </td>
@@ -273,7 +255,6 @@ function NovoPacote({ itens, onFechar, onCriar }: { itens: ItemComSolicitacao[];
   const [obs, setObs] = useState('');
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
-  const semCadastro = itens.filter((i) => !i.bib_id).length;
   async function criar() {
     if (titulo.trim().length < 2) return setErro('Dê um nome ao pacote.');
     setSalvando(true); setErro('');
@@ -294,35 +275,10 @@ function NovoPacote({ itens, onFechar, onCriar }: { itens: ItemComSolicitacao[];
             </li>
           ))}
         </ul>
-        {semCadastro > 0 && <p className="text-xs text-amber-600">{semCadastro} item(ns) ainda sem cadastro de produto. Dá para seguir, mas o histórico de preço só fica ligado ao produto quando ele está cadastrado.</p>}
         {erro && <Aviso>{erro}</Aviso>}
         <div className="flex justify-end gap-2">
           <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
           <Botao disabled={salvando} onClick={criar}><PackagePlus size={15} /> {salvando ? 'Criando…' : 'Criar pacote'}</Botao>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-// Cadastro rápido do produto (decisão 121): o item fica ligado a ele. O preço vem depois, pela cotação ou em Produtos.
-function CadastrarProduto({ item, onFechar, onSalvar }: {
-  item: ItemComSolicitacao; onFechar: () => void; onSalvar: (d: { grupo: TipoProduto; descricao: string; unidade: string }) => Promise<boolean>;
-}) {
-  const [d, setD] = useState({ grupo: ((TIPOS_PRODUTO as string[]).includes(item.grupo) ? item.grupo : 'Comerciais') as TipoProduto, descricao: item.descricao, unidade: item.unidade || 'un' });
-  const [salvando, setSalvando] = useState(false);
-  return (
-    <Modal aberto titulo="Cadastrar produto" onFechar={onFechar}>
-      <div className="space-y-3 text-sm">
-        <Campo rotulo="Descrição no cadastro (com o material entre parênteses)"><Entrada value={d.descricao} onChange={(e) => setD({ ...d, descricao: e.target.value })} autoFocus /></Campo>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Campo rotulo="Tipo"><Selecao value={d.grupo} onChange={(e) => setD({ ...d, grupo: e.target.value as TipoProduto })}>{TIPOS_PRODUTO.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}</Selecao></Campo>
-          <Campo rotulo="Unidade"><Entrada list="compras-unidades" value={d.unidade} onChange={(e) => setD({ ...d, unidade: e.target.value })} /></Campo>
-        </div>
-        <p className="text-xs text-suave">O produto entra em Produtos, sem preço, e este item fica ligado a ele.</p>
-        <div className="flex justify-end gap-2">
-          <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
-          <Botao disabled={salvando || d.descricao.trim().length < 2} onClick={async () => { setSalvando(true); if (await onSalvar({ ...d, unidade: d.unidade.trim() || 'un' })) onFechar(); setSalvando(false); }}>Cadastrar</Botao>
         </div>
       </div>
     </Modal>
