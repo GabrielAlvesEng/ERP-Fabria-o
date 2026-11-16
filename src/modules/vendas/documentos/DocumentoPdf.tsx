@@ -22,6 +22,7 @@ Font.register({ family: 'Geist', fonts: [
 Font.registerHyphenationCallback((palavra) => [palavra]);
 
 export interface PessoaContato { nome: string; telefone: string; email: string }
+export interface ValorItem { id?: string; quantidade?: number; valor: number; manual?: boolean; calculado?: number; unitario?: number; calculadoUnitario?: number }
 export interface DadosProposta {
   codigo: string; revisao: number; titulo: string; emissao: string; validadeDias: number;
   descricao?: string; // decisão 72: subtítulo da capa = descrição da aba Dados
@@ -32,7 +33,7 @@ export interface DadosProposta {
   vendedor?: (PessoaContato & { cargo: string }) | null;
   revisoes?: { numero: number; descricao: string; emissao: string }[];
   // id, manual e calculado servem ao editor (valor digitado na área Valores da comercial, decisão 71); o PDF usa só o valor.
-  itens: { id?: string; letra: string; descricao: string; quantidade?: number; valor: number; manual?: boolean; calculado?: number; unitario?: number; calculadoUnitario?: number }[];
+  itens: (ValorItem & { letra: string; descricao: string; opcoes?: (ValorItem & { numero: number; nome: string })[] })[]; // opcoes: decisão 134 (a 1 é o próprio item)
   // Decisão 70: frete da aba Dados (local de entrega da proposta ou, vazio, o endereço do cliente, decisão 120) e os anexos da revisão (aba Arquivos).
   frete?: 'CIF' | 'FOB';
   entrega?: string;
@@ -644,6 +645,7 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
   const t = resumoTecnica(tecnica);
   const dias = d.validadeDias || 30;
   const total = d.itens.reduce((a, i) => a + i.valor, 0);
+  const comOpcoes = d.itens.some((i) => i.opcoes);
   const revisoes = d.revisoes?.length ? d.revisoes : [{ numero: d.revisao, descricao: d.revisao ? `Revisão ${d.revisao}` : 'Emissão inicial', emissao: d.emissao }];
   const vend = d.vendedor;
   // Decisão 73: as Informações finais vão na página dos Valores quando cabem inteiras; se não cabem,
@@ -728,23 +730,41 @@ function PaginasComerciais({ doc, d, empresa, v, tecnica }: { doc: Documento; d:
           <TituloPagina rotulo="Valores" titulo={d.titulo} />
           {valores.intro.trim() ? <TextoRico texto={valores.intro} v={v} estilo={{ fontSize: 8.5, color: '#374151' }} /> : null}
           <Tabela cabecalho={['Item', 'Título', 'Qtd', 'Valor unitário', 'Valor total']} larguras={[0.5, 3.2, 0.6, 1.3, 1.3]} alinhar={['left', 'left', 'center', 'right', 'right']}
-            linhas={d.itens.map((i) => {
+            linhas={d.itens.flatMap((i) => {
               const q = i.quantidade && i.quantidade > 0 ? i.quantidade : 1;
               const desc = substituir(valores.descricoes[i.letra] ?? '', v);
-              return [
-                <Text key="l" style={[s.td, { fontWeight: 700, color: C.roxo }]}>{i.letra}</Text>,
-                <View key="t"><Text style={[s.td, { fontWeight: 600 }]}>{i.descricao || '-'}</Text>{desc ? <Text style={{ fontSize: 7.5, color: C.suave, marginTop: 2 }}>{desc}</Text> : null}</View>,
-                qtd(q), moeda(i.valor / q),
-                <Text key="v" style={[s.td, { fontWeight: 600 }]}>{moeda(i.valor)}</Text>,
-              ];
+              const titulo = <View key="t"><Text style={[s.td, { fontWeight: 600 }]}>{i.descricao || '-'}</Text>{desc ? <Text style={{ fontSize: 7.5, color: C.suave, marginTop: 2 }}>{desc}</Text> : null}</View>;
+              const letra = <Text key="l" style={[s.td, { fontWeight: 700, color: C.roxo }]}>{i.letra}</Text>;
+              if (!i.opcoes) return [[letra, titulo, qtd(q), moeda(i.valor / q), <Text key="v" style={[s.td, { fontWeight: 600 }]}>{moeda(i.valor)}</Text>]];
+              // Decisão 134: item com opções numa linha e cada opção embaixo, com o seu unitário e total.
+              return [[letra, titulo, qtd(q), '', ''], ...i.opcoes.map((o) => {
+                const qo = o.quantidade && o.quantidade > 0 ? o.quantidade : 1;
+                return [
+                  '', <Text key="o" style={[s.td, { paddingLeft: 10 }]}><Text style={{ fontWeight: 600, color: C.roxo }}>Opção {o.numero}</Text>{o.nome.trim() ? `: ${o.nome.trim()}` : ''}</Text>,
+                  qo !== q ? qtd(qo) : '', moeda(o.valor / qo), <Text key="v" style={[s.td, { fontWeight: 600 }]}>{moeda(o.valor)}</Text>,
+                ];
+              })];
             })} />
           <View wrap={false} style={{ backgroundColor: C.navy, borderRadius: 8, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <View>
               <Text style={{ fontSize: 7.5, fontWeight: 600, color: C.roxoClaro, letterSpacing: 1.4, marginBottom: 3 }}>INVESTIMENTO GLOBAL</Text>
-              <Text style={{ fontSize: 8.5, color: '#c7cbe0' }}>Total com impostos inclusos</Text>
+              <Text style={{ fontSize: 8.5, color: '#c7cbe0' }}>{comOpcoes ? 'Total com a opção 1 de cada item, impostos inclusos' : 'Total com impostos inclusos'}</Text>
             </View>
             <Text style={{ fontSize: 20, fontWeight: 700, color: '#ffffff' }}>{moeda(total)}</Text>
           </View>
+          {comOpcoes ? (
+            <View wrap={false} style={{ borderWidth: 0.5, borderColor: C.borda, borderRadius: 8, backgroundColor: C.fundo, paddingVertical: 8, paddingHorizontal: 12, marginTop: 6 }}>
+              {d.itens.flatMap((i) => (i.opcoes ?? []).slice(1).map((o) => {
+                const dif = o.valor - i.valor;
+                return (
+                  <View key={`${i.letra}${o.numero}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
+                    <Text style={{ fontSize: 8, color: '#374151' }}>Escolhendo a opção {o.numero} do item {i.letra}{o.nome.trim() ? ` (${o.nome.trim()})` : ''}</Text>
+                    <Text style={{ fontSize: 8, fontWeight: 600, color: dif > 0 ? C.texto : C.verde }}>{dif >= 0 ? '+ ' : '− '}{moeda(Math.abs(dif))}</Text>
+                  </View>
+                );
+              }))}
+            </View>
+          ) : null}
           {encerramento}
         </Page>
       ) : null}

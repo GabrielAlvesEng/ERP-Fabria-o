@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { modeloLinhas, pesoChapa, pesoMateriais, proximaLetra, reordenar, resumoItem, totalLinha, type CustoLinha, type Secao } from './regras';
+import { itensPrincipais, opcoesDoItem, rotuloOpcao, modeloLinhas, pesoChapa, pesoMateriais, proximaLetra, reordenar, resumoItem, totalLinha, type CustoLinha, type Secao } from './regras';
 
 const linha = (secao: Secao, quantidade: number, fator: number, valor_unitario: number, extra: Partial<CustoLinha> = {}): CustoLinha => ({
   id: Math.random().toString(), item_id: 'i', secao, grupo: '', descricao: '', detalhe: '', detalhe2: '', unidade: '',
@@ -103,5 +103,19 @@ describe('reordenar linhas (arrastar)', () => {
   });
   it('sem mudança', () => {
     expect(reordenar([l('a', 1)], 'a', 'a')).toEqual([]);
+  });
+});
+
+describe('opções do item (decisão 134)', () => {
+  const novo = (id: string, opcao_de: string | null, ordem = 0) => ({ id, opcao_de, ordem });
+  const lista = [novo('a', null), novo('b', null, 1), novo('a3', 'a', 2), novo('a2', 'a', 1)];
+  it('principais e opções em ordem', () => {
+    expect(itensPrincipais(lista).map((i) => i.id)).toEqual(['a', 'b']);
+    expect(opcoesDoItem(lista, lista[0]).map((i) => i.id)).toEqual(['a', 'a2', 'a3']);
+    expect(opcoesDoItem(lista, lista[1]).map((i) => i.id)).toEqual(['b']);
+  });
+  it('rótulo', () => {
+    expect(rotuloOpcao(2, ' Inox 316L ')).toBe('Opção 2: Inox 316L');
+    expect(rotuloOpcao(1, '')).toBe('Opção 1');
   });
 });

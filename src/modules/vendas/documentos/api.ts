@@ -1,7 +1,7 @@
 import { supabase } from '@/shared/lib/supabase';
 import { formatarCNPJ } from '@/shared/lib/formato';
 import { listarItens, listarLinhas } from '@/modules/vendas/custos/api';
-import { resumoItem } from '@/modules/vendas/custos/regras';
+import { itensPrincipais, opcoesDoItem, resumoItem, type CustoItem } from '@/modules/vendas/custos/regras';
 import { listarArquivos, listarRevisoes } from '@/modules/vendas/api';
 import type { Contato, Empresa, Proposta } from '@/modules/vendas/types';
 import { EMPRESA_PADRAO, SOBRE_PADRAO, completarDocumento, type DadosEmpresaFabriaco, type Documento, type TipoDocumento } from './modelo';
@@ -87,9 +87,17 @@ export async function dadosDaProposta(p: Proposta, revisaoId: string, preparadoP
       descricao: r.numero === 0 ? 'Emissão inicial' : (r.motivo?.trim() || `Revisão ${r.numero}`),
       emissao: r.enviada_em ?? (r.numero === p.revisao_atual ? p.data_emissao : r.criado_em.slice(0, 10)),
     })),
-    itens: itens.map((it) => {
-      const r = resumoItem(it, linhas.filter((l) => l.item_id === it.id));
-      return { id: it.id, letra: it.letra, descricao: it.descricao, quantidade: Number(it.quantidade) || 1, valor: r.precoTotal, manual: r.manual, calculado: r.precoCalculado, unitario: r.precoUnitario, calculadoUnitario: r.precoCalculadoUnitario };
+    // Decisão 134: só os itens principais; o item com alternativas leva a lista de opções (a opção 1 é o próprio item).
+    itens: itensPrincipais(itens).map((it) => {
+      const valorDe = (o: CustoItem) => {
+        const r = resumoItem(o, linhas.filter((l) => l.item_id === o.id));
+        return { id: o.id, quantidade: Number(o.quantidade) || 1, valor: r.precoTotal, manual: r.manual, calculado: r.precoCalculado, unitario: r.precoUnitario, calculadoUnitario: r.precoCalculadoUnitario };
+      };
+      const ops = opcoesDoItem(itens, it);
+      return {
+        ...valorDe(it), letra: it.letra, descricao: it.descricao,
+        opcoes: ops.length > 1 ? ops.map((o, k) => ({ ...valorDe(o), numero: k + 1, nome: o.opcao_nome ?? '' })) : undefined,
+      };
     }),
   };
 }

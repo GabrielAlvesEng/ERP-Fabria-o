@@ -17,7 +17,20 @@ export interface CustoItem {
   imposto_modo: 'dentro';
   ordem: number;
   valor_manual?: number | null; // decisões 70 e 99: preço de venda UNITÁRIO digitado à mão (× quantidade = total do item)
+  opcao_de?: string | null; // decisão 134: alternativa do item principal (mesma letra, planilha própria)
+  opcao_nome?: string;      // nome da opção (ex.: "Inox 304"); no principal é o nome da opção 1
+  criado_em?: string;
 }
+
+// Decisão 134: opções dentro do item. Os itens principais formam a proposta (e o total); cada um pode ter
+// alternativas, e a lista de opções de um item é o principal (opção 1) seguido das alternativas.
+export const itensPrincipais = <T extends Pick<CustoItem, 'opcao_de'>>(itens: T[]): T[] => itens.filter((i) => !i.opcao_de);
+export function opcoesDoItem<T extends Pick<CustoItem, 'id' | 'opcao_de' | 'ordem'> & { criado_em?: string }>(itens: T[], principal: T): T[] {
+  const alt = itens.filter((i) => i.opcao_de === principal.id)
+    .sort((a, b) => a.ordem - b.ordem || (a.criado_em ?? '').localeCompare(b.criado_em ?? ''));
+  return [principal, ...alt];
+}
+export const rotuloOpcao = (numero: number, nome?: string) => `Opção ${numero}${nome?.trim() ? `: ${nome.trim()}` : ''}`;
 
 export interface CustoLinha {
   id: string;

@@ -261,6 +261,7 @@
 - **Decisão 122:** CC do envio da proposta com sugestões sempre à vista (cliente e Fabriaço) e "Copiar todos" por grupo. Typecheck, testes e build ok; não conferido no navegador com login real.
 - **Decisão 123:** imagem grande embaixo da introdução do Escopo (campo `imagemIntro` da seção de itens, no JSON do documento; sem migration). PDF conferido no gerador local com imagem larga e comprida; typecheck, 245 testes e build ok; não conferido com login real.
 - **Decisão 124:** ao enviar a proposta, PDFs da técnica e da comercial gerados na hora e anexados (`documentos/gerarPdfs.ts`).
+- **Decisão 134:** opções dentro do item da proposta (`custo_itens.opcao_de` e `opcao_nome`, `proposta_aprovacoes.opcoes`; `copiar_custos` e `aprovar_proposta` atualizados), migration `20261116000087_opcoes_item.sql` aplicada. Trigger e cópia para nova revisão conferidos no banco numa transação desfeita; PDF comercial conferido no gerador local; 254 testes e build ok. Tela de Custos e aprovação não conferidas no navegador com login real.
 - **Decisão 125:** vendedor fora do card do Kanban. Typecheck, 245 testes e build ok; não conferido no navegador com login real.
 
 ## 2026-10-29 (Compras)

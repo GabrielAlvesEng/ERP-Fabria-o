@@ -49,7 +49,7 @@ export async function listarReferencias(): Promise<Referencias> {
 }
 
 export async function listarItens(revisaoId: string): Promise<CustoItem[]> {
-  return ok(await supabase.from('custo_itens').select('*').eq('revisao_id', revisaoId).order('ordem').order('letra'));
+  return ok(await supabase.from('custo_itens').select('*').eq('revisao_id', revisaoId).order('ordem').order('letra').order('criado_em'));
 }
 
 export async function listarLinhas(itemIds: string[]): Promise<CustoLinha[]> {
@@ -83,6 +83,20 @@ export async function criarItem(revisaoId: string, letrasUsadas: string[], descr
   const linhas = modeloLinhas(mo ?? [], maq ?? []).map((l) => ({ ...l, item_id: item.id }));
   ok(await supabase.from('custo_linhas').insert(linhas));
   return item;
+}
+
+// Decisão 134: nova opção do item, com uma cópia da planilha da opção de origem (para só mudar o que difere).
+export async function criarOpcao(principal: CustoItem, origem: CustoItem, ordem: number, nome: string): Promise<CustoItem> {
+  const nova = ok<CustoItem>(await supabase.from('custo_itens').insert({
+    revisao_id: principal.revisao_id, letra: principal.letra, descricao: principal.descricao, quantidade: origem.quantidade,
+    lucro_pct: origem.lucro_pct, negociacao_pct: origem.negociacao_pct, imposto_pct: origem.imposto_pct, imposto_modo: 'dentro',
+    valor_manual: origem.valor_manual ?? null, ordem, opcao_de: principal.id, opcao_nome: nome,
+  }).select().single());
+  const linhas = await listarLinhas([origem.id]);
+  if (linhas.length) {
+    ok(await supabase.from('custo_linhas').insert(linhas.map(({ id: _id, item_id: _item, total: _total, ...l }) => ({ ...l, item_id: nova.id }))));
+  }
+  return nova;
 }
 
 export async function atualizarItem(id: string, dados: Partial<CustoItem>): Promise<void> {

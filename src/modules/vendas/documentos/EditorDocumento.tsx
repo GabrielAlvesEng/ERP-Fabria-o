@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { CircleCheck, CircleX, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, Lock, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { AreaTexto, Bolhas, Botao, Caixa, Campo, PrefixoCampo, CampoInteiro, CampoNumero, Entrada, Selecao } from '@/shared/ui';
 import { moeda } from '@/shared/lib/formato';
+import { rotuloOpcao } from '@/modules/vendas/custos/regras';
 import {
   INICIO_PRAZO_PADRAO, INICIOS_PRAZO, LIMITES_TEXTO, MARCOS_PAGAMENTO, MAX_IMAGENS_ITEM, SECOES_DO_MODELO, SECOES_FIXAS, SECOES_IA, escolherSecao, marcadorCartao, numerar, pendencias, sincronizarEscopo,
   type Cartao, type Documento, type Figura, type GrupoResponsabilidade, type LinhaMatriz, type Marca3, type Secao,
@@ -21,7 +22,8 @@ export interface Imagens { enviar: (f: File) => Promise<string>; urls: Record<st
 // Editor das seções do documento (decisão 61): usado na aba Documentos da proposta e em Administração → Modelos de proposta.
 // Itens da aba Custos, com o valor de venda (decisão 71: o valor pode ser digitado na área Valores da comercial).
 // Decisão 99: o valor digitado é o de uma unidade; o total do item é ele × quantidade (a quantidade vem da aba Custos).
-export type ItemValor = { id?: string; letra: string; descricao: string; valor: number; manual?: boolean; calculado?: number; quantidade?: number; unitario?: number; calculadoUnitario?: number };
+type ValorEditavel = { id?: string; valor: number; manual?: boolean; calculado?: number; quantidade?: number; unitario?: number; calculadoUnitario?: number };
+export type ItemValor = ValorEditavel & { letra: string; descricao: string; opcoes?: (ValorEditavel & { numero: number; nome: string })[] }; // opcoes: decisão 134
 export type AcoesValor = { salvar: (id: string, valor: number | null) => void; criarItem: () => void; ocupado: boolean };
 
 export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados, modelo, ia }: {
@@ -330,28 +332,42 @@ function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: {
             </div>
           )}
           {itens.map((it) => {
-            const q = it.quantidade && it.quantidade > 0 ? it.quantidade : 1;
-            const unitario = it.unitario ?? it.valor / q;
+            // Preço de uma opção (ou do item sem opções): unitário editável, × quantidade, sugestão dos custos.
+            const preco = (o: ValorEditavel, rotulo?: string) => {
+              const q = o.quantidade && o.quantidade > 0 ? o.quantidade : 1;
+              const unitario = o.unitario ?? o.valor / q;
+              return (
+                <div key={o.id ?? rotulo} className={rotulo ? 'rounded-md bg-pagina p-2' : ''}>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="min-w-0 flex-1 text-sm font-semibold">{rotulo ?? `${it.letra} — ${it.descricao || 'Item sem descrição'}`}</div>
+                    <div className="w-44">
+                      <div className="mb-1 text-xs font-medium text-suave">Valor unitário</div>
+                      <CampoNumero moeda casas={2} valor={unitario} disabled={!valores || !o.id || valores.ocupado}
+                        onConfirmar={(n) => valores && o.id && n >= 0 && Math.abs(n - unitario) > 0.005 && valores.salvar(o.id, n)} className="py-1.5" />
+                    </div>
+                    <div className="pb-2 text-sm text-suave">× {q.toLocaleString('pt-BR')}</div>
+                    <div className="pb-1.5 text-right">
+                      <div className="text-xs font-medium text-suave">Total</div>
+                      <div className="text-sm font-semibold tabular-nums">{moeda(o.valor)}</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-suave">
+                    Sugestão pelos custos: <span className="font-medium tabular-nums">{moeda(o.calculadoUnitario ?? (o.calculado ?? o.valor) / q)}</span> por unidade
+                    {o.manual ? <>{' · '}valor alterado à mão. {valores && o.id && <button type="button" className="font-medium text-roxo-600 hover:underline dark:text-roxo-100" onClick={() => valores.salvar(o.id!, null)}>Usar a sugestão</button>}</>
+                      : ' · em uso. Pode alterar no campo ao lado.'}
+                  </div>
+                </div>
+              );
+            };
             return (
             <div key={it.letra} className="space-y-2 rounded-lg p-3 ring-1 ring-borda">
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="min-w-0 flex-1 text-sm font-semibold">{it.letra} — {it.descricao || 'Item sem descrição'}</div>
-                <div className="w-44">
-                  <div className="mb-1 text-xs font-medium text-suave">Valor unitário</div>
-                  <CampoNumero moeda casas={2} valor={unitario} disabled={!valores || !it.id || valores.ocupado}
-                    onConfirmar={(n) => valores && it.id && n >= 0 && Math.abs(n - unitario) > 0.005 && valores.salvar(it.id, n)} className="py-1.5" />
-                </div>
-                <div className="pb-2 text-sm text-suave">× {q.toLocaleString('pt-BR')}</div>
-                <div className="pb-1.5 text-right">
-                  <div className="text-xs font-medium text-suave">Total do item</div>
-                  <div className="text-sm font-semibold tabular-nums">{moeda(it.valor)}</div>
-                </div>
-              </div>
-              <div className="text-xs text-suave">
-                Sugestão pelos custos: <span className="font-medium tabular-nums">{moeda(it.calculadoUnitario ?? (it.calculado ?? it.valor) / q)}</span> por unidade
-                {it.manual ? <>{' · '}valor alterado à mão. {valores && it.id && <button type="button" className="font-medium text-roxo-600 hover:underline dark:text-roxo-100" onClick={() => valores.salvar(it.id!, null)}>Usar a sugestão</button>}</>
-                  : ' · em uso. Pode alterar no campo ao lado.'}
-              </div>
+              {it.opcoes ? (
+                <>
+                  <div className="text-sm font-semibold">{it.letra} — {it.descricao || 'Item sem descrição'}</div>
+                  {it.opcoes.map((o) => preco(o, rotuloOpcao(o.numero, o.nome) + (o.numero === 1 ? ' (entra no total)' : '')))}
+                  <p className="text-xs text-suave">As opções e os nomes vêm da aba Custos.</p>
+                </>
+              ) : preco(it)}
               <Rotulo texto="Descrição do fornecimento">
                 <AreaTexto rows={2} value={s.descricoes[it.letra] ?? ''} onChange={(e) => onChange({ ...s, descricoes: { ...s.descricoes, [it.letra]: e.target.value } })} />
               </Rotulo>
@@ -360,7 +376,7 @@ function CorpoSecao({ s, onChange, itens, imagens, valores, escopoDosCustos }: {
           })}
           {itens.length > 0 && (
             <div className="flex items-center justify-between rounded-lg bg-pagina px-3 py-2 ring-1 ring-borda">
-              <span className="text-sm font-semibold">Valor total da proposta</span>
+              <span className="text-sm font-semibold">Valor total da proposta{itens.some((i) => i.opcoes) ? ' (com a opção 1 de cada item)' : ''}</span>
               <span className="text-base font-bold tabular-nums">{moeda(itens.reduce((a, i) => a + i.valor, 0))}</span>
             </div>
           )}

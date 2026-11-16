@@ -15,10 +15,11 @@ import { atualizarRascunho, listarRevisoes } from '../api';
 import type { Proposta } from '../types';
 import { useDigitandoAoVivo } from '../aoVivo';
 import {
-  adicionarLinha, atualizarItem, atualizarLinha, criarItem, excluirItem, listarItens, listarLinhas, listarReferencias, listarVeiculosECombustivel, removerLinha, reordenarLinhas,
+  adicionarLinha, atualizarItem, atualizarLinha, criarItem, criarOpcao, excluirItem, listarItens, listarLinhas, listarReferencias, listarVeiculosECombustivel, removerLinha, reordenarLinhas,
   precoDoVeiculo, type Combustivel, type Referencias, type RefVeiculo,
 } from './api';
 import {
+  itensPrincipais, opcoesDoItem, rotuloOpcao,
   LINK_QUALP, linkMapa, pesoChapa, pesoMateriais, reordenar, resumoItem, secoesVisiveis, totalLinha,
   type Bloco, type Coluna, type CustoItem, type CustoLinha, type DefSecao, type GrupoMaterial, type Secao,
 } from './regras';
@@ -45,7 +46,12 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
   const { data: catalogo = [] } = useQuery({ queryKey: ['catalogo_materiais'], queryFn: listarCatalogo, staleTime: 10 * 60_000 });
   const { data: frota } = useQuery({ queryKey: ['ref_veiculos'], queryFn: listarVeiculosECombustivel, staleTime: 10 * 60_000 });
   const [itemId, setItemId] = useState<string | null>(null);
-  const item = itens.find((i) => i.id === itemId) ?? itens[0];
+  // Decisão 134: as abas são os itens principais; dentro do item, cada opção tem a sua planilha.
+  const principais = useMemo(() => itensPrincipais(itens), [itens]);
+  const item = principais.find((i) => i.id === itemId) ?? principais[0];
+  const opcoes = useMemo(() => (item ? opcoesDoItem(itens, item) : []), [itens, item]);
+  const [opcaoId, setOpcaoId] = useState<string | null>(null);
+  const atual = opcoes.find((o) => o.id === opcaoId) ?? opcoes[0];
   const linhaAbas = useIndicadorAbas(`${item?.id}|${itens.length}|${item?.descricao}`);
 
   const chaveLinhas = ['custos', 'linhas', rev?.id, itens.map((i) => i.id).join()];
@@ -65,11 +71,16 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
   const itemAlterado = (novo: CustoItem) => { if (editavel) enviarAoVivo({ linhas: [], itens: [novo] }); };
 
   const resumos = useMemo(() => new Map(itens.map((i) => [i.id, resumoItem(i, linhas.filter((l) => l.item_id === i.id))])), [itens, linhas]);
-  const totalProposta = itens.reduce((s, i) => s + (resumos.get(i.id)?.precoTotal ?? 0), 0);
+  const totalProposta = principais.reduce((s, i) => s + (resumos.get(i.id)?.precoTotal ?? 0), 0);
 
   const novoItem = useMutation({
-    mutationFn: () => criarItem(rev!.id, itens.map((i) => i.letra), itens.length === 0 ? proposta.titulo : ''),
-    onSuccess: (i) => { setItemId(i.id); recarregar(); },
+    mutationFn: () => criarItem(rev!.id, principais.map((i) => i.letra), principais.length === 0 ? proposta.titulo : ''),
+    onSuccess: (i) => { setItemId(i.id); setOpcaoId(null); recarregar(); },
+    onError: (e) => setErro(mensagemErro(e)),
+  });
+  const novaOpcao = useMutation({
+    mutationFn: () => criarOpcao(item!, atual!, Math.max(0, ...opcoes.map((o) => o.ordem)) + 1, ''),
+    onSuccess: (o) => { setOpcaoId(o.id); recarregar(); },
     onError: (e) => setErro(mensagemErro(e)),
   });
   const usarValor = useMutation({
@@ -101,17 +112,17 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
           {!editavel && <span className="mb-2 inline-flex items-center gap-1 text-xs text-suave"><Lock size={13} /> {rev.status === 'enviada' ? 'Revisão enviada: custos congelados' : 'Somente leitura'}</span>}
         </div>
         <div className="text-right">
-          <div className="text-xs text-suave">Preço de venda da proposta ({itens.length} {itens.length === 1 ? 'item' : 'itens'})</div>
+          <div className="text-xs text-suave">Preço de venda da proposta ({principais.length} {principais.length === 1 ? 'item' : 'itens'}{principais.length < itens.length ? ', com a opção 1 de cada' : ''})</div>
           <div className="text-xl font-bold text-petroleo-600 dark:text-teal-300">{moeda(totalProposta)}</div>
           {podeSincronizar && <div className="text-xs text-suave">{diferente ? 'Atualizando o valor da proposta…' : 'É o valor da proposta'}</div>}
         </div>
       </div>
 
       <div ref={linhaAbas} className="abas abas-indicador items-center gap-1 border-b border-borda" role="tablist">
-        {itens.map((i) => (
-          <button key={i.id} role="tab" aria-selected={item?.id === i.id} onClick={() => setItemId(i.id)}
+        {principais.map((i) => (
+          <button key={i.id} role="tab" aria-selected={item?.id === i.id} onClick={() => { setItemId(i.id); setOpcaoId(null); }}
             className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-150 ${item?.id === i.id ? 'border-roxo-500 font-semibold text-roxo-600 dark:border-roxo-300 dark:text-roxo-100' : 'border-transparent text-suave hover:text-texto'}`}>
-            Item {i.letra}{i.descricao && <span className="font-normal"> · {i.descricao}</span>}{item?.id !== i.id && <> <Bolhas campo={`Item ${i.letra} · `} inicio /></>}
+            Item {i.letra}{i.descricao && <span className="font-normal"> · {i.descricao}</span>}{opcoesDoItem(itens, i).length > 1 && <span className="ml-1 rounded-full bg-roxo-50 px-1.5 text-[11px] font-medium text-roxo-700 dark:bg-roxo-700/30 dark:text-roxo-100">{opcoesDoItem(itens, i).length} opções</span>}{item?.id !== i.id && <> <Bolhas campo={`Item ${i.letra} · `} inicio /></>}
           </button>
         ))}
         {editavel && (
@@ -124,17 +135,38 @@ export function CustosAba({ proposta }: { proposta: Proposta }) {
 
       {itens.length === 0 ? (
         <Vazio>{editavel ? 'Nenhum item de custo ainda. Clique em "Novo item" para começar (vem com o modelo da planilha).' : 'Esta revisão não tem custos lançados.'}</Vazio>
-      ) : item && (
-        <div key={item.id} className="entrar"><PrefixoCampo valor={`Item ${item.letra} · `}><ItemCustos
-          item={item}
-          linhas={linhas.filter((l) => l.item_id === item.id)}
+      ) : item && atual && (
+        <div key={atual.id} className="entrar space-y-3">
+          {(editavel || opcoes.length > 1) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-xs font-medium text-suave">Opções do item {item.letra}:</span>
+              {opcoes.map((o, k) => (
+                <button key={o.id} type="button" onClick={() => setOpcaoId(o.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ring-1 ${o.id === atual.id ? 'bg-roxo-600 font-semibold text-white ring-roxo-600' : 'bg-superficie text-texto ring-borda hover:bg-pagina'}`}>
+                  {rotuloOpcao(k + 1, o.opcao_nome)}
+                  <span className={o.id === atual.id ? 'text-roxo-100' : 'text-suave'}>{moeda(resumos.get(o.id)?.precoTotal ?? 0)}</span>
+                </button>
+              ))}
+              {editavel && (
+                <button type="button" onClick={() => novaOpcao.mutate()} disabled={novaOpcao.isPending} title="Cria outra opção para este item, com uma cópia da planilha da opção aberta"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-roxo-600 hover:bg-roxo-50 disabled:opacity-50 dark:hover:bg-marinho-700">
+                  <Plus size={13} /> {novaOpcao.isPending ? 'Criando…' : 'Nova opção (copia esta planilha)'}
+                </button>
+              )}
+              {opcoes.length > 1 && <span className="w-full text-[11px] text-suave">O total da proposta usa a opção 1. As outras saem na proposta comercial como alternativas, com a diferença de preço.</span>}
+            </div>
+          )}
+          <PrefixoCampo valor={`Item ${item.letra} · `}><ItemCustos
+          item={atual}
+          opcao={{ numero: opcoes.findIndex((o) => o.id === atual.id) + 1, total: opcoes.length }}
+          linhas={linhas.filter((l) => l.item_id === atual.id)}
           listas={{ catalogo, refs, veiculos: frota?.veiculos ?? [], precos: frota?.precos ?? {} }}
           editavel={editavel}
           onErro={(e) => setErro(mensagemErro(e))}
           onLinha={linhaAlterada}
           onItem={itemAlterado}
           onRecarregar={recarregar}
-          onExcluido={() => { setItemId(null); recarregar(); }}
+          onExcluido={() => { if (atual.opcao_de) setOpcaoId(null); else setItemId(null); recarregar(); }}
         /></PrefixoCampo></div>
       )}
     </div>
@@ -155,8 +187,8 @@ const larguraMinima = (l?: string) => { const n = /^w-(\d+)$/.exec(l ?? '')?.[1]
 
 interface Listas { catalogo: MaterialCatalogo[]; refs: Referencias; veiculos: RefVeiculo[]; precos: Partial<Record<Combustivel, number>> }
 
-function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onItem, onRecarregar, onExcluido }: {
-  item: CustoItem; linhas: CustoLinha[]; listas: Listas; editavel: boolean;
+function ItemCustos({ item, opcao, linhas, listas, editavel, onErro, onLinha, onItem, onRecarregar, onExcluido }: {
+  item: CustoItem; opcao: { numero: number; total: number }; linhas: CustoLinha[]; listas: Listas; editavel: boolean;
   onErro: (e: unknown) => void; onLinha: (l: CustoLinha) => void; onItem: (i: CustoItem) => void; onRecarregar: () => void; onExcluido: () => void;
 }) {
   const [it, setIt] = useState(item);
@@ -204,9 +236,17 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onItem, o
     <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
       <div className="min-w-0 space-y-3">
         <div className="grid items-end gap-3 rounded-xl bg-pagina p-3 sm:grid-cols-6">
-          <Campo rotulo={`Descrição do item ${it.letra}`} className="sm:col-span-6">
-            <Entrada key={it.descricao} defaultValue={it.descricao} disabled={!editavel} onBlur={(e) => e.target.value !== it.descricao && salvarItem({ descricao: e.target.value })} />
-          </Campo>
+          {!it.opcao_de && (
+            <Campo rotulo={`Descrição do item ${it.letra}`} className={opcao.total > 1 ? 'sm:col-span-3' : 'sm:col-span-6'}>
+              <Entrada key={it.descricao} defaultValue={it.descricao} disabled={!editavel} onBlur={(e) => e.target.value !== it.descricao && salvarItem({ descricao: e.target.value })} />
+            </Campo>
+          )}
+          {(opcao.total > 1 || it.opcao_de) && (
+            <Campo rotulo={`Nome da opção ${opcao.numero} (ex.: Inox 304)`} className={it.opcao_de ? 'sm:col-span-6' : 'sm:col-span-3'}>
+              <Entrada key={it.opcao_nome} defaultValue={it.opcao_nome ?? ''} maxLength={120} disabled={!editavel} placeholder="O que muda nesta opção"
+                onBlur={(e) => e.target.value !== (it.opcao_nome ?? '') && salvarItem({ opcao_nome: e.target.value })} />
+            </Campo>
+          )}
           <CampoPct rotulo="Quantidade" valor={it.quantidade} casas={3} editavel={editavel} onConfirmar={(n) => n > 0 && salvarItem({ quantidade: n })} />
           <CampoPct rotulo="Margem (%)" valor={it.lucro_pct} editavel={editavel} onConfirmar={(n) => salvarItem({ lucro_pct: n })} />
           <CampoPct rotulo="Negociação (%)" valor={it.negociacao_pct} editavel={editavel} onConfirmar={(n) => salvarItem({ negociacao_pct: n })} />
@@ -263,14 +303,14 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onItem, o
         })}
         {editavel && (
           <div className="flex justify-end">
-            <Botao variante="secundario" className="text-red-600" onClick={() => setConfirmarExclusao(true)}><Trash2 size={15} /> Excluir item {it.letra}</Botao>
+            <Botao variante="secundario" className="text-red-600" onClick={() => setConfirmarExclusao(true)}><Trash2 size={15} /> {it.opcao_de ? `Excluir a opção ${opcao.numero}` : `Excluir item ${it.letra}`}</Botao>
           </div>
         )}
       </div>
 
       <div className="xl:sticky xl:top-2 xl:self-start">
         <div className="rounded-xl bg-marinho-800 p-4 text-sm text-slate-100 dark:bg-marinho-900">
-          <div className="mb-2 font-semibold text-white">Orçamento · Item {it.letra}</div>
+          <div className="mb-2 font-semibold text-white">Orçamento · Item {it.letra}{opcao.total > 1 ? ` · opção ${opcao.numero}` : ''}</div>
           {secoesVisiveis(linhas).map((s) => (
             <div key={s.id} className="flex justify-between py-0.5"><span className="text-slate-300">{s.letra} · {s.titulo}</span><span className="tabular-nums">{moeda(r.porSecao[s.id])}</span></div>
           ))}
@@ -305,8 +345,8 @@ function ItemCustos({ item, linhas, listas, editavel, onErro, onLinha, onItem, o
         </div>
       </div>
 
-      <Modal aberto={confirmarExclusao} titulo={`Excluir item ${it.letra}?`} onFechar={() => setConfirmarExclusao(false)}>
-        <p className="text-sm text-slate-600 dark:text-slate-300">O item e todas as linhas de custo dele serão removidos desta revisão (rascunho). A exclusão fica registrada na auditoria. Revisões enviadas não são afetadas.</p>
+      <Modal aberto={confirmarExclusao} titulo={it.opcao_de ? `Excluir a opção ${opcao.numero} do item ${it.letra}?` : `Excluir item ${it.letra}?`} onFechar={() => setConfirmarExclusao(false)}>
+        <p className="text-sm text-slate-600 dark:text-slate-300">{it.opcao_de ? 'A opção e as linhas de custo dela' : opcao.total > 1 ? `O item, as ${opcao.total} opções e todas as linhas de custo` : 'O item e todas as linhas de custo dele'} serão removidos desta revisão (rascunho). A exclusão fica registrada na auditoria. Revisões enviadas não são afetadas.</p>
         <div className="mt-4 flex justify-end gap-2">
           <Botao variante="secundario" onClick={() => setConfirmarExclusao(false)}>Cancelar</Botao>
           <Botao variante="perigo" onClick={async () => { try { await excluirItem(item.id); onExcluido(); } catch (e) { onErro(e); } setConfirmarExclusao(false); }}>Excluir</Botao>

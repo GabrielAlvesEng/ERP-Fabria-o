@@ -1,8 +1,10 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { hojeISO, mensagemErro, moeda, numeroBR } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, Entrada, Modal, Selecao, EntradaMoeda } from '@/shared/ui';
-import { aprovarProposta, enviarComprovante, moverProposta, registrarFollowup, reprovarProposta } from '../api';
+import { aprovarProposta, enviarComprovante, listarRevisoes, moverProposta, registrarFollowup, reprovarProposta } from '../api';
+import { listarItens, listarLinhas } from '../custos/api';
+import { itensPrincipais, opcoesDoItem, resumoItem, rotuloOpcao } from '../custos/regras';
 import type { Proposta, StatusProposta } from '../types';
 
 function useAcao(fn: () => Promise<void>, onFechar: () => void) {
@@ -44,10 +46,35 @@ export { EnviarEmailModal as EnviarModal } from './EnviarEmailModal';
 export function AprovarModal({ proposta, onFechar }: { proposta: Proposta; onFechar: () => void }) {
   const [f, setF] = useState({ forma: 'PC', numero_documento: '', data_aprovacao: hojeISO(), valor_aprovado: String(proposta.valor), observacoes: '' });
   const [arquivo, setArquivo] = useState<File | null>(null);
+  // Decisão 134: item com opções precisa da opção que o cliente escolheu; o valor aprovado acompanha a escolha.
+  const { data: custos } = useQuery({
+    queryKey: ['aprovacao_opcoes', proposta.id, proposta.revisao_atual],
+    queryFn: async () => {
+      const rev = (await listarRevisoes(proposta.id)).find((r) => r.numero === proposta.revisao_atual);
+      const itens = rev ? await listarItens(rev.id) : [];
+      const linhas = itens.length ? await listarLinhas(itens.map((i) => i.id)) : [];
+      return itensPrincipais(itens).map((p) => ({
+        letra: p.letra, descricao: p.descricao,
+        opcoes: opcoesDoItem(itens, p).map((o, k) => ({ id: o.id, numero: k + 1, nome: o.opcao_nome ?? '', valor: resumoItem(o, linhas.filter((l) => l.item_id === o.id)).precoTotal })),
+      }));
+    },
+  });
+  const comOpcoes = (custos ?? []).filter((i) => i.opcoes.length > 1);
+  const [escolha, setEscolha] = useState<Record<string, string>>({});
+  const totalEscolhido = useMemo(() => (custos ?? []).reduce((a, i) => a + (i.opcoes.find((o) => o.id === escolha[i.letra]) ?? i.opcoes[0]).valor, 0), [custos, escolha]);
+  const escolher = (letra: string, id: string) => {
+    const nova = { ...escolha, [letra]: id };
+    setEscolha(nova);
+    const t = (custos ?? []).reduce((a, i) => a + (i.opcoes.find((o) => o.id === nova[i.letra]) ?? i.opcoes[0]).valor, 0);
+    setF((x) => ({ ...x, valor_aprovado: String(Math.round(t * 100) / 100) }));
+  };
   const { erro, setErro, m } = useAcao(async () => {
     if (!arquivo) throw new Error('Anexe o comprovante da aprovação.');
+    const falta = comOpcoes.filter((i) => !escolha[i.letra]).map((i) => i.letra);
+    if (falta.length) throw new Error(`Escolha a opção aprovada do item ${falta.join(', ')}.`);
+    const opcoes = comOpcoes.map((i) => { const o = i.opcoes.find((x) => x.id === escolha[i.letra])!; return { letra: i.letra, opcao_id: o.id, opcao: rotuloOpcao(o.numero, o.nome), valor: o.valor }; });
     const caminho = await enviarComprovante(proposta.id, arquivo);
-    await aprovarProposta(proposta.id, { ...f, valor_aprovado: numeroBR(f.valor_aprovado), comprovante_caminho: caminho, comprovante_nome: arquivo.name });
+    await aprovarProposta(proposta.id, { ...f, valor_aprovado: numeroBR(f.valor_aprovado), comprovante_caminho: caminho, comprovante_nome: arquivo.name, opcoes });
   }, onFechar);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
   return (
@@ -64,6 +91,25 @@ export function AprovarModal({ proposta, onFechar }: { proposta: Proposta; onFec
           <Campo rotulo="Data da aprovação"><CampoData value={f.data_aprovacao} onChange={(v) => setF({ ...f, data_aprovacao: v })} /></Campo>
           <Campo rotulo={`Valor aprovado (proposta: ${moeda(proposta.valor)})`}><EntradaMoeda value={f.valor_aprovado} onChange={(v) => setF({ ...f, valor_aprovado: v })} /></Campo>
         </div>
+        {comOpcoes.length > 0 && (
+          <div className="space-y-2 rounded-lg bg-pagina p-3 ring-1 ring-borda">
+            <div className="text-sm font-semibold">Opção aprovada pelo cliente *</div>
+            {comOpcoes.map((i) => (
+              <div key={i.letra}>
+                <div className="mb-1 text-xs font-medium text-suave">Item {i.letra}{i.descricao ? ` · ${i.descricao}` : ''}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {i.opcoes.map((o) => (
+                    <label key={o.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-xs ring-1 ${escolha[i.letra] === o.id ? 'bg-roxo-600 font-semibold text-white ring-roxo-600' : 'bg-superficie ring-borda'}`}>
+                      <input type="radio" className="sr-only" name={`opcao-${i.letra}`} checked={escolha[i.letra] === o.id} onChange={() => escolher(i.letra, o.id)} />
+                      {rotuloOpcao(o.numero, o.nome)} · {moeda(o.valor)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="text-xs text-suave">Total com as opções escolhidas: <b className="tabular-nums">{moeda(totalEscolhido)}</b> (vai para o valor aprovado, que dá para ajustar).</div>
+          </div>
+        )}
         <Campo rotulo="Comprovante * (PDF ou imagem)">
           <CampoArquivo arquivo={arquivo} onChange={setArquivo} accept=".pdf,image/*,.eml,.msg" />
         </Campo>
