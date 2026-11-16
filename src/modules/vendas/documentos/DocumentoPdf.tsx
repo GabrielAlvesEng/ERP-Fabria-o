@@ -500,36 +500,36 @@ function ConteudoSecao({ secao, v, d, empresa, topo, imagens }: { secao: Secao; 
       const marca = (sim: boolean) => (sim ? <Check /> : <Text style={[s.td, { color: '#c0c4cc' }]}>—</Text>);
       const cliente = (d.cliente.nome || 'Cliente').split(' ')[0];
       const linhaItem = (l: { texto: string; cliente: boolean; fabriaco: boolean }, k: number) => (
-        <View key={k} wrap={false} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 8, borderWidth: 0.5, borderTopWidth: 0, borderColor: C.borda, backgroundColor: k % 2 ? C.fundo : '#ffffff' }}>
+        <View key={k} wrap={false} style={{ flexDirection: 'row', flexShrink: 0, alignItems: 'center', paddingVertical: 5, paddingHorizontal: 8, borderWidth: 0.5, borderTopWidth: 0, borderColor: C.borda, backgroundColor: k % 2 ? C.fundo : '#ffffff' }}>
           <Text style={[s.td, { flex: 5 }]}>{substituir(l.texto, v)}</Text>
           <View style={{ flex: 1, alignItems: 'center' }}>{marca(l.cliente)}</View>
           <View style={{ flex: 1, alignItems: 'center' }}>{marca(l.fabriaco)}</View>
         </View>
       );
       const cabecalhoGrupo = (area: string) => area ? (
-        <View style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 8, backgroundColor: C.lavanda, borderWidth: 0.5, borderTopWidth: 0, borderColor: '#ddd5f6' }}>
+        <View style={{ flexDirection: 'row', flexShrink: 0, paddingVertical: 5, paddingHorizontal: 8, backgroundColor: C.lavanda, borderWidth: 0.5, borderTopWidth: 0, borderColor: '#ddd5f6' }}>
           <Text style={{ fontSize: 7.5, fontWeight: 700, color: C.roxo, letterSpacing: 1 }}>{area.toUpperCase()}</Text>
         </View>
       ) : null;
       const cab = (
-        <View style={{ flexDirection: 'row', backgroundColor: C.navy, paddingVertical: 7, paddingHorizontal: 8, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
+        <View style={{ flexDirection: 'row', flexShrink: 0, backgroundColor: C.navy, paddingVertical: 7, paddingHorizontal: 8, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
           <Text style={[s.th, { flex: 5 }]}>RESPONSABILIDADE</Text>
           <Text style={[s.th, { flex: 1, textAlign: 'center' }]}>{cliente.toUpperCase()}</Text>
           <Text style={[s.th, { flex: 1, textAlign: 'center' }]}>FABRIAÇO</Text>
         </View>
       );
       return (
+        // Linhas como filhas diretas de uma só View (como na Tabela): grupo dentro de grupo fazia o react-pdf
+        // espremer as linhas e perder o começo da tabela quando ela começava no fim da página.
         <View style={{ marginBottom: 8 }}>
-          {grupos.map((g, i) => (
-            <View key={i}>
-              <View wrap={false}>
-                {i === 0 && <>{topo}{cab}</>}
-                {cabecalhoGrupo(g.area)}
-                {g.itens[0] && linhaItem(g.itens[0], 0)}
-              </View>
-              {g.itens.slice(1).map((l, k) => linhaItem(l, k + 1))}
-            </View>
-          ))}
+          {grupos.flatMap((g, i) => [
+            <View key={`g${i}`} wrap={false} style={{ flexShrink: 0 }}>
+              {i === 0 && <>{topo}{cab}</>}
+              {cabecalhoGrupo(g.area)}
+              {g.itens[0] && linhaItem(g.itens[0], 0)}
+            </View>,
+            ...g.itens.slice(1).map((l, k) => <View key={`g${i}-${k}`} wrap={false} style={{ flexShrink: 0 }}>{linhaItem(l, k + 1)}</View>),
+          ])}
         </View>
       );
     }
