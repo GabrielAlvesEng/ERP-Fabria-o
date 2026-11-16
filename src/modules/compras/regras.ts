@@ -9,9 +9,9 @@ export type StatusPedido = 'aguardando_entrega' | 'entregue_parcial' | 'entregue
 export type Origem = 'engenharia' | 'almoxarifado' | 'compras';
 export type CondicaoTipo = 'antecipado' | 'apos_recebimento' | 'parcelado' | 'a_combinar';
 export type BibTipo = 'chapa' | 'perfil' | 'item';
-export type GrupoItem = 'Chapas' | 'Perfis' | 'Barras' | 'Comerciais' | 'Fixadores' | 'Consumíveis' | 'Serviços' | 'Outros';
+export type GrupoItem = 'Chapas' | 'Perfis' | 'Barras' | 'Comerciais' | 'Conexões' | 'Válvulas' | 'Fixadores' | 'Consumíveis' | 'Serviços' | 'Outros';
 
-export const GRUPOS: GrupoItem[] = ['Chapas', 'Perfis', 'Barras', 'Comerciais', 'Fixadores', 'Consumíveis', 'Serviços', 'Outros'];
+export const GRUPOS: GrupoItem[] = ['Chapas', 'Perfis', 'Barras', 'Comerciais', 'Conexões', 'Válvulas', 'Fixadores', 'Consumíveis', 'Serviços', 'Outros'];
 
 // ---------- Produtos (decisão 121) ----------
 // O produto é tipo + descrição (material entre parênteses) + unidade + preço atual; o preço vem do histórico.

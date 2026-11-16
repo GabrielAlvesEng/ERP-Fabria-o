@@ -397,6 +397,10 @@ O Gabriel pediu para executar as mudanças de `docs/PLANEJAMENTO_PREDEFINICOES_E
    - No rascunho, a coluna Grupo vira uma lista de escolha por item (Chapas, Perfis, Barras, Comerciais, Fixadores, Consumíveis, Serviços, Outros), também para item que veio do cadastro de Compras. A mudança vale só para aquele item da lista; o cadastro do produto não muda.
    - O grupo escolhido vai para a RC e é por ele que o item aparece em Compras. Revisão enviada fica travada.
    - Sem migration (o banco já aceitava esses grupos; testado com o usuário do Gabriel em transação desfeita: Barras aceito, grupo inexistente recusado).
+130. **Grupos Conexões e Válvulas (16/11/2026)** (pedido do Gabriel: "Adiciona também CONEXÕES e VÁLVULAS nos tipos de grupo"; amplia a decisão 129):
+   - A lista de grupos passa a ser: Chapas, Perfis, Barras, Comerciais, **Conexões**, **Válvulas**, Fixadores, Consumíveis, Serviços e Outros. Vale na lista de materiais da Engenharia e nos itens das solicitações de Compras (À comprar mostra as duas categorias novas).
+   - O cadastro de produtos de Compras (tipos de produto) não mudou.
+   - Migration `20261116000084_grupos_conexoes_valvulas.sql`, aplicada e testada com o usuário do Gabriel em transação desfeita.
 ## Implementado conforme recomendação do planejamento (20/10/2026), aguardando confirmação do Gabriel
 
 Estas regras seguem as recomendações do `PLANEJAMENTO_VENDAS.md` (itens 4.8 e 4.9), porque o Gabriel pediu para seguir. Ficam valendo até ele confirmar ou mudar:
