@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CalendarDays, FileText, Paperclip, Trash2, Undo2, Wallet } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, Cartao, Entrada, EntradaMoeda, EsqueletoDetalhe, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, BotaoCopiar, Campo, CampoArquivo, CampoData, Cartao, Entrada, EntradaMoeda, EsqueletoDetalhe, Modal, Selecao, Selo, Vazio, valorParaCopiar } from '@/shared/ui';
 import {
   abrirArquivo, alterarVencimento, anexar, definirParcelas, estornarPagamento, listarAnexos, listarDadosPagamento, listarEventos, listarPagamentos,
   obterConta, removerAnexo, type Conta, type Pagamento, type Parcela,
@@ -75,8 +75,9 @@ export function ContaPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Cartao>
           <div className="text-xs text-suave">Valor da ordem de compra</div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums">{moeda(c.valor_total)}</div>
-          <div className="mt-2 text-sm">Em aberto: <b className="tabular-nums">{moeda(c.status === 'aberta' ? emAbertoTotal : 0)}</b></div>
+          <div className="mt-1 flex items-center gap-1 text-2xl font-semibold tabular-nums">{moeda(c.valor_total)}<BotaoCopiar texto={valorParaCopiar(c.valor_total)} rotulo="Copiar valor" /></div>
+          <div className="mt-2 flex items-center gap-1 text-sm">Em aberto: <b className="tabular-nums">{moeda(c.status === 'aberta' ? emAbertoTotal : 0)}</b>
+            {c.status === 'aberta' && emAbertoTotal > 0 && <BotaoCopiar texto={valorParaCopiar(emAbertoTotal)} rotulo="Copiar valor em aberto" />}</div>
           <div className="mt-1 text-sm text-suave">{textoCondicao(c.condicao_tipo, c.condicao_dias)}</div>
         </Cartao>
         <Cartao className="lg:col-span-2">
@@ -84,10 +85,12 @@ export function ContaPage() {
             <Link to="/financeiro/fornecedores" className="text-xs text-roxo-600 hover:underline dark:text-roxo-100">Editar</Link></div>
           {!banco || !(banco.chave_pix || banco.banco || banco.conta) ? <p className="text-sm text-suave">Sem dados bancários cadastrados para este fornecedor.</p> : (
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
-              {banco.chave_pix && <><dt className="text-suave">Chave PIX</dt><dd className="font-mono">{banco.chave_pix}</dd></>}
+              {banco.chave_pix && <><dt className="text-suave">Chave PIX</dt><dd className="font-mono">{banco.chave_pix} <BotaoCopiar texto={banco.chave_pix} rotulo="Copiar PIX" /></dd></>}
               {banco.banco && <><dt className="text-suave">Banco</dt><dd>{banco.banco}</dd></>}
-              {(banco.agencia || banco.conta) && <><dt className="text-suave">Agência / conta</dt><dd className="font-mono">{banco.agencia} / {banco.conta}</dd></>}
-              {banco.titular && <><dt className="text-suave">Titular</dt><dd>{banco.titular}{banco.documento_titular && ` · ${banco.documento_titular}`}</dd></>}
+              {banco.agencia && <><dt className="text-suave">Agência</dt><dd className="font-mono">{banco.agencia} <BotaoCopiar texto={banco.agencia} rotulo="Copiar agência" /></dd></>}
+              {banco.conta && <><dt className="text-suave">Conta</dt><dd className="font-mono">{banco.conta} <BotaoCopiar texto={banco.conta} rotulo="Copiar conta" /></dd></>}
+              {banco.titular && <><dt className="text-suave">Titular</dt><dd>{banco.titular} <BotaoCopiar texto={banco.titular} rotulo="Copiar titular" /></dd></>}
+              {banco.documento_titular && <><dt className="text-suave">CPF/CNPJ do titular</dt><dd className="font-mono">{banco.documento_titular} <BotaoCopiar texto={banco.documento_titular.replace(/\D/g, '')} rotulo="Copiar CPF/CNPJ" /></dd></>}
               {banco.observacoes && <><dt className="text-suave">Observações</dt><dd>{banco.observacoes}</dd></>}
             </dl>
           )}
@@ -129,7 +132,7 @@ export function ContaPage() {
                 <tr key={p.id}>
                   <td className="px-5 py-2">{p.numero}/{parcelas.length}</td>
                   <td className="px-3 py-2">{p.vencimento ? dataBR(p.vencimento) : <span className="text-suave">{c.condicao_tipo === 'apos_recebimento' && !c.entregue_em ? 'Depois da entrega' : 'A definir'}</span>}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{moeda(p.valor)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{moeda(p.valor)}{c.status === 'aberta' && !p.pago_em && saldo(p) > 0 && <BotaoCopiar texto={valorParaCopiar(saldo(p))} rotulo="Copiar valor a pagar" />}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{Number(p.pago) > 0 ? moeda(p.pago) : '—'}</td>
                   <td className="px-3 py-2">{c.status === 'cancelada' ? <span className="text-xs text-suave">—</span> : <SeloPrazo prazo={prazoParcela(p, hoje, dias)} />}</td>
                   <td className="px-3 py-2 text-right">

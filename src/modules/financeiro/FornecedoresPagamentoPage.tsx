@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Search } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { formatarCNPJ, mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Cabecalho, Campo, CampoInteiro, Entrada, EsqueletoTabela, Modal, Vazio } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, BotaoCopiar, Cabecalho, Campo, CampoInteiro, Entrada, EsqueletoTabela, Modal, Vazio } from '@/shared/ui';
 import { listarDadosPagamento, listarFornecedores, salvarDadosPagamento, type DadosPagamentoFornecedor } from './api';
 import { ROTULO_CONDICAO } from './regras';
 
@@ -42,8 +42,8 @@ export function FornecedoresPagamentoPage() {
                     <td className="px-3 py-2 font-medium">{f.nome}<span className="block text-xs font-normal text-suave">{formatarCNPJ(f.cnpj)}</span></td>
                     <td className="px-3 py-2">{ROTULO_CONDICAO[f.condicao_pagamento] ?? f.condicao_pagamento}</td>
                     <td className="px-3 py-2">{d?.prazo_apos_recebimento ?? 28} dias</td>
-                    <td className="px-3 py-2 font-mono text-xs">{d?.chave_pix || <span className="font-sans text-suave">—</span>}</td>
-                    <td className="px-3 py-2 text-xs">{d?.banco ? `${d.banco} · ${d.agencia} / ${d.conta}` : <span className="text-suave">—</span>}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{d?.chave_pix ? <>{d.chave_pix} <BotaoCopiar texto={d.chave_pix} rotulo="Copiar PIX" /></> : <span className="font-sans text-suave">—</span>}</td>
+                    <td className="px-3 py-2 text-xs">{d?.banco || d?.conta ? <>{d.banco}{d.agencia && <> · ag. {d.agencia} <BotaoCopiar texto={d.agencia} rotulo="Copiar agência" /></>}{d.conta && <> · conta {d.conta} <BotaoCopiar texto={d.conta} rotulo="Copiar conta" /></>}</> : <span className="text-suave">—</span>}</td>
                     <td className="px-3 py-2 text-right">
                       {pode('financeiro', 'editar') && <Botao variante="secundario" tamanho="sm" onClick={() => setEditando({ ...VAZIO, ...d, fornecedor_id: f.id, nome: f.nome })}><Pencil size={13} /> Editar</Botao>}
                     </td>
