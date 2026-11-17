@@ -250,17 +250,50 @@ export function mesmaUnidade(a: string, b: string): boolean {
   };
   return u(a) === u(b);
 }
-// Fornecedor cotou por barra e o item está em metro (decisão 136): preço por metro = preço da barra ÷ comprimento da barra.
-// Com comprimento variável (ex.: 6,10 a 6,68 m) divide pelo menor, o que dá o preço por metro mais alto (a favor do custo).
-export function converterPreco(l: { unidade?: string; unidade_original?: string; valor_unit: number; comprimento_min?: number; comprimento_max?: number },
-  unidadeItem: string): { valor: number; nota: string } | null {
-  const min = Number(l.comprimento_min) || 0;
-  const max = Math.max(Number(l.comprimento_max) || 0, min);
-  if (min <= 0 || !mesmaUnidade(l.unidade_original || l.unidade || '', 'barra') || !mesmaUnidade(unidadeItem, 'm')) return null;
-  const valor = Math.round((Number(l.valor_unit) / min) * 10000) / 10000;
+// Comprimento da barra escrito na descrição do fornecedor, em metros: "COMP.5,80MT" → 5,8; "(5,50 A 6,45MT)" → 5,5 a 6,45;
+// "6000 MM" → 6. Serve quando a IA não preencheu comprimento_min/max (decisão 139).
+export function comprimentoNaDescricao(texto: string): { min: number; max: number } | null {
+  const t = texto.replace(/\s+/g, ' ');
+  const n = (x: string) => Number(x.replace(',', '.'));
+  const faixa = t.match(/(\d{1,2}(?:[.,]\d+)?)\s*(?:A|ATÉ|ATE|-)\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:MTS?|M)\b/i);
+  if (faixa) { const a = n(faixa[1]); const b = n(faixa[2]); if (a > 0 && b >= a && b <= 15) return { min: a, max: b }; }
+  const um = t.match(/(\d{1,2}(?:[.,]\d+)?)\s*(?:MTS?|M)\b\s*\)?/i);
+  if (um && /COMP|\(|BARRA|VARA/i.test(t)) { const a = n(um[1]); if (a >= 1 && a <= 15) return { min: a, max: a }; }
+  const mm = t.match(/(\d{4,5})\s*MM\b/i);
+  if (mm) { const a = n(mm[1]) / 1000; if (a >= 1 && a <= 15) return { min: a, max: a }; }
+  return null;
+}
+
+// Fornecedor cotou por barra e o item está em metro (decisões 136 e 139). Vale o total do fornecedor: barras ofertadas × preço da
+// barra, rateado nos metros pedidos (ex.: 5 barras × R$ 1.363,85 = R$ 6.819,23 para 26 m → R$ 262,2781/m). Assim o total na
+// comparação é o que se paga de fato. Sem a quantidade de barras no PDF, calcula as barras pelo menor comprimento (arredonda para cima).
+// O comprimento vem da IA ou da descrição; a nota explica a conta e avisa se as barras podem não cobrir os metros pedidos.
+export function converterPreco(
+  l: { unidade?: string; unidade_original?: string; descricao_original?: string; quantidade?: number; valor_unit: number; comprimento_min?: number; comprimento_max?: number },
+  unidadeItem: string, qtdItem: number,
+): { valor: number; nota: string } | null {
+  if (!mesmaUnidade(unidadeItem, 'm') || !(qtdItem > 0)) return null;
+  const doTexto = comprimentoNaDescricao(l.descricao_original ?? '');
+  let min = Number(l.comprimento_min) || 0;
+  let max = Math.max(Number(l.comprimento_max) || 0, min);
+  if (min <= 0 && doTexto) ({ min, max } = doTexto);
+  const un = l.unidade_original || l.unidade || '';
+  // Por barra; ou por peça/unidade quando a descrição traz o comprimento da barra (tubo vendido por peça).
+  if (!mesmaUnidade(un, 'barra') && !(mesmaUnidade(un, 'un') && min > 0)) return null;
+  const doPdf = Number(l.quantidade) > 0;
+  const barras = doPdf ? Number(l.quantidade) : min > 0 ? Math.ceil(qtdItem / min - 1e-9) : 0;
+  if (!barras) return null;
+  const preco = Number(l.valor_unit);
+  const total = Math.round(barras * preco * 100) / 100;
+  const valor = Math.round((total / qtdItem) * 10000) / 10000;
   const m = (x: number) => x.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-  const fmt = (x: number) => x.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 4 });
-  const nota = `Convertido de barra para metro: ${fmt(Number(l.valor_unit))} por barra ÷ ${m(min)} m`
-    + (max > min ? ` (barra de ${m(min)} a ${m(max)} m; usado o menor comprimento)` : '') + '. Confira.';
-  return { valor, nota };
+  const r = (x: number, casas = 2) => x.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: casas });
+  let nota = `Cotado por barra: ${m(barras)} barra(s) × ${r(preco, 4)} = ${r(total)}${doPdf ? '' : ' (barras calculadas pelo comprimento)'}, `
+    + `rateado nos ${m(qtdItem)} m pedidos (${r(valor, 4)}/m)`;
+  if (min > 0) {
+    nota += max > min ? `; barra de ${m(min)} a ${m(max)} m, ${m(barras * min)} a ${m(barras * max)} m no total` : `; barra de ${m(min)} m, ${m(barras * min)} m no total`;
+    if (barras * max < qtdItem - 1e-6) nota += '. ATENÇÃO: as barras somam menos que os metros pedidos';
+    else if (barras * min < qtdItem - 1e-6) nota += '. Dependendo do comprimento, pode faltar tubo';
+  }
+  return { valor, nota: nota + '. Confira.' };
 }

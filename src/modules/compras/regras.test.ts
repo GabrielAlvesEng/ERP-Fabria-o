@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { valorComIpi, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, converterPreco, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
+import { valorComIpi, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, comprimentoNaDescricao, converterPreco, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -140,16 +140,31 @@ describe('PDF do fornecedor na cotação (decisão 135)', () => {
   });
 });
 
-describe('Barra para metro (decisão 136)', () => {
-  it('divide o preço da barra pelo comprimento, o menor quando varia', () => {
-    expect(converterPreco({ unidade_original: 'BR', valor_unit: 209.55, comprimento_min: 5.8, comprimento_max: 5.8 }, 'm')?.valor).toBe(36.1293);
-    const v = converterPreco({ unidade_original: 'BR', valor_unit: 738.18, comprimento_min: 6.1, comprimento_max: 6.68 }, 'mt');
-    expect(v?.valor).toBe(121.0131);
-    expect(v?.nota).toContain('6,1 a 6,68 m');
+describe('Barra para metro (decisões 136 e 139)', () => {
+  it('usa o total do fornecedor (barras × preço) rateado nos metros pedidos', () => {
+    // Hidrotube: 1 barra de 5,80 m para 1 m pedido → paga a barra inteira.
+    expect(converterPreco({ unidade_original: 'BR', quantidade: 1, valor_unit: 209.55, comprimento_min: 5.8, comprimento_max: 5.8 }, 'm', 1)?.valor).toBe(209.55);
+    // 5 barras de 5,50 a 6,45 m para 26 m: total do fornecedor 6.819,23.
+    const v = converterPreco({ unidade_original: 'BR', quantidade: 5, valor_unit: 1363.846, descricao_original: 'TUBO 3" SCH-40 (5,50 A\n 6,45MT)', comprimento_min: 0, comprimento_max: 0 }, 'mt', 26);
+    expect(v?.valor).toBe(262.2781);
+    expect(Math.round(v!.valor * 26 * 100) / 100).toBe(6819.23);
+    expect(v?.nota).toContain('5,5 a 6,45 m');
+    expect(v?.nota).not.toContain('ATENÇÃO');
+    // 4 barras de 6,10 a 6,68 m para 25 m: 24,4 a 26,72 m, pode faltar.
+    expect(converterPreco({ unidade_original: 'BR', quantidade: 4, valor_unit: 738.18, comprimento_min: 6.1, comprimento_max: 6.68 }, 'm', 25)?.nota).toContain('pode faltar');
+    // Sem quantidade no PDF: barras pelo menor comprimento (8 m ÷ 5,8 → 2 barras).
+    expect(converterPreco({ unidade_original: 'BR', quantidade: 0, valor_unit: 100, descricao_original: 'TUBO 4" (COMP.5,80MT)' }, 'm', 8)?.valor).toBe(25);
   });
-  it('não converte sem comprimento ou com unidades que já batem', () => {
-    expect(converterPreco({ unidade_original: 'BR', valor_unit: 100, comprimento_min: 0, comprimento_max: 0 }, 'm')).toBeNull();
-    expect(converterPreco({ unidade_original: 'PC', valor_unit: 100, comprimento_min: 6, comprimento_max: 6 }, 'm')).toBeNull();
-    expect(converterPreco({ unidade_original: 'BR', valor_unit: 100, comprimento_min: 6, comprimento_max: 6 }, 'barra')).toBeNull();
+  it('lê o comprimento na descrição', () => {
+    expect(comprimentoNaDescricao('TUBO 1/2" (COMP.5,80MT)')).toEqual({ min: 5.8, max: 5.8 });
+    expect(comprimentoNaDescricao('TUBO 2" API 5L (6,10 A 6,68MT)')).toEqual({ min: 6.1, max: 6.68 });
+    expect(comprimentoNaDescricao('TUBO 2" 6000 MM')).toEqual({ min: 6, max: 6 });
+    expect(comprimentoNaDescricao('TUBO 1.1/2" SCH 80')).toBeNull();
+  });
+  it('não converte sem barras nem comprimento, ou com unidades que já batem', () => {
+    expect(converterPreco({ unidade_original: 'BR', quantidade: 0, valor_unit: 100 }, 'm', 10)).toBeNull();
+    expect(converterPreco({ unidade_original: 'PC', quantidade: 2, valor_unit: 100 }, 'm', 10)).toBeNull();
+    expect(converterPreco({ unidade_original: 'BR', quantidade: 2, valor_unit: 100, comprimento_min: 6 }, 'barra', 2)).toBeNull();
+    expect(converterPreco({ unidade_original: 'MT', quantidade: 10, valor_unit: 100 }, 'm', 10)).toBeNull();
   });
 });

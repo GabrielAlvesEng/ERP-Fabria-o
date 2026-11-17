@@ -27,22 +27,22 @@ export function ImportarPdfCotacao({ cotacao, itens, onFechar }: { cotacao: Cota
       const caminho = anexado ? cotacao.orcamento_caminho! : await enviarOrcamentoPdf(arquivo!);
       const orcamento = await lerOrcamentoPdf(caminho, itens.map((i) => ({ descricao: i.descricao, quantidade: Number(i.quantidade), unidade: i.unidade })));
       const ligacao = ligarLinhas(itens.length, orcamento.itens);
-      setLig(ligacao.map((n, k) => (orcamento.itens[n] ? daLinha(n, orcamento.itens[n], itens[k].unidade) : { linha: -1, valor: 0, ipi: 0, gravar: false, nota: '' })));
+      setLig(ligacao.map((n, k) => (orcamento.itens[n] ? daLinha(n, orcamento.itens[n], itens[k].unidade, Number(itens[k].quantidade)) : { linha: -1, valor: 0, ipi: 0, gravar: false, nota: '' })));
       setLido({ caminho, novo: !anexado, orcamento });
     } catch (e) { setErro(mensagemErro(e)); }
     setLendo(false);
   }
 
-  // Preço da linha do PDF para o item; barra → metro é convertido e anotado (decisão 136).
-  function daLinha(n: number, l: OrcamentoLido['itens'][number], unidadeItem: string): Ligacao {
-    const c = converterPreco(l, unidadeItem);
+  // Preço da linha do PDF para o item; barra → metro é convertido pelo total do fornecedor e anotado (decisões 136 e 139).
+  function daLinha(n: number, l: OrcamentoLido['itens'][number], unidadeItem: string, qtdItem: number): Ligacao {
+    const c = converterPreco(l, unidadeItem, qtdItem);
     const valor = c?.valor ?? (Number(l.valor_unit) || 0);
     return { linha: n, valor, ipi: Number(l.ipi) || 0, gravar: valor > 0, nota: c?.nota ?? '' };
   }
   const mudar = (k: number, m: Partial<Ligacao>) => setLig((ls) => ls.map((x, n) => (n === k ? { ...x, ...m } : x)));
   function escolherLinha(k: number, linha: number) {
     const l = lido?.orcamento.itens[linha];
-    mudar(k, l ? daLinha(linha, l, itens[k].unidade) : { linha: -1, gravar: false, nota: '' });
+    mudar(k, l ? daLinha(linha, l, itens[k].unidade, Number(itens[k].quantidade)) : { linha: -1, gravar: false, nota: '' });
   }
 
   async function gravar() {
