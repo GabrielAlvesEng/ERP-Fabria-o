@@ -1,5 +1,6 @@
 import { dataBR, formatarCNPJ, moeda } from '@/shared/lib/formato';
 import type { Fornecedor, ItemComSolicitacao, Pacote, Pedido } from './api';
+import type { DadosEmpresaFabriaco } from '@/modules/vendas/documentos/modelo';
 import { descreverCondicao, valorComIpi } from './regras';
 
 const esc = (s: string | null | undefined) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -43,6 +44,15 @@ const blocoFornecedor = (f: Fornecedor | undefined) => f
   ? `${esc(f.nome)}${f.razao_social && f.razao_social !== f.nome ? `<br>${esc(f.razao_social)}` : ''}${f.cnpj ? `<br>CNPJ ${esc(formatarCNPJ(f.cnpj))}` : ''}${f.contato ? `<br>A/C ${esc(f.contato)}` : ''}${f.telefone ? `<br>${esc(f.telefone)}` : ''}${f.email ? `<br>${esc(f.email)}` : ''}${f.endereco ? `<br>${esc(f.endereco)}` : ''}${f.cidade ? `<br>${esc(f.cidade)}` : ''}`
   : '<br><br>';
 
+// Dados cadastrais da Fabriaço (decisão 141), para o fornecedor cadastrar a empresa na primeira compra.
+const blocoEmpresa = (e: DadosEmpresaFabriaco) => [
+  `<span style="font-weight:bold">${esc(e.razao_social)}</span>`,
+  [e.cnpj && `CNPJ ${esc(e.cnpj)}`, e.ie && `IE ${esc(e.ie)}`].filter(Boolean).join(' · '),
+  [e.endereco, e.bairro].filter(Boolean).map(esc).join(' · '),
+  e.cep_cidade && `CEP ${esc(e.cep_cidade)}`,
+  [e.telefone, e.email].filter(Boolean).map(esc).join(' · '),
+].filter(Boolean).join('<br>');
+
 // Para onde vão os itens: projetos (pedidos) e setores das solicitações.
 function destinos(itens: ItemComSolicitacao[]): string {
   const projetos = [...new Map(itens.filter((i) => i.compras_requisicoes.projeto_codigo).map((i) => [i.compras_requisicoes.projeto_codigo, i.compras_requisicoes.projeto_titulo])).entries()];
@@ -52,7 +62,7 @@ function destinos(itens: ItemComSolicitacao[]): string {
 
 // Ordem de compra em PDF (fluxograma: "Ordem de compra em PDF"): abre a versão para imprimir e o navegador salva em PDF.
 // Itens e preços vêm da própria OC (compras_pedido_itens); a OC de um pacote pode juntar várias solicitações (decisão 111).
-export function imprimirOrdem(p: Pedido, itens: ItemComSolicitacao[], f: Fornecedor | undefined) {
+export function imprimirOrdem(p: Pedido, itens: ItemComSolicitacao[], f: Fornecedor | undefined, e: DadosEmpresaFabriaco) {
   const porId = new Map(itens.map((i) => [i.id, i]));
   const linhas = (p.compras_pedido_itens ?? []).map((x, n) => {
     const i = porId.get(x.item_id);
@@ -70,7 +80,7 @@ export function imprimirOrdem(p: Pedido, itens: ItemComSolicitacao[], f: Fornece
 <header><img src="${logo()}" alt="Fabriaço"><div><h1>ORDEM DE COMPRA ${esc(p.codigo)}</h1><div class="sub">Emitida em ${dataBR(p.emitido_em)}${ref ? ` · ${ref}` : ''}</div></div></header>
 <div class="blocos">
   <div class="bloco"><b>Fornecedor</b>${blocoFornecedor(f)}</div>
-  <div class="bloco"><b>Comprador</b>Fabriaço Brasil · Montagens Industriais e Caldeiraria<br>Mococa/SP${usados.length ? `<br>${destinos(usados)}` : ''}</div>
+  <div class="bloco"><b>Comprador</b>${blocoEmpresa(e)}${usados.length ? `<br><span class="obs">Destino: ${destinos(usados)}</span>` : ''}</div>
 </div>
 <table><thead><tr><th>#</th><th>Descrição</th><th class="d">Qtd.</th><th>Un.</th><th class="d">Unitário</th><th class="d">IPI</th><th class="d">Total</th></tr></thead><tbody>${linhas}</tbody></table>
 <table class="totais"><tr><td>Itens</td><td class="d">${moeda(ipiTotal > 0 ? semIpi : p.valor_itens)}</td></tr>${ipiTotal > 0 ? `<tr><td>IPI</td><td class="d">${moeda(ipiTotal)}</td></tr>` : ''}<tr><td>Frete</td><td class="d">${moeda(p.frete)}</td></tr><tr><td>Total</td><td class="d">${moeda(p.valor_total)}</td></tr></table>

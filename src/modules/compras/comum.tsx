@@ -7,6 +7,8 @@ import { AreaTexto, Aviso, Botao, Campo, CampoArquivo, CampoData, CampoNumero, C
 import { abrirArquivo, atualizarPedido, itensPorIds, situacaoPagamento, urlImagemReferencia, type Cotacao, type DadosCotacao, type Evento, type Fornecedor, type Pedido } from './api';
 import { ROTULO_CONDICAO, ROTULO_ORIGEM, ROTULO_PEDIDO, ROTULO_STATUS, descreverCondicao, lerDias, pedidoAtrasado, rotuloDestino, type CondicaoTipo, type Origem, type StatusItem, type StatusRequisicao } from './regras';
 import { imprimirOrdem } from './ordemPdf';
+import { lerPadroes } from '@/modules/vendas/documentos/api';
+import { EMPRESA_PADRAO } from '@/modules/vendas/documentos/modelo';
 
 // Peças comuns das telas de Compras (solicitação, pacote de cotação e ordens).
 export type Cor = 'cinza' | 'roxo' | 'verde' | 'vermelho' | 'amarelo' | 'azul';
@@ -161,6 +163,8 @@ export function OrdemCartao({ p, fornecedor, podeEditar, agir, cancelar: cancela
   const ids = (p.compras_pedido_itens ?? []).map((x) => x.item_id);
   const { data: itens = [] } = useQuery({ queryKey: ['compras', 'itens-ids', ...ids], queryFn: () => itensPorIds(ids), enabled: ids.length > 0 });
   const { data: pagamento } = useQuery({ queryKey: ['compras', 'pagamento', p.id], queryFn: () => situacaoPagamento(p.id), enabled: p.status !== 'cancelada' });
+  // Dados cadastrais da Fabriaço no PDF da OC (decisão 141): os de Administração → Modelos de proposta, ou os padrões.
+  const { data: empresa = EMPRESA_PADRAO } = useQuery({ queryKey: ['compras', 'empresa'], queryFn: () => lerPadroes().then((x) => x.empresa).catch(() => EMPRESA_PADRAO), staleTime: 30 * 60 * 1000 });
   const atrasado = pedidoAtrasado(p, hojeISO());
   const pi = p.compras_pedido_itens ?? [];
   const nome = (id: string) => itens.find((i) => i.id === id);
@@ -181,7 +185,7 @@ export function OrdemCartao({ p, fornecedor, podeEditar, agir, cancelar: cancela
         </div>
         <div className="flex flex-wrap gap-2">
           {p.orcamento_caminho && <Botao tamanho="sm" variante="secundario" onClick={() => agir(() => abrirArquivo(p.orcamento_caminho!))}><Paperclip size={14} /> Orçamento</Botao>}
-          <Botao tamanho="sm" variante="secundario" onClick={() => imprimirOrdem(p, itens, fornecedor)}><FileDown size={14} /> PDF</Botao>
+          <Botao tamanho="sm" variante="secundario" onClick={() => imprimirOrdem(p, itens, fornecedor, empresa)}><FileDown size={14} /> PDF</Botao>
           {aberta && <span className="inline-flex items-center gap-1 self-center text-xs text-suave"><Truck size={14} /> Recebimento pelo Almoxarifado</span>}
           {p.status === 'aguardando_entrega' && podeEditar && <Botao tamanho="sm" variante="secundario" onClick={cancelarOc}><Ban size={14} /> Cancelar</Botao>}
         </div>
