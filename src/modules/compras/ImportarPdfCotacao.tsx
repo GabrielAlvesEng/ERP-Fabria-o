@@ -4,12 +4,12 @@ import { AlertTriangle, FileText, Loader2, Upload } from 'lucide-react';
 import { mensagemErro, moeda } from '@/shared/lib/formato';
 import { Aviso, Botao, CampoNumero, Modal, Selecao } from '@/shared/ui';
 import { abrirArquivo, definirOrcamentoPdf, enviarOrcamentoPdf, lerOrcamentoPdf, salvarPreco, type Cotacao, type ItemComSolicitacao, type OrcamentoLido } from './api';
-import { ligarLinhas, mesmaUnidade, valorComIpi } from './regras';
+import { converterPreco, ligarLinhas, mesmaUnidade, valorComIpi } from './regras';
 
 // Cotação → "Importar PDF" (decisão 135): a IA lê o orçamento do fornecedor e liga cada linha a um item do pacote, mesmo com o
 // nome escrito de outro jeito. O comprador confere item a item (linha do PDF, preço e IPI), corrige, deixa de fora o que quiser
 // e grava: os preços entram na comparação desta cotação, e o PDF fica anexado a ela.
-interface Ligacao { linha: number; valor: number; ipi: number; gravar: boolean }
+interface Ligacao { linha: number; valor: number; ipi: number; gravar: boolean; nota: string }
 
 export function ImportarPdfCotacao({ cotacao, itens, onFechar }: { cotacao: Cotacao; itens: ItemComSolicitacao[]; onFechar: () => void }) {
   const qc = useQueryClient();
@@ -27,19 +27,22 @@ export function ImportarPdfCotacao({ cotacao, itens, onFechar }: { cotacao: Cota
       const caminho = anexado ? cotacao.orcamento_caminho! : await enviarOrcamentoPdf(arquivo!);
       const orcamento = await lerOrcamentoPdf(caminho, itens.map((i) => ({ descricao: i.descricao, quantidade: Number(i.quantidade), unidade: i.unidade })));
       const ligacao = ligarLinhas(itens.length, orcamento.itens);
-      setLig(ligacao.map((n) => {
-        const l = orcamento.itens[n];
-        return l ? { linha: n, valor: Number(l.valor_unit) || 0, ipi: Number(l.ipi) || 0, gravar: Number(l.valor_unit) > 0 } : { linha: -1, valor: 0, ipi: 0, gravar: false };
-      }));
+      setLig(ligacao.map((n, k) => (orcamento.itens[n] ? daLinha(n, orcamento.itens[n], itens[k].unidade) : { linha: -1, valor: 0, ipi: 0, gravar: false, nota: '' })));
       setLido({ caminho, novo: !anexado, orcamento });
     } catch (e) { setErro(mensagemErro(e)); }
     setLendo(false);
   }
 
+  // Preço da linha do PDF para o item; barra → metro é convertido e anotado (decisão 136).
+  function daLinha(n: number, l: OrcamentoLido['itens'][number], unidadeItem: string): Ligacao {
+    const c = converterPreco(l, unidadeItem);
+    const valor = c?.valor ?? (Number(l.valor_unit) || 0);
+    return { linha: n, valor, ipi: Number(l.ipi) || 0, gravar: valor > 0, nota: c?.nota ?? '' };
+  }
   const mudar = (k: number, m: Partial<Ligacao>) => setLig((ls) => ls.map((x, n) => (n === k ? { ...x, ...m } : x)));
   function escolherLinha(k: number, linha: number) {
     const l = lido?.orcamento.itens[linha];
-    mudar(k, l ? { linha, valor: Number(l.valor_unit) || 0, ipi: Number(l.ipi) || 0, gravar: true } : { linha: -1, gravar: false });
+    mudar(k, l ? daLinha(linha, l, itens[k].unidade) : { linha: -1, gravar: false, nota: '' });
   }
 
   async function gravar() {
@@ -48,7 +51,7 @@ export function ImportarPdfCotacao({ cotacao, itens, onFechar }: { cotacao: Cota
     if (!marcados.length) return setErro('Nenhum item marcado com preço para gravar.');
     setGravando(true); setErro('');
     try {
-      for (const { i, l } of marcados) await salvarPreco(cotacao.id, i.id, l.valor, Math.min(100, Math.max(0, l.ipi)));
+      for (const { i, l } of marcados) await salvarPreco(cotacao.id, i.id, l.valor, Math.min(100, Math.max(0, l.ipi)), l.nota);
       if (lido.novo) await definirOrcamentoPdf(cotacao.id, lido.caminho);
       await qc.invalidateQueries({ queryKey: ['compras'] });
       onFechar();
@@ -96,8 +99,8 @@ export function ImportarPdfCotacao({ cotacao, itens, onFechar }: { cotacao: Cota
                   {itens.map((i, k) => {
                     const x = lig[k];
                     const l = x.linha >= 0 ? linhas[x.linha] : null;
-                    const unidade = l && !mesmaUnidade(l.unidade_original || l.unidade, i.unidade);
-                    const qtd = l && Number(l.quantidade) > 0 && Number(l.quantidade) !== Number(i.quantidade);
+                    const unidade = l && !x.nota && !mesmaUnidade(l.unidade_original || l.unidade, i.unidade);
+                    const qtd = l && !x.nota && Number(l.quantidade) > 0 && Number(l.quantidade) !== Number(i.quantidade);
                     const atual = atuais[i.id];
                     return (
                       <tr key={i.id} className={x.gravar ? '' : 'bg-pagina/60'}>
@@ -115,6 +118,11 @@ export function ImportarPdfCotacao({ cotacao, itens, onFechar }: { cotacao: Cota
                               </option>
                             ))}
                           </Selecao>
+                          {l && x.nota && (
+                            <p className="mt-1 flex items-start gap-1 rounded bg-amber-50 px-1.5 py-1 text-[11px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+                              <AlertTriangle size={12} className="mt-px shrink-0" />{x.nota}
+                            </p>
+                          )}
                           {(unidade || qtd) && (
                             <p className="mt-1 flex items-start gap-1 text-[11px] text-amber-600">
                               <AlertTriangle size={12} className="mt-px shrink-0" />

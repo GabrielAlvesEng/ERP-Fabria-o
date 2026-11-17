@@ -29,7 +29,7 @@ export interface Cotacao {
   condicao_tipo: CondicaoTipo; condicao_dias: number[]; orcamento_caminho: string | null;
   validade: string | null; observacoes: string; criado_em: string;
   fornecedores?: { nome: string } | null;
-  compras_cotacao_precos: { item_id: string; valor_unit: number; ipi: number }[];
+  compras_cotacao_precos: { item_id: string; valor_unit: number; ipi: number; observacao?: string }[];
 }
 export interface PedidoItem { pedido_id: string; item_id: string; quantidade: number; valor_unit: number; ipi: number; quantidade_recebida: number }
 export interface Pedido {
@@ -111,6 +111,7 @@ export async function desativarProduto(id: string): Promise<void> {
 // Orçamento do fornecedor lido pela IA (Edge Function compras-ler-orcamento): o PDF vai para o espaço "compras" e volta um rascunho.
 export interface ItemLido {
   descricao_original: string; tipo: TipoProduto; descricao: string; unidade: 'un' | 'm' | 'kg'; unidade_original?: string; quantidade: number; valor_unit: number; ipi: number;
+  comprimento_min?: number; comprimento_max?: number;   // metros da barra, quando o preço é por barra (decisão 136)
   item?: number;   // na cotação: número (a partir de 1) do item do pacote que a linha atende; 0 = nenhum
 }
 export interface OrcamentoLido {
@@ -189,7 +190,7 @@ export async function removerItem(id: string): Promise<void> {
 
 // ---------- Cotações ----------
 export const listarCotacoes = async (pacote: string): Promise<Cotacao[]> =>
-  ok(await supabase.from('compras_cotacoes').select('*, fornecedores(nome), compras_cotacao_precos(item_id, valor_unit, ipi)').eq('pacote_id', pacote).order('criado_em'));
+  ok(await supabase.from('compras_cotacoes').select('*, fornecedores(nome), compras_cotacao_precos(item_id, valor_unit, ipi, observacao)').eq('pacote_id', pacote).order('criado_em'));
 export type DadosCotacao = Pick<Cotacao, 'fornecedor_id' | 'frete' | 'prazo_dias' | 'condicao_pagamento' | 'condicao_tipo' | 'condicao_dias' | 'validade' | 'observacoes'>;
 // Orçamento de um pacote de cotação (decisão 111). Os orçamentos antigos, por requisição, só aparecem para consulta.
 export async function salvarCotacao(pacote: string, id: string | null, d: DadosCotacao): Promise<string> {
@@ -200,9 +201,10 @@ export async function removerCotacao(id: string): Promise<void> {
   ok(await supabase.from('compras_cotacoes').delete().eq('id', id));
 }
 // Preço unitário sem IPI e o IPI % do item (decisão 114); valor vazio tira o preço.
-export async function salvarPreco(cotacao: string, item: string, valor: number | null, ipi = 0): Promise<void> {
+// observacao (decisão 136): só a importação do PDF manda; digitar o preço na mão mantém a nota que já houver.
+export async function salvarPreco(cotacao: string, item: string, valor: number | null, ipi = 0, observacao?: string): Promise<void> {
   if (valor == null) ok(await supabase.from('compras_cotacao_precos').delete().eq('cotacao_id', cotacao).eq('item_id', item));
-  else ok(await supabase.from('compras_cotacao_precos').upsert({ cotacao_id: cotacao, item_id: item, valor_unit: valor, ipi }));
+  else ok(await supabase.from('compras_cotacao_precos').upsert({ cotacao_id: cotacao, item_id: item, valor_unit: valor, ipi, ...(observacao !== undefined ? { observacao } : {}) }));
 }
 
 // Orçamento do fornecedor: espaço privado "compras", {cotação}/{arquivo}.

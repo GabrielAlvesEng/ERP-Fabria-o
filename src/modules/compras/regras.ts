@@ -250,3 +250,17 @@ export function mesmaUnidade(a: string, b: string): boolean {
   };
   return u(a) === u(b);
 }
+// Fornecedor cotou por barra e o item está em metro (decisão 136): preço por metro = preço da barra ÷ comprimento da barra.
+// Com comprimento variável (ex.: 6,10 a 6,68 m) divide pelo menor, o que dá o preço por metro mais alto (a favor do custo).
+export function converterPreco(l: { unidade?: string; unidade_original?: string; valor_unit: number; comprimento_min?: number; comprimento_max?: number },
+  unidadeItem: string): { valor: number; nota: string } | null {
+  const min = Number(l.comprimento_min) || 0;
+  const max = Math.max(Number(l.comprimento_max) || 0, min);
+  if (min <= 0 || !mesmaUnidade(l.unidade_original || l.unidade || '', 'barra') || !mesmaUnidade(unidadeItem, 'm')) return null;
+  const valor = Math.round((Number(l.valor_unit) / min) * 10000) / 10000;
+  const m = (x: number) => x.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  const fmt = (x: number) => x.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 4 });
+  const nota = `Convertido de barra para metro: ${fmt(Number(l.valor_unit))} por barra ÷ ${m(min)} m`
+    + (max > min ? ` (barra de ${m(min)} a ${m(max)} m; usado o menor comprimento)` : '') + '. Confira.';
+  return { valor, nota };
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { valorComIpi, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
+import { valorComIpi, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, converterPreco, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -137,5 +137,19 @@ describe('PDF do fornecedor na cotação (decisão 135)', () => {
     expect(mesmaUnidade('BR', 'barra')).toBe(true);
     expect(mesmaUnidade('BR', 'm')).toBe(false);
     expect(mesmaUnidade('KG', 'un')).toBe(false);
+  });
+});
+
+describe('Barra para metro (decisão 136)', () => {
+  it('divide o preço da barra pelo comprimento, o menor quando varia', () => {
+    expect(converterPreco({ unidade_original: 'BR', valor_unit: 209.55, comprimento_min: 5.8, comprimento_max: 5.8 }, 'm')?.valor).toBe(36.1293);
+    const v = converterPreco({ unidade_original: 'BR', valor_unit: 738.18, comprimento_min: 6.1, comprimento_max: 6.68 }, 'mt');
+    expect(v?.valor).toBe(121.0131);
+    expect(v?.nota).toContain('6,1 a 6,68 m');
+  });
+  it('não converte sem comprimento ou com unidades que já batem', () => {
+    expect(converterPreco({ unidade_original: 'BR', valor_unit: 100, comprimento_min: 0, comprimento_max: 0 }, 'm')).toBeNull();
+    expect(converterPreco({ unidade_original: 'PC', valor_unit: 100, comprimento_min: 6, comprimento_max: 6 }, 'm')).toBeNull();
+    expect(converterPreco({ unidade_original: 'BR', valor_unit: 100, comprimento_min: 6, comprimento_max: 6 }, 'barra')).toBeNull();
   });
 });

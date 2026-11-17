@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Ban, FileDown, FileUp, Paperclip, Pencil, Plus, Send, Trash2, Undo2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Ban, FileDown, FileUp, Paperclip, Pencil, Plus, Send, Trash2, Undo2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, mensagemErro, moeda } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Campo, CampoData, Entrada, EsqueletoDetalhe, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
@@ -205,6 +205,8 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, 
   editar: (c: Cotacao) => void; gerar: (c: Cotacao) => void; pdf: (c: Cotacao) => void; importar: (c: Cotacao) => void;
 }) {
   const cs = cotacoes.map(precosDe);
+  // Nota do preço (decisão 136): ex.: convertido de barra para metro na importação do PDF.
+  const notas = cotacoes.map((c) => Object.fromEntries(c.compras_cotacao_precos.filter((p) => p.observacao).map((p) => [p.item_id, p.observacao!])));
   const its = itens.map((i) => ({ id: i.id, quantidade: Number(i.quantidade) }));
   const menores = menoresPrecos(cs, its);
   const melhor = cotacoes.length > 1 ? melhorCotacao(cs, its) : null;
@@ -266,6 +268,11 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, 
                       </div>
                     ) : <span className="block px-2 text-right tabular-nums">{v == null ? '—' : moeda(v)}{ipi > 0 && <span className="text-xs text-suave"> + {ipi.toLocaleString('pt-BR')}%</span>}</span>}
                     {v != null && <span className="block px-2 text-right text-[11px] text-suave tabular-nums">{moeda(valorComIpi(Number(i.quantidade), v, ipi))}{ipi > 0 && ` com IPI ${ipi.toLocaleString('pt-BR')}%`}</span>}
+                    {v != null && notas[n][i.id] && (
+                      <span title={notas[n][i.id]} className="flex items-start justify-end gap-1 px-2 text-right text-[11px] font-medium text-amber-600">
+                        <AlertTriangle size={11} className="mt-px shrink-0" />{notas[n][i.id].replace(/\. Confira\.$/, '')}
+                      </span>
+                    )}
                   </td>
                 );
               })}

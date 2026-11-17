@@ -40,6 +40,8 @@ Para cada item:
 - quantidade: a quantidade cotada, na mesma unidade do preço.
 - valor_unit: o preço unitário SEM IPI, como está no documento (número com ponto decimal).
 - ipi: a alíquota de IPI em % (0 se não houver).
+- comprimento_min e comprimento_max: quando o preço é por barra, vara ou peça de tubo/perfil e a descrição traz o comprimento
+  (ex.: "COMP.5,80MT" → 5.8 e 5.8; "(6,10 A 6,68MT)" → 6.1 e 6.68; "6000 MM" → 6 e 6), em metros. 0 e 0 se não houver.
 - item: o número do item da lista "Itens pedidos na cotação" que esta linha atende (o mesmo produto, mesmo que escrito de outro
   jeito: abreviações, ordem das palavras, polegadas, norma, material). Confira bitola, schedule, ângulo, classe de pressão e material:
   se não bater, não é o mesmo item. Cada item da lista é ligado a uma linha só. Use 0 se não houver lista ou nenhum item corresponder.
@@ -57,11 +59,11 @@ const ESQUEMA = {
       type: 'array',
       items: {
         type: 'object', additionalProperties: false,
-        required: ['descricao_original', 'tipo', 'descricao', 'unidade', 'unidade_original', 'quantidade', 'valor_unit', 'ipi', 'item'],
+        required: ['descricao_original', 'tipo', 'descricao', 'unidade', 'unidade_original', 'quantidade', 'valor_unit', 'ipi', 'comprimento_min', 'comprimento_max', 'item'],
         properties: {
           descricao_original: texto, tipo: { type: 'string', enum: TIPOS }, descricao: texto,
           unidade: { type: 'string', enum: ['un', 'm', 'kg'] }, unidade_original: texto, quantidade: numero, valor_unit: numero, ipi: numero,
-          item: { type: 'integer' },
+          comprimento_min: numero, comprimento_max: numero, item: { type: 'integer' },
         },
       },
     },
