@@ -270,6 +270,7 @@
 - **Decisão 140:** tudo por unidade: lista da Engenharia só em un (migration 090, trava no `eng_item_antes`; cópia de revisão mantém unidades antigas), perfil do cadastro como barra de 6 m (vigas 12 m), importação do PDF converte metro e kg para o preço da unidade (`precoPorUnidade`, `comprimentoDoItem`, `pesoDoItem`), lista do projeto em barras e chapas inteiras, cadastro de produto e estoque em un. Testes (263) e teste no navegador com dados simulados ok.
 - **Decisão 141:** PDF da OC com os dados cadastrais completos da Fabriaço no quadro Comprador (dados da empresa dos Modelos de proposta). Conferido no navegador.
 - **Correção (16/11/2026):** PDF técnico, tabela de Responsabilidades/Documentações que começava no fim da página saía espremida por cima do rodapé e perdia o cabeçalho (visto na 26-59-001). As linhas agora são filhas diretas de uma só View, como na tabela comum. Reproduzido e conferido no gerador local; não tem relação com as opções por item.
+- **Decisão 142:** aba Documentos com lista única (técnica + Forma de pagamento e Valores da comercial) e o seletor técnica/comercial em cima do visualizador. Editor conferido no gerador local; typecheck, 263 testes e build ok; não conferido com login real.
 - **Decisão 125:** vendedor fora do card do Kanban. Typecheck, 245 testes e build ok; não conferido no navegador com login real.
 
 ## 2026-10-29 (Compras)

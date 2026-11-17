@@ -4,7 +4,7 @@ import { Download, Eye, FileCheck2, PencilLine, RotateCcw, Sparkles } from 'luci
 import { supabase } from '@/shared/lib/supabase';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Bolhas, Botao, EsqueletoDetalhe, EsqueletoPagina } from '@/shared/ui';
+import { AreaTexto, Aviso, Botao, EsqueletoDetalhe, EsqueletoPagina } from '@/shared/ui';
 import { atualizarRascunho, enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
 import { atualizarItem, criarItem } from '@/modules/vendas/custos/api';
 import type { Proposta } from '@/modules/vendas/types';
@@ -87,10 +87,18 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
       setDocs((x) => ({ ...x, [t]: aplicarDiferenca(x[t], dif) }));
       if (pendente.current[t]) pendente.current[t] = aplicarDiferenca(pendente.current[t], dif);
     });
-  const alterar = (d: Documento) => {
-    const dif = editavel ? diferencaDocumento(docs[tipo], d) : null;
-    if (dif) enviarAoVivo({ tipo, dif });
-    pendente.current[tipo] = d; setDocs((x) => ({ ...x, [tipo]: d }));
+  const gravar = (t: TipoDocumento, d: Documento, antes: Documento | undefined) => {
+    const dif = editavel ? diferencaDocumento(antes, d) : null;
+    if (dif) enviarAoVivo({ tipo: t, dif });
+    pendente.current[t] = d; setDocs((x) => ({ ...x, [t]: d }));
+  };
+  // Decisão 142: técnica e comercial são editadas na mesma lista; a capa é uma só (o que muda nela vale para as duas).
+  const alterarDoc = (t: TipoDocumento, d: Documento) => {
+    gravar(t, d, docs[t]);
+    const outro = docs[t === 'tecnica' ? 'comercial' : 'tecnica'];
+    if (outro && (d.capa.linha2 !== outro.capa.linha2 || d.capa.imagem !== outro.capa.imagem) && (d.capa.linha2 !== docs[t]?.capa.linha2 || d.capa.imagem !== docs[t]?.capa.imagem)) {
+      gravar(outro.tipo, { ...outro, capa: { ...outro.capa, linha2: d.capa.linha2, imagem: d.capa.imagem } }, outro);
+    }
   };
 
   // Imagens usadas nos dois documentos, baixadas uma vez (o PDF é montado no navegador).
@@ -154,29 +162,38 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   const [pensando, setPensando] = useState(false);
   const [secaoIA, setSecaoIA] = useState<string | null>(null); // seção que a IA está refazendo (decisão 81)
   const [avisoIA, setAvisoIA] = useState<{ secao: string; tipo: 'info' | 'erro'; texto: string } | null>(null); // resultado, mostrado na própria seção
-  const explicacao = doc?.explicacao ?? docs[tipo === 'tecnica' ? 'comercial' : 'tecnica']?.explicacao ?? '';
+  const explicacao = docs.tecnica?.explicacao ?? docs.comercial?.explicacao ?? '';
+  // Decisão 142: gera os textos da técnica e da comercial juntos (as duas estão na mesma lista).
   async function gerarComIA() {
-    if (!doc || !dados) return;
+    const tec = docs.tecnica; const com = docs.comercial;
+    if (!tec || !com || !dados) return;
     if (explicacao.trim().length < 15) return setMsg({ tipo: 'erro', texto: 'Explique a proposta com um pouco mais de detalhe (o que será feito, para quem e onde).' });
-    const jaTem = doc.secoes.some((s) => s.id === 'objetivo' && s.tipo === 'texto' && s.texto.trim());
+    const jaTem = tec.secoes.some((s) => s.id === 'objetivo' && s.tipo === 'texto' && s.texto.trim());
     if (jaTem && !confirm('A IA vai substituir capa, objetivo e os demais textos da obra. Garantia, validade e confidencialidade não mudam. Continuar?')) return;
     setMsg(null); setPensando(true);
     try {
-      const { data, error } = await supabase.functions.invoke('gerar-textos-proposta', {
-        body: { tipo, explicacao, titulo: p.titulo, cliente: dados.cliente.nome, local: dados.cliente.local, itens: dados.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) },
-      });
-      if (error) {
-        const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
-        throw new Error(corpo?.erro ?? error.message);
-      }
-      alterar(aplicarTextosIA({ ...doc, explicacao }, (data as { textos: TextosIA }).textos));
+      const pedir = async (t: TipoDocumento) => {
+        const { data, error } = await supabase.functions.invoke('gerar-textos-proposta', {
+          body: { tipo: t, explicacao, titulo: p.titulo, cliente: dados.cliente.nome, local: dados.cliente.local, itens: dados.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) },
+        });
+        if (error) {
+          const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
+          throw new Error(corpo?.erro ?? error.message);
+        }
+        return (data as { textos: TextosIA }).textos;
+      };
+      const [tt, tc] = await Promise.all([pedir('tecnica'), pedir('comercial')]);
+      const novaTec = aplicarTextosIA({ ...tec, explicacao }, tt);
+      gravar('tecnica', novaTec, tec);
+      gravar('comercial', { ...aplicarTextosIA({ ...com, explicacao }, { ...tc, capa: undefined }), capa: { ...com.capa, linha2: novaTec.capa.linha2, imagem: novaTec.capa.imagem } }, com);
       setMsg({ tipo: 'info', texto: 'Textos gerados pela IA. Revise antes de gerar o PDF: a IA pode errar detalhes técnicos.' });
     } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); }
     setPensando(false);
   }
 
   // Decisão 81: refazer com a IA só uma seção, com um pedido de ajuste opcional.
-  async function gerarSecaoComIA(secaoId: string, pedido: string) {
+  async function gerarSecaoComIA(t: TipoDocumento, secaoId: string, pedido: string) {
+    const doc = docs[t];
     if (!doc || !dados) return;
     const s = doc.secoes.find((x) => x.id === secaoId);
     if (!s) return;
@@ -184,63 +201,78 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
     setMsg(null); setAvisoIA(null); setPensando(true); setSecaoIA(secaoId);
     try {
       const { data, error } = await supabase.functions.invoke('gerar-textos-proposta', {
-        body: { tipo, explicacao: explicacaoParaSecao(explicacao, s, pedido), titulo: p.titulo, cliente: dados.cliente.nome, local: dados.cliente.local, itens: dados.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) },
+        body: { tipo: t, explicacao: explicacaoParaSecao(explicacao, s, pedido), titulo: p.titulo, cliente: dados.cliente.nome, local: dados.cliente.local, itens: dados.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) },
       });
       if (error) {
         const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
         throw new Error(corpo?.erro ?? error.message);
       }
-      alterar(aplicarTextosIASecao({ ...doc, explicacao }, (data as { textos: TextosIA }).textos, secaoId));
+      alterarDoc(t, aplicarTextosIASecao({ ...doc, explicacao }, (data as { textos: TextosIA }).textos, secaoId));
       setAvisoIA({ secao: secaoId, tipo: 'info', texto: 'Pronto: só esta seção foi refeita. Revise antes de gerar o PDF.' });
     } catch (e) { setAvisoIA({ secao: secaoId, tipo: 'erro', texto: mensagemErro(e) }); }
     setPensando(false); setSecaoIA(null);
   }
 
   function restaurar() {
-    if (!padroes || !confirm(`Voltar a proposta ${tipo === 'tecnica' ? 'técnica' : 'comercial'} para os textos padrão? O que foi escrito nesta revisão será substituído.`)) return;
-    alterar(padroes[tipo]);
+    if (!padroes || !confirm('Voltar a proposta técnica e a comercial para os textos padrão? O que foi escrito nesta revisão será substituído.')) return;
+    gravar('tecnica', padroes.tecnica, docs.tecnica);
+    gravar('comercial', padroes.comercial, docs.comercial);
   }
 
-  if (isLoading || !padroes || !doc) return <EsqueletoDetalhe />;
+  if (isLoading || !padroes || !doc || !docs.tecnica || !docs.comercial) return <EsqueletoDetalhe />;
+  const seletor = (
+    <div className="flex rounded-lg bg-pagina p-0.5 ring-1 ring-borda">
+      {(['tecnica', 'comercial'] as const).map((t) => (
+        <button key={t} type="button" onClick={() => setTipo(t)}
+          className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${tipo === t ? 'bg-superficie font-semibold text-roxo-600 shadow-sm dark:text-roxo-100' : 'text-suave'}`}>
+          {t === 'tecnica' ? 'Proposta técnica' : 'Proposta comercial'}
+        </button>
+      ))}
+    </div>
+  );
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex rounded-lg bg-pagina p-0.5 ring-1 ring-borda">
-          {(['tecnica', 'comercial'] as const).map((t) => (
-            <button key={t} type="button" onClick={() => setTipo(t)}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${tipo === t ? 'bg-superficie font-semibold text-roxo-600 shadow-sm dark:text-roxo-100' : 'text-suave'}`}>
-              {t === 'tecnica' ? 'Proposta técnica' : 'Proposta comercial'}{t !== tipo && <Bolhas campo={`${t}: `} inicio />}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {salvando && <span className="text-xs text-suave">{salvando === 'salvando' ? 'Salvando…' : 'Salvo'}</span>}
           <Botao variante="secundario" className="lg:hidden" onClick={() => setVerPrevia(!verPrevia)}>{verPrevia ? <><PencilLine size={15} /> Editar</> : <><Eye size={15} /> Prévia</>}</Botao>
           {editavel && <Botao variante="secundario" onClick={restaurar}><RotateCcw size={15} /> Textos padrão</Botao>}
-          <Botao variante="secundario" onClick={() => gerarPdf(false)} disabled={gerando || !dados}><Download size={15} /> Baixar PDF</Botao>
-          {editavel && <Botao onClick={() => gerarPdf(true)} disabled={gerando || !dados}><FileCheck2 size={15} /> {gerando ? 'Gerando…' : 'Gerar e anexar PDF'}</Botao>}
         </div>
       </div>
       {!editavel && <Aviso tipo="info">{rev?.status === 'enviada' ? `A R${p.revisao_atual} já foi enviada: os textos ficam como foram enviados. Para mudar, crie uma nova revisão.` : 'Somente leitura.'}</Aviso>}
       {editavel && (
         <div className="rounded-xl bg-roxo-50/60 p-3 ring-1 ring-roxo-100 dark:bg-roxo-500/10 dark:ring-roxo-500/30">
           <div className="mb-1 flex items-center gap-2 text-sm font-semibold"><Sparkles size={15} className="text-roxo-600 dark:text-roxo-100" /> Explique a proposta</div>
-          <AreaTexto rows={3} value={explicacao} onChange={(e) => alterar({ ...doc, explicacao: e.target.value })}
+          <AreaTexto rows={3} value={explicacao} onChange={(e) => alterarDoc('tecnica', { ...docs.tecnica!, explicacao: e.target.value })}
             placeholder="Ex.: proposta técnica para a SYMRISE de Descalvado-SP: desenvolvimento de um sistema de vedação pneumática por meio de um perfil de borracha com geometria em “H”, associado a um ponto de conexão para ar comprimido, visando vedar e evitar vazamentos." />
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs text-suave">Vai para a OpenAI só a explicação, o cliente, o local e os itens. Preços e dados de contato não vão.</span>
-            <Botao onClick={gerarComIA} disabled={pensando || !dados}><Sparkles size={15} /> {pensando ? 'Escrevendo… (até 1 min)' : `Gerar textos com IA (${tipo === 'tecnica' ? 'técnica' : 'comercial'})`}</Botao>
+            <Botao onClick={gerarComIA} disabled={pensando || !dados}><Sparkles size={15} /> {pensando ? 'Escrevendo… (até 1 min)' : 'Gerar textos com IA (técnica e comercial)'}</Botao>
           </div>
         </div>
       )}
       {msg && <Aviso tipo={msg.tipo === 'info' ? 'info' : undefined}>{msg.texto}</Aviso>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className={verPrevia ? 'hidden lg:block' : ''}>
-          <EditorDocumento doc={doc} onChange={alterar} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} capaDados={{ titulo: p.titulo, descricao: p.descricao ?? '' }}
-            ia={editavel ? { refazer: gerarSecaoComIA, pensando, secao: secaoIA, aviso: avisoIA } : undefined} />
+          {/* Decisão 142: uma lista só, com as seções da técnica e, no fim, as da comercial (Forma de pagamento e Valores). */}
+          <div className="space-y-3">
+            <EditorDocumento doc={docs.tecnica} onChange={(d) => alterarDoc('tecnica', d)} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} capaDados={{ titulo: p.titulo, descricao: p.descricao ?? '' }}
+              ia={editavel ? { refazer: (id, pedido) => gerarSecaoComIA('tecnica', id, pedido), pensando, secao: secaoIA, aviso: avisoIA } : undefined} />
+            <EditorDocumento doc={docs.comercial} onChange={(d) => alterarDoc('comercial', d)} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} soSecoes
+              ia={editavel ? { refazer: (id, pedido) => gerarSecaoComIA('comercial', id, pedido), pensando, secao: secaoIA, aviso: avisoIA } : undefined} />
+          </div>
         </div>
-        <div className={`lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:block'}`}>
+        <div className={`flex flex-col gap-2 lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:flex'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {seletor}
+            <div className="flex flex-wrap items-center gap-2">
+              <Botao variante="secundario" tamanho="sm" onClick={() => gerarPdf(false)} disabled={gerando || !dados}><Download size={15} /> Baixar PDF</Botao>
+              {editavel && <Botao tamanho="sm" onClick={() => gerarPdf(true)} disabled={gerando || !dados}><FileCheck2 size={15} /> {gerando ? 'Gerando…' : 'Gerar e anexar PDF'}</Botao>}
+            </div>
+          </div>
+          <div className="min-h-0 flex-1">
           {dados ? <Suspense fallback={<EsqueletoPagina />}><Previa doc={doc} dados={dados} empresa={padroes.empresa} imagens={urls} tecnica={tipo === 'comercial' ? docs.tecnica : null} /></Suspense> : <EsqueletoPagina />}
+          </div>
         </div>
       </div>
     </div>

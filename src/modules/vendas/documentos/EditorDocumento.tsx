@@ -26,9 +26,10 @@ type ValorEditavel = { id?: string; valor: number; manual?: boolean; calculado?:
 export type ItemValor = ValorEditavel & { letra: string; descricao: string; opcoes?: (ValorEditavel & { numero: number; nome: string })[] }; // opcoes: decisão 134
 export type AcoesValor = { salvar: (id: string, valor: number | null) => void; criarItem: () => void; ocupado: boolean };
 
-export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados, modelo, ia }: {
+export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, valores, capaDados, modelo, ia, soSecoes }: {
   doc: Documento; onChange: (d: Documento) => void; editavel: boolean; itens?: ItemValor[]; imagens?: Imagens; valores?: AcoesValor;
   capaDados?: { titulo: string; descricao: string }; // decisão 72: título e subtítulo da capa vêm da aba Dados
+  soSecoes?: boolean; // decisão 142: só as seções (a capa e a ajuda ficam no editor da técnica, logo acima)
   modelo?: boolean; // Administração → Modelos de proposta: lá o Anexo é editado (decisão 75)
   ia?: { refazer: (secaoId: string, pedido: string) => void; pensando: boolean; secao?: string | null; aviso?: { secao: string; tipo: 'info' | 'erro'; texto: string } | null }; // decisão 81
 }) {
@@ -47,7 +48,7 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
   return (
     <PrefixoCampo valor={`${doc.tipo}: `}>
     <fieldset disabled={!editavel} className="space-y-3">
-      <div className="rounded-xl bg-pagina p-3 ring-1 ring-borda">
+      {!soSecoes && <div className="rounded-xl bg-pagina p-3 ring-1 ring-borda">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-semibold">Capa</span>
           {/* Decisão 120: a capa é sempre de fundo branco (o oficial); a escolha de fundo saiu. */}
@@ -66,14 +67,15 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
               <EscolherImagem imagens={imagens} caminho={doc.capa.imagem} onEscolher={(c) => onChange({ ...doc, capa: { ...doc.capa, imagem: c } })} onRemover={() => onChange({ ...doc, capa: { ...doc.capa, imagem: undefined } })} />
             </div>
           )}
-          {doc.tipo === 'comercial' && (
+          {doc.tipo === 'comercial' && !soSecoes && (
             <p className="text-xs text-suave sm:col-span-2">A comercial tem capa, visão geral (revisões, validade, frete, garantia, prazo, impostos e pagamento), valores (itens da aba Custos, com o valor digitado na seção Valores ou o calculado) e encerramento (anexos, sigilo e o vendedor, na página dos valores quando cabe). Garantia e prazo vêm da proposta técnica; frete, da aba Dados.</p>
           )}
         </div>
-      </div>
-      <p className="text-xs text-suave">Use a barra de cada texto para negrito, sublinhado e listas. Linha em branco separa parágrafos. Cliente, Local, Código e Validade viram os dados da proposta.</p>
+      </div>}
+      {!soSecoes && <p className="text-xs text-suave">Use a barra de cada texto para negrito, sublinhado e listas. Linha em branco separa parágrafos. Cliente, Local, Código e Validade viram os dados da proposta.</p>}
       {!modelo && (() => {
         const abertas = doc.secoes.filter((s) => (s.ativo || s.escolher) && !SECOES_DO_MODELO[doc.tipo].includes(s.id) && s.tipo !== 'sobre' && s.tipo !== 'dados_empresas' && pendencias(s, itens).length);
+        if (soSecoes && !abertas.length) return null;
         return abertas.length
           ? <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400"><CircleX size={14} /> Falta preencher: {abertas.map((s) => s.titulo).join(', ')}.</p>
           : <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"><CircleCheck size={14} /> Todas as seções estão preenchidas.</p>;
