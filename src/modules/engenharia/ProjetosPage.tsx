@@ -191,10 +191,8 @@ function MovimentoModal({ pendente, onFechar, onFeito }: { pendente: Pendente; o
     <Modal aberto titulo={titulo} onFechar={onFechar}>
       <div className="space-y-3 text-sm">
         <div><span className="font-mono font-semibold">{projeto.codigo}</span> · {projeto.titulo}</div>
-        {tipo === 'liberar' && <p className="text-suave">Todos os conjuntos precisam estar Liberados na árvore. Se faltar algum, o ERP mostra quais.</p>}
         {tipo === 'finalizar' && (
           <>
-            {projeto.status !== 'liberado' && <p className="text-suave">O projeto também passa pela liberação: todos os conjuntos precisam estar Liberados.</p>}
             <p className="text-suave">Enquanto o módulo de Fabricação não existe, o Chefe informa quando a fabricação terminou.</p>
             <Campo rotulo="Término da fabricação"><CampoData value={data} onChange={setData} required /></Campo>
           </>

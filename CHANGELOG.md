@@ -288,3 +288,6 @@
 - **Decisão 131:** "Item sem cadastro" abre com Grupo e Quantidade vazios; Adicionar só com descrição, grupo e quantidade. Typecheck, 250 testes e build ok.
 - **Decisão 132:** botão de excluir item no À comprar (exclusão lógica: item cancelado, com motivo no histórico). Migration 85 aplicada e testada. Typecheck, 250 testes e build ok.
 - **Decisão 133:** cadastro do produto passa a ser na emissão da OC ("Produtos desta OC" com parecidos, busca e cadastrar novo; Serviços fora). À comprar e Cotações sem avisos de "sem cadastro" nem botão Cadastrar. Tipos de produto Conexões e Válvulas. Migration 86 aplicada e testada. Typecheck, 252 testes e build ok. Tela não conferida no navegador.
+
+## 2026-11-17 (Engenharia)
+- **Decisão 143:** liberar para fabricação e finalizar projeto sem exigir conjuntos Liberados (árvore pausada). Migration 91 aplicada e testada. Typecheck, 263 testes e build ok.
