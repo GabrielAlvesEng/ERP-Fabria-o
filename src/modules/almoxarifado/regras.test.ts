@@ -23,7 +23,8 @@ describe('Almoxarifado: regras', () => {
     expect(lerQuantidade('abc')).toBeNull();
   });
   it('unidade padrão e busca por palavras', () => {
-    expect(unidadePadrao('perfil', 'un')).toBe('m');
+    expect(unidadePadrao('perfil', 'un')).toBe('un'); // decisão 140
+    expect(unidadePadrao('item', 'kg')).toBe('un');
     expect(unidadePadrao('item', 'cx')).toBe('cx');
     expect(combina('Disco de corte 7" Inox', 'corte disco')).toBe(true);
     expect(combina('Eletrodo 6013', 'disco')).toBe(false);

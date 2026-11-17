@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { valorComIpi, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, comprimentoNaDescricao, converterPreco, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
+import { valorComIpi, barraPadrao, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, comprimentoDoItem, comprimentoNaDescricao, converterPreco, pesoDoItem, precoPorUnidade, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -36,14 +36,18 @@ describe('lista de materiais do projeto', () => {
       peca({ descricao: 'Rodízio', cod_op: ['CM'], bib_tipo: 'item', bib_descricao: 'Rodízio giratório 4"', bib_grupo: 'Comerciais', bib_unidade: 'pç', qtd_total: 6 }),
     ]);
     expect(l.map((x) => [x.grupo, x.descricao, x.quantidade, x.unidade])).toEqual([
-      ['Chapas', 'Chapa ASTM A36 6,35 mm', 38, 'kg'],
-      ['Perfis', 'TUBO QUADRADO 50X50 · ASTM A36', 6, 'm'],
-      ['Comerciais', 'Rodízio giratório 4"', 6, 'pç'],
+      ['Chapas', 'Chapa ASTM A36 6,35 x 1.200 x 3.000', 1, 'un'],
+      ['Perfis', 'TUBO QUADRADO 50X50 · ASTM A36 barra 6 m', 1, 'un'],
+      ['Comerciais', 'Rodízio giratório 4"', 6, 'un'],
     ]);
+    expect(l[0].observacoes).toContain('38,00 kg no projeto');
+    expect(l[1].observacoes).toContain('6,00 m no projeto');
+    expect(barraPadrao('Viga W 200 x 15 (A572)')).toBe(12);
+    expect(barraPadrao('Tubo quadrado 50 x 50 x 2,00 (304)')).toBe(6);
   });
   it('chapa sem peso vai em peças, com aviso', () => {
     const [l] = agruparLista([peca({ descricao: 'Chapa', cod_op: ['LC'], material: 'AISI 304', espessura: 2, qtd_total: 5 })]);
-    expect([l.quantidade, l.unidade]).toEqual([5, 'pç']);
+    expect([l.quantidade, l.unidade]).toEqual([5, 'un']);
     expect(l.observacoes).toContain('sem peso');
   });
 });
@@ -59,7 +63,7 @@ describe('Compras v2 (decisão 103)', () => {
       peca({ descricao: 'Rodízio', cod_op: ['CM'], bib_tipo: 'item', bib_id: 'r1', bib_descricao: 'Rodízio 4"', bib_grupo: 'Comerciais', bib_unidade: 'pç', qtd_total: 6 }),
       peca({ descricao: 'Chapa', cod_op: ['LC'], bib_tipo: 'chapa', bib_id: 'c1', bib_descricao: 'Chapa A36 1/4"', material: 'ASTM A36', espessura: 6.35, peso_unit: 10, qtd_total: 2 }),
     ]);
-    expect(linhas.map((l) => [l.descricao, l.bib_tipo, l.bib_id, l.quantidade])).toEqual([['Chapa ASTM A36 6,35 mm', 'chapa', 'c1', 20], ['Rodízio 4"', 'item', 'r1', 6]]);
+    expect(linhas.map((l) => [l.descricao, l.bib_tipo, l.bib_id, l.quantidade])).toEqual([['Chapa ASTM A36 6,35 x 1.200 x 3.000', 'chapa', 'c1', 1], ['Rodízio 4"', 'item', 'r1', 6]]);
   });
 });
 
@@ -166,5 +170,37 @@ describe('Barra para metro (decisões 136 e 139)', () => {
     expect(converterPreco({ unidade_original: 'PC', quantidade: 2, valor_unit: 100 }, 'm', 10)).toBeNull();
     expect(converterPreco({ unidade_original: 'BR', quantidade: 2, valor_unit: 100, comprimento_min: 6 }, 'barra', 2)).toBeNull();
     expect(converterPreco({ unidade_original: 'MT', quantidade: 10, valor_unit: 100 }, 'm', 10)).toBeNull();
+  });
+});
+
+describe('Tudo por unidade (decisão 140)', () => {
+  it('lê comprimento e peso na descrição do item', () => {
+    expect(comprimentoDoItem('Tubo redondo 3"x2,00 304 6mts')).toBe(6);
+    expect(comprimentoDoItem('Viga W 200 x 15 barra 12 m (ASTM A572)')).toBe(12);
+    expect(comprimentoDoItem('Tubo 2" SCH 40 6000 mm')).toBe(6);
+    expect(comprimentoDoItem('Parafuso sextavado M12 x 40 (inox 304)')).toBeNull();
+    expect(pesoDoItem('Chapa lisa 4,76 x 1500 x 3000 BQ (304)')?.kg).toBe(169.86);
+    expect(pesoDoItem('Chapa xadrez 3,00 x 1.200 x 3.000 (SAE 1020)')?.kg).toBe(84.78);
+    expect(pesoDoItem('Eletrodo 6013 3,25 mm lata 5 kg')?.kg).toBe(5);
+  });
+  it('por unidade ou barra: mesmo preço, alerta se a barra for de outro comprimento', () => {
+    const item = { unidade: 'un', quantidade: 5, descricao: 'Tubo 3" SCH 40 A-106 barra 6 m' };
+    expect(precoPorUnidade({ unidade_original: 'BR', quantidade: 5, valor_unit: 1363.846, comprimento_min: 5.5, comprimento_max: 6.45 }, item)).toBeNull();
+    expect(precoPorUnidade({ unidade_original: 'BR', quantidade: 5, valor_unit: 209.55, descricao_original: 'TUBO (COMP.5,80MT)' }, item)?.nota).toContain('5,8 m, o item pede 6 m');
+    expect(precoPorUnidade({ unidade_original: 'PC', quantidade: 5, valor_unit: 10 }, item)).toBeNull();
+  });
+  it('por metro: total do fornecedor dividido pelas unidades, conferido pelo comprimento', () => {
+    const item = { unidade: 'un', quantidade: 8, descricao: 'Tubo redondo 3"x2,00 304 6mts' };
+    const v = precoPorUnidade({ unidade_original: 'MT', quantidade: 48, valor_unit: 40 }, item);
+    expect(v?.valor).toBe(240);
+    expect(v?.nota).not.toContain('ATENÇÃO');
+    expect(precoPorUnidade({ unidade_original: 'MT', quantidade: 0, valor_unit: 40 }, item)?.valor).toBe(240);
+    expect(precoPorUnidade({ unidade_original: 'MT', quantidade: 30, valor_unit: 40 }, item)?.nota).toContain('ATENÇÃO');
+  });
+  it('por kg: chapa pelo peso calculado das medidas', () => {
+    const item = { unidade: 'un', quantidade: 2, descricao: 'Chapa lisa 4,76 x 1500 x 3000 BQ (304)' };
+    expect(precoPorUnidade({ unidade_original: 'KG', quantidade: 0, valor_unit: 25 }, item)?.valor).toBe(4246.5);
+    expect(precoPorUnidade({ unidade_original: 'KG', quantidade: 340, valor_unit: 25 }, item)?.valor).toBe(4250);
+    expect(precoPorUnidade({ unidade_original: 'KG', quantidade: 0, valor_unit: 25 }, { ...item, descricao: 'Rolamento 6205' })).toBeNull();
   });
 });

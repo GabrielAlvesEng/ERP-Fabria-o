@@ -41,11 +41,12 @@ export function lerQuantidade(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-// Unidade sugerida ao incluir um produto no estoque: a do cadastro para itens, chapa em unidade, perfil em metro.
+// Unidade sugerida ao incluir um produto no estoque. Tudo em peças (decisão 140): chapa e perfil (barra) em unidade; item
+// com a unidade do cadastro, menos metro e kg, que viram unidade (a medida vai na descrição).
 export function unidadePadrao(bibTipo: string, unidadeCadastro: string): string {
-  if (bibTipo === 'chapa') return 'un';
-  if (bibTipo === 'perfil') return 'm';
-  return unidadeCadastro || 'un';
+  if (bibTipo === 'chapa' || bibTipo === 'perfil') return 'un';
+  const u = (unidadeCadastro || '').trim().toLowerCase();
+  return !u || ['m', 'mt', 'mts', 'metro', 'metros', 'kg'].includes(u) ? 'un' : unidadeCadastro;
 }
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();

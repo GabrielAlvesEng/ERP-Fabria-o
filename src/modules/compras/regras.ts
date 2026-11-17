@@ -55,7 +55,8 @@ export function unidadeDoProduto(u: string): 'un' | 'm' | 'kg' {
   if (x === 'm' || x === 'mt' || x === 'mts' || x === 'metro' || x === 'metros' || x === 'ml') return 'm';
   return 'un';
 }
-export const UNIDADES = ['un', 'pç', 'kg', 'm', 'm²', 'barra', 'chapa', 'cx', 'L', 'h', 'serviço'];
+// Tudo em unidade, com a medida na descrição (decisão 140). Itens antigos com outra unidade continuam como estão.
+export const UNIDADES = ['un'];
 export const SETORES = ['Engenharia', 'Almoxarifado', 'Fabricação', 'Montagem em campo', 'Manutenção', 'Qualidade', 'Administrativo', 'Outro'];
 
 export type StatusPacote = 'aberto' | 'comprado' | 'cancelado';
@@ -179,8 +180,9 @@ export interface LinhaImportada { chave: string; grupo: GrupoItem; descricao: st
 const fmt = (n: number, casas = 2) => n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-// Soma a lista da Engenharia no que precisa ser comprado: chapas em kg (material + espessura), perfis em metros,
-// itens comerciais em unidades. Mesma separação da lista de materiais (tipoDaPeca).
+// Soma a lista da Engenharia no que precisa ser comprado. Tudo em unidade (decisão 140): perfis em barras (6 m; vigas 12 m),
+// chapas em chapas inteiras (1.200 × 3.000 em aço carbono, 1.250 × 3.000 em inox e alumínio: o comprador confere),
+// itens comerciais em unidades. A soma em metros ou kg vai na observação. Mesma separação da lista de materiais (tipoDaPeca).
 export function agruparLista(pecas: PecaProjeto[]): LinhaImportada[] {
   const mapa = new Map<string, LinhaImportada & { pesoFalta: number }>();
   const somar = (chave: string, base: Omit<LinhaImportada, 'chave' | 'quantidade' | 'observacoes' | 'bib_tipo' | 'bib_id'> & { bib_tipo?: BibTipo | null; bib_id?: string | null }, qtd: number, semPeso = 0) => {
@@ -216,10 +218,24 @@ export function agruparLista(pecas: PecaProjeto[]): LinhaImportada[] {
   const ordem: GrupoItem[] = GRUPOS;
   return [...mapa.values()]
     .map(({ pesoFalta, ...l }) => {
-      const quantidade = Math.round(l.quantidade * 1000) / 1000;
-      const obs = pesoFalta > 0 ? (l.grupo === 'Chapas' ? `${fmt(pesoFalta, 0)} peça(s) sem peso no projeto` : `${fmt(pesoFalta, 0)} peça(s) sem comprimento no projeto`) : '';
-      // Sem peso/comprimento nenhum, a linha vai em peças para Compras ajustar.
-      return quantidade > 0 ? { ...l, quantidade, observacoes: obs } : { ...l, quantidade: pesoFalta, unidade: 'pç', observacoes: obs };
+      const soma = Math.round(l.quantidade * 1000) / 1000;
+      const falta = pesoFalta > 0 ? (l.grupo === 'Chapas' ? `${fmt(pesoFalta, 0)} peça(s) sem peso no projeto` : `${fmt(pesoFalta, 0)} peça(s) sem comprimento no projeto`) : '';
+      // Sem peso/comprimento nenhum, a linha vai com a quantidade de peças para Compras ajustar.
+      if (!(soma > 0)) return { ...l, quantidade: pesoFalta, unidade: 'un', observacoes: falta };
+      if (l.grupo === 'Perfis' && l.unidade === 'm') {
+        const barra = barraPadrao(l.descricao);
+        const obs = [`${fmt(soma)} m no projeto`, falta].filter(Boolean).join(' · ');
+        return { ...l, descricao: `${l.descricao} barra ${barra} m`, quantidade: Math.ceil(soma / barra - 1e-9), unidade: 'un', observacoes: obs };
+      }
+      if (l.grupo === 'Chapas' && l.unidade === 'kg') {
+        const esp = Number(l.descricao.match(/(\d+,\d+) mm/)?.[1]?.replace(',', '.')) || 0;
+        const larg = densidade(l.descricao) === 7.85 ? 1200 : 1250;
+        const kgChapa = esp * larg * 3000 * densidade(l.descricao) / 1e6;
+        const obs = [`${fmt(soma)} kg no projeto${kgChapa ? `; chapa de ${fmt(kgChapa)} kg: confira o tamanho` : ''}`, falta].filter(Boolean).join(' · ');
+        if (!kgChapa) return { ...l, unidade: 'kg', observacoes: obs };
+        return { ...l, descricao: `${l.descricao.replace(/ mm$/, '')} x ${larg.toLocaleString('pt-BR')} x 3.000`, quantidade: Math.ceil(soma / kgChapa - 1e-9), unidade: 'un', observacoes: obs };
+      }
+      return { ...l, quantidade: soma, unidade: ehPeca(l.unidade) ? 'un' : l.unidade, observacoes: falta };
     })
     .sort((a, b) => ordem.indexOf(a.grupo) - ordem.indexOf(b.grupo) || a.descricao.localeCompare(b.descricao));
 }
@@ -296,4 +312,97 @@ export function converterPreco(
     else if (barras * min < qtdItem - 1e-6) nota += '. Dependendo do comprimento, pode faltar tubo';
   }
   return { valor, nota: nota + '. Confira.' };
+}
+
+// ---------- Tudo por unidade (decisão 140) ----------
+// A lista de compras é em un, com a medida na descrição ("Tubo 3\" SCH 40 barra 6 m", "Chapa 4,76 x 1500 x 3000 (304)").
+// Barra, peça e vara contam como unidade.
+export const ehPeca = (u: string) => mesmaUnidade(u, 'un') || mesmaUnidade(u, 'barra');
+
+// Comprimento de uma unidade, lido na descrição do item: "barra 6 m", "6mts", "12 mt", "6000 mm" → metros.
+export function comprimentoDoItem(texto: string): number | null {
+  const t = texto.replace(/\s+/g, ' ');
+  const n = (x: string) => Number(x.replace(',', '.'));
+  const mm = [...t.matchAll(/(\d{4,5})\s*MM\b/gi)].pop();
+  if (mm) { const a = n(mm[1]) / 1000; if (a >= 1 && a <= 15) return a; }
+  const m = [...t.matchAll(/(\d{1,2}(?:[.,]\d+)?)\s*(?:MTS?|METROS?|M)(?![A-Z²³])/gi)].pop();
+  if (m) { const a = n(m[1]); if (a >= 0.1 && a <= 15) return a; }
+  return null;
+}
+
+// Comprimento padrão da barra (decisão 140): 6 m; vigas, 12 m.
+export const barraPadrao = (descricao: string) => (/\bviga\b|perfil\s*[wih]\b|\b[wih]\s*\d{3}\b/i.test(descricao) ? 12 : 6);
+
+// Densidade (kg/dm³) pelo material escrito na descrição.
+function densidade(texto: string): number {
+  const t = norm(texto);
+  if (/alumin/.test(t)) return 2.7;
+  if (/\b430\b/.test(t)) return 7.7;
+  if (/inox|\b30[14]l?\b|\b31[06]l?\b/.test(t)) return 7.93;
+  return 7.85;
+}
+
+// Peso de uma unidade, pela descrição: chapa "esp x larg x comp" (mm) × densidade, ou embalagem "lata 5 kg", "rolo 15 kg".
+export function pesoDoItem(texto: string): { kg: number; como: string } | null {
+  const t = texto.replace(/\s+/g, ' ');
+  const n = (x: string) => Number(x.replace(/\./g, '').replace(',', '.'));
+  const ch = t.match(/(\d{1,3}(?:,\d+)?)\s*[xX×]\s*(\d[\d.]{2,5})\s*[xX×]\s*(\d[\d.]{2,6})/);
+  if (/chapa|bobina|xadrez/i.test(t) && ch) {
+    const e = Number(ch[1].replace(',', '.')); const l = n(ch[2]); const c = n(ch[3]); const d = densidade(t);
+    if (e > 0 && l > 0 && c > 0) {
+      const kg = Math.round(e * l * c * d / 1e6 * 100) / 100;
+      return { kg, como: `${ch[1]} × ${l.toLocaleString('pt-BR')} × ${c.toLocaleString('pt-BR')} mm × ${d.toLocaleString('pt-BR')} kg/dm³` };
+    }
+  }
+  const emb = t.match(/(\d{1,4}(?:[.,]\d+)?)\s*KG\b/i);
+  if (emb) { const kg = Number(emb[1].replace(',', '.')); if (kg > 0) return { kg, como: `embalagem de ${kg.toLocaleString('pt-BR')} kg` }; }
+  return null;
+}
+
+// Preço do PDF para um item em unidade. Por unidade/barra/peça: o mesmo preço (alerta se o comprimento da barra do
+// fornecedor não for o do item). Por metro ou kg: vale o total do fornecedor (quantidade × preço) dividido pelas
+// unidades pedidas; sem a quantidade no PDF, preço × comprimento ou peso de uma unidade, lidos na descrição do item.
+// A nota mostra a conta e avisa quando as duas contas não batem (mais de 5%).
+export function precoPorUnidade(
+  l: { unidade?: string; unidade_original?: string; descricao_original?: string; quantidade?: number; valor_unit: number; comprimento_min?: number; comprimento_max?: number },
+  item: { unidade: string; quantidade: number; descricao: string },
+): { valor: number; nota: string } | null {
+  if (!ehPeca(item.unidade) || !(Number(item.quantidade) > 0)) return null;
+  const un = l.unidade_original || l.unidade || '';
+  const preco = Number(l.valor_unit) || 0;
+  const qtd = Number(item.quantidade);
+  const qPdf = Number(l.quantidade) || 0;
+  const m2 = (x: number) => x.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  const r = (x: number, casas = 2) => x.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: casas });
+  const r4 = (x: number) => Math.round(x * 10000) / 10000;
+
+  if (ehPeca(un)) {
+    const comp = comprimentoDoItem(item.descricao);
+    const ia = Number(l.comprimento_min) > 0 ? { min: Number(l.comprimento_min), max: Math.max(Number(l.comprimento_max) || 0, Number(l.comprimento_min)) } : null;
+    const forn = ia ?? comprimentoNaDescricao(l.descricao_original ?? '');
+    if (comp && forn && (comp < forn.min - 0.05 || comp > forn.max + 0.05)) {
+      const fx = forn.max > forn.min ? `${m2(forn.min)} a ${m2(forn.max)} m` : `${m2(forn.min)} m`;
+      return { valor: preco, nota: `Barra do fornecedor de ${fx}, o item pede ${m2(comp)} m. Confira.` };
+    }
+    return null;
+  }
+  const porMetro = mesmaUnidade(un, 'm');
+  const porKg = mesmaUnidade(un, 'kg');
+  if (!porMetro && !porKg) return null;
+  const medida = porMetro ? (() => { const c = comprimentoDoItem(item.descricao); return c ? { v: c, como: `${m2(c)} m` } : null; })()
+    : (() => { const p = pesoDoItem(item.descricao); return p ? { v: p.kg, como: `${m2(p.kg)} kg (${p.como})` } : null; })();
+  const u = porMetro ? 'm' : 'kg';
+  const calc = medida ? r4(preco * medida.v) : null;
+  if (qPdf > 0) {
+    const total = Math.round(qPdf * preco * 100) / 100;
+    const valor = r4(total / qtd);
+    let nota = `Cotado por ${u}: ${m2(qPdf)} ${u} × ${r(preco, 4)} = ${r(total)}, dividido nas ${m2(qtd)} un pedidas (${r(valor, 4)}/un)`;
+    if (calc != null) {
+      nota += `; pela descrição, 1 un = ${medida!.como} → ${r(calc, 4)}/un`;
+      if (Math.abs(calc - valor) > 0.05 * Math.max(calc, valor)) nota += '. ATENÇÃO: as duas contas não batem';
+    }
+    return { valor, nota: nota + '. Confira.' };
+  }
+  if (calc != null) return { valor: calc, nota: `Cotado por ${u}: ${r(preco, 4)}/${u} × ${medida!.como} = ${r(calc, 4)}/un. Confira.` };
+  return null;
 }

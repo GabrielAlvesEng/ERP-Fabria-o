@@ -9,20 +9,22 @@ import { ROTULO_TIPO, TIPOS_PRODUTO, UNIDADES_PRODUTO, comImpostos, type TipoPro
 
 // Compras → Produtos → "Cadastrar produto" (decisão 121): um formulário só para todos os tipos.
 // O material vai na descrição, entre parênteses. O preço digitado entra no histórico: sem fornecedor é "estimado".
+// Decisão 140: todo produto é por unidade, com a medida na descrição (barra de 6 m, chapa inteira). Produto antigo em m ou kg
+// mostra a unidade dele para poder trocar.
 const EXEMPLO: Record<TipoProduto, string> = {
-  Chapas: 'Chapa lisa 5,00 x 1250 x 3000 (304)', Perfis: 'Tubo quadrado 30 x 30 x 1,50 (304)', Barras: 'Barra redonda 5/16" (304)',
+  Chapas: 'Chapa lisa 5,00 x 1250 x 3000 (304)', Perfis: 'Tubo quadrado 30 x 30 x 1,50 (304) barra 6 m', Barras: 'Barra redonda 5/16" (304) barra 6 m',
   Comerciais: 'Rolamento 6205 2RS', Conexões: 'Cotovelo 90° 1/2" BSP (304)', Válvulas: 'Válvula esfera 1" tripartida (316)', Fixadores: 'Parafuso sextavado M12 x 40 (inox 304)', Consumíveis: 'Disco de corte 7" x 1,6 mm',
 };
-const UNIDADE_PADRAO: Record<TipoProduto, string> = { Chapas: 'kg', Perfis: 'm', Barras: 'm', Comerciais: 'un', Conexões: 'un', Válvulas: 'un', Fixadores: 'un', Consumíveis: 'un' };
 
 export function CadastroProdutoModal({ produto, onFechar, onSalvo }: { produto?: ProdutoCompras | null; onFechar: () => void; onSalvo: (id: string) => void }) {
   const { data: fornecedores = [] } = useQuery({ queryKey: ['compras', 'fornecedores'], queryFn: listarFornecedores });
   const [d, setD] = useState({
-    grupo: (produto?.grupo ?? 'Chapas') as TipoProduto, descricao: produto?.descricao ?? '', unidade: produto?.unidade ?? 'kg',
+    grupo: (produto?.grupo ?? 'Chapas') as TipoProduto, descricao: produto?.descricao ?? '', unidade: produto?.unidade ?? 'un',
     valor: Number(produto?.valor ?? 0), ipi: Number(produto?.ipi ?? 0), fornecedor_id: produto?.fornecedor_id ?? '', data: produto?.preco_data ?? hojeISO(),
   });
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const legado = !!produto && produto.unidade !== 'un';
   const unidades = UNIDADES_PRODUTO.some((u) => u.valor === d.unidade) ? UNIDADES_PRODUTO : [...UNIDADES_PRODUTO, { valor: d.unidade, rotulo: d.unidade }];
 
   async function salvar() {
@@ -41,19 +43,19 @@ export function CadastroProdutoModal({ produto, onFechar, onSalvo }: { produto?:
         {erro && <Aviso>{erro}</Aviso>}
         <div className="flex flex-wrap gap-2">
           {TIPOS_PRODUTO.map((t) => (
-            <button key={t} type="button" onClick={() => setD({ ...d, grupo: t, unidade: produto ? d.unidade : UNIDADE_PADRAO[t] })}
+            <button key={t} type="button" onClick={() => setD({ ...d, grupo: t })}
               className={`rounded-full px-3 py-1.5 text-sm ring-1 transition ${d.grupo === t ? 'bg-roxo-600 text-white ring-roxo-600' : 'bg-superficie text-texto ring-borda hover:ring-roxo-300'}`}>{ROTULO_TIPO[t]}</button>
           ))}
         </div>
-        <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
-          <Campo rotulo="Descrição (com o material entre parênteses)">
+        <div className={`grid gap-3 ${legado ? 'sm:grid-cols-[1fr_160px]' : ''}`}>
+          <Campo rotulo="Descrição (com a medida e o material entre parênteses)">
             <Entrada value={d.descricao} onChange={(e) => setD({ ...d, descricao: e.target.value })} placeholder={`Ex.: ${EXEMPLO[d.grupo]}`} autoFocus />
           </Campo>
-          <Campo rotulo="Unidade de medida">
+          {legado && <Campo rotulo="Unidade (antiga: troque para un)">
             <Selecao value={d.unidade} onChange={(e) => setD({ ...d, unidade: e.target.value })}>
               {unidades.map((u) => <option key={u.valor} value={u.valor}>{u.rotulo}</option>)}
             </Selecao>
-          </Campo>
+          </Campo>}
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <Campo rotulo={`Valor unitário (sem IPI, por ${d.unidade})`}><div className={molduraNumero}><CampoNumero moeda valor={d.valor} casas={4} className="py-1.5" onConfirmar={(n) => setD({ ...d, valor: n })} /></div></Campo>

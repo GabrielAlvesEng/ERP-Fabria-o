@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, dataHoraBR, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Caixa, Campo, CampoData, Cartao, Entrada, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
-import { GRUPOS, type GrupoItem } from '@/modules/compras/regras';
+import { GRUPOS, barraPadrao, type GrupoItem } from '@/modules/compras/regras';
 import { BuscaItem } from '@/modules/almoxarifado/BuscaItem';
 import { lerQuantidade, unidadePadrao } from '@/modules/almoxarifado/regras';
 import {
@@ -28,14 +28,14 @@ const COR_REQ: Record<Solicitacao['status'], 'cinza' | 'roxo' | 'verde' | 'verme
 const REFS_VAZIAS: RefsEng = { chapas: [], perfis: [], itens: [], tipos: [], precosChapa: [] };
 const qtdBR = (n: number) => Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 const textoQtd = (n: number) => String(n).replace('.', ',');
-// un, mt, kg, mm (decisão 127). Item antigo com outra unidade mostra a dele até ser trocada.
+// Só un (decisão 140, substitui a 127). Item antigo com outra unidade mostra a dele até ser trocada.
 const opcoesUnidade = (atual: string) => [...(UNIDADES_LISTA.includes(atual as never) ? [] : [atual]), ...UNIDADES_LISTA].map((u) => <option key={u} value={u}>{u}</option>);
 
 interface Produto { id: string; bib_tipo: 'chapa' | 'perfil' | 'item'; bib_id: string; grupo: GrupoItem; descricao: string; unidade: string }
 function produtosDoCadastro(refs: RefsEng): Produto[] {
   return [
     ...refs.chapas.map((c) => ({ id: `chapa:${c.id}`, bib_tipo: 'chapa' as const, bib_id: c.id, grupo: 'Chapas' as GrupoItem, descricao: c.descricao, unidade: unidadeLista(unidadePadrao('chapa', '')) })),
-    ...refs.perfis.map((p) => ({ id: `perfil:${p.id}`, bib_tipo: 'perfil' as const, bib_id: p.id, grupo: 'Perfis' as GrupoItem, descricao: p.descricao, unidade: unidadeLista(unidadePadrao('perfil', '')) })),
+    ...refs.perfis.map((p) => ({ id: `perfil:${p.id}`, bib_tipo: 'perfil' as const, bib_id: p.id, grupo: 'Perfis' as GrupoItem, descricao: `${p.descricao} barra ${barraPadrao(p.descricao)} m`, unidade: unidadeLista(unidadePadrao('perfil', '')) })),
     ...refs.itens.map((i) => ({ id: `item:${i.id}`, bib_tipo: 'item' as const, bib_id: i.id, grupo: i.grupo as GrupoItem, descricao: i.descricao, unidade: unidadeLista(unidadePadrao('item', i.unidade)) })),
   ];
 }

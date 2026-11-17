@@ -62,6 +62,6 @@ describe('itens da revisão em rascunho (decisão 113)', () => {
 
 describe('unidades da lista (decisão 127)', () => {
   it('converte para un, mt, kg ou mm', () => {
-    expect(['m', 'Metro', 'kg', 'mm', 'pç', 'barra', '', 'MT'].map(unidadeLista)).toEqual(['mt', 'mt', 'kg', 'mm', 'un', 'un', 'un', 'mt']);
+    expect(['m', 'Metro', 'kg', 'mm', 'pç', 'barra', '', 'MT'].map(unidadeLista)).toEqual(['un', 'un', 'un', 'un', 'un', 'un', 'un', 'un']); // decisão 140
   });
 });

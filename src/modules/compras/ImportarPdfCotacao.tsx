@@ -4,7 +4,7 @@ import { AlertTriangle, FileText, Loader2, Upload } from 'lucide-react';
 import { mensagemErro, moeda } from '@/shared/lib/formato';
 import { Aviso, Botao, CampoNumero, Modal, Selecao } from '@/shared/ui';
 import { abrirArquivo, definirOrcamentoPdf, enviarOrcamentoPdf, lerOrcamentoPdf, salvarPreco, type Cotacao, type ItemComSolicitacao, type OrcamentoLido } from './api';
-import { converterPreco, ligarLinhas, mesmaUnidade, valorComIpi } from './regras';
+import { converterPreco, ehPeca, ligarLinhas, mesmaUnidade, precoPorUnidade, valorComIpi } from './regras';
 
 // Cotação → "Importar PDF" (decisão 135): a IA lê o orçamento do fornecedor e liga cada linha a um item do pacote, mesmo com o
 // nome escrito de outro jeito. O comprador confere item a item (linha do PDF, preço e IPI), corrige, deixa de fora o que quiser
@@ -27,22 +27,24 @@ export function ImportarPdfCotacao({ cotacao, itens, onFechar }: { cotacao: Cota
       const caminho = anexado ? cotacao.orcamento_caminho! : await enviarOrcamentoPdf(arquivo!);
       const orcamento = await lerOrcamentoPdf(caminho, itens.map((i) => ({ descricao: i.descricao, quantidade: Number(i.quantidade), unidade: i.unidade })));
       const ligacao = ligarLinhas(itens.length, orcamento.itens);
-      setLig(ligacao.map((n, k) => (orcamento.itens[n] ? daLinha(n, orcamento.itens[n], itens[k].unidade, Number(itens[k].quantidade)) : { linha: -1, valor: 0, ipi: 0, gravar: false, nota: '' })));
+      setLig(ligacao.map((n, k) => (orcamento.itens[n] ? daLinha(n, orcamento.itens[n], itens[k]) : { linha: -1, valor: 0, ipi: 0, gravar: false, nota: '' })));
       setLido({ caminho, novo: !anexado, orcamento });
     } catch (e) { setErro(mensagemErro(e)); }
     setLendo(false);
   }
 
-  // Preço da linha do PDF para o item; barra → metro é convertido pelo total do fornecedor e anotado (decisões 136 e 139).
-  function daLinha(n: number, l: OrcamentoLido['itens'][number], unidadeItem: string, qtdItem: number): Ligacao {
-    const c = converterPreco(l, unidadeItem, qtdItem);
+  // Preço da linha do PDF para o item. Item em un (decisão 140): metro e kg viram preço da unidade; item antigo em metro:
+  // barra → metro pelo total do fornecedor (decisões 136 e 139). A conversão fica anotada com alerta.
+  function daLinha(n: number, l: OrcamentoLido['itens'][number], item: { unidade: string; quantidade: number | string; descricao: string }): Ligacao {
+    const c = precoPorUnidade(l, { unidade: item.unidade, quantidade: Number(item.quantidade), descricao: item.descricao })
+      ?? converterPreco(l, item.unidade, Number(item.quantidade));
     const valor = c?.valor ?? (Number(l.valor_unit) || 0);
     return { linha: n, valor, ipi: Number(l.ipi) || 0, gravar: valor > 0, nota: c?.nota ?? '' };
   }
   const mudar = (k: number, m: Partial<Ligacao>) => setLig((ls) => ls.map((x, n) => (n === k ? { ...x, ...m } : x)));
   function escolherLinha(k: number, linha: number) {
     const l = lido?.orcamento.itens[linha];
-    mudar(k, l ? daLinha(linha, l, itens[k].unidade, Number(itens[k].quantidade)) : { linha: -1, gravar: false, nota: '' });
+    mudar(k, l ? daLinha(linha, l, itens[k]) : { linha: -1, gravar: false, nota: '' });
   }
 
   async function gravar() {
@@ -99,7 +101,7 @@ export function ImportarPdfCotacao({ cotacao, itens, onFechar }: { cotacao: Cota
                   {itens.map((i, k) => {
                     const x = lig[k];
                     const l = x.linha >= 0 ? linhas[x.linha] : null;
-                    const unidade = l && !x.nota && !mesmaUnidade(l.unidade_original || l.unidade, i.unidade);
+                    const unidade = l && !x.nota && !mesmaUnidade(l.unidade_original || l.unidade, i.unidade) && !(ehPeca(i.unidade) && ehPeca(l.unidade_original || l.unidade));
                     const qtd = l && !x.nota && Number(l.quantidade) > 0 && Number(l.quantidade) !== Number(i.quantidade);
                     const atual = atuais[i.id];
                     return (
