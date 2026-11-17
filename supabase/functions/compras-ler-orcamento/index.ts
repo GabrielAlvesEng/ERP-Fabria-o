@@ -1,5 +1,7 @@
 // Compras → Produtos → "Ler orçamento" (decisão 121): lê o PDF do fornecedor (com texto ou escaneado) e devolve um rascunho
 // de itens para o comprador conferir. Não grava nada: quem grava é a tela, pela função compras_gravar_orcamento.
+// Na cotação (decisão 135), a tela manda também os itens do pacote e cada linha volta ligada ao item (campo "item"), mesmo
+// quando o fornecedor escreve o nome de outro jeito.
 // O PDF fica no espaço privado "compras" e é baixado como o próprio usuário (a regra de acesso é a do banco).
 // A chave da IA é a mesma dos textos da proposta (segredo IA_API_KEY no Supabase), nunca no site.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
@@ -14,7 +16,7 @@ const cors = (origem: string | null) => ({
 
 const chave = () => Deno.env.get('IA_API_KEY') ?? Deno.env.get('OPENAI_API_KEY') ?? '';
 const MODELO = Deno.env.get('IA_MODELO_ORCAMENTO') ?? 'gpt-4.1';
-const TIPOS = ['Chapas', 'Perfis', 'Barras', 'Comerciais', 'Fixadores', 'Consumíveis'];
+const TIPOS = ['Chapas', 'Perfis', 'Barras', 'Conexões', 'Válvulas', 'Comerciais', 'Fixadores', 'Consumíveis'];
 
 const INSTRUCOES = `Você lê orçamentos de fornecedores da FABRIAÇO (caldeiraria e montagens industriais, Mococa-SP) e extrai os itens.
 Leia o PDF inteiro, inclusive tabelas escaneadas. Uma linha por item cotado, na ordem do documento. Não invente itens nem valores.
@@ -22,8 +24,9 @@ Leia o PDF inteiro, inclusive tabelas escaneadas. Uma linha por item cotado, na 
 Para cada item:
 - descricao_original: o texto do fornecedor, como está (junte as linhas do mesmo item).
 - tipo: Chapas (chapas e bobinas); Perfis (tubos, cantoneiras, vigas, perfis U/T/I, metalon); Barras (barras redondas, chatas,
-  quadradas, sextavadas, vergalhões); Fixadores (parafusos, porcas, arruelas, chumbadores, rebites); Consumíveis (discos, eletrodos,
-  arames de solda, gases, lixas, tintas); Comerciais (o resto: válvulas, rolamentos, motores, conexões...).
+  quadradas, sextavadas, vergalhões); Conexões (cotovelos, curvas, tês, reduções, flanges, luvas, niples, uniões, caps);
+  Válvulas (esfera, gaveta, globo, retenção, borboleta...); Fixadores (parafusos, porcas, arruelas, chumbadores, rebites); Consumíveis (discos, eletrodos,
+  arames de solda, gases, lixas, tintas); Comerciais (o resto: rolamentos, motores, mangueiras...).
 - descricao: reescrita no padrão da Fabriaço, em português, com o material no fim entre parênteses. Exemplos:
   "Chapa lisa 5,00 x 1250 x 3000 (304)" (espessura com 2 casas e vírgula x largura x comprimento, em mm; acabamento como 2B, BQ ou
   Nº4 entra depois das medidas: "Chapa lisa 4,76 x 1500 x 3000 BQ (304)"); "Chapa xadrez 3,00 x 1200 x 3000 (SAE 1020)";
@@ -33,9 +36,13 @@ Para cada item:
   Mantenha polegadas quando o fornecedor usa polegadas. Sem código do fornecedor, NCM, norma (A240, A554) ou quantidade de peças.
   Se a descrição for igual a um produto da lista "Produtos já cadastrados", use exatamente o texto de lá.
 - unidade: "kg" se o preço é por quilo (KG), "m" se é por metro (M, MT, MTS), "un" se é por peça ou unidade (PC, PÇ, UN, BR, CJ).
+- unidade_original: a unidade como o fornecedor escreveu (KG, MT, BR, PC...).
 - quantidade: a quantidade cotada, na mesma unidade do preço.
 - valor_unit: o preço unitário SEM IPI, como está no documento (número com ponto decimal).
 - ipi: a alíquota de IPI em % (0 se não houver).
+- item: o número do item da lista "Itens pedidos na cotação" que esta linha atende (o mesmo produto, mesmo que escrito de outro
+  jeito: abreviações, ordem das palavras, polegadas, norma, material). Confira bitola, schedule, ângulo, classe de pressão e material:
+  se não bater, não é o mesmo item. Cada item da lista é ligado a uma linha só. Use 0 se não houver lista ou nenhum item corresponder.
 Cabeçalho: fornecedor (nome fantasia ou razão social de quem emitiu o orçamento, não a Fabriaço), cnpj só com dígitos ('' se não houver),
 data de emissão em AAAA-MM-DD ('' se não houver), número do orçamento, condição de pagamento, prazo de entrega e frete como estão escritos.`;
 
@@ -50,10 +57,11 @@ const ESQUEMA = {
       type: 'array',
       items: {
         type: 'object', additionalProperties: false,
-        required: ['descricao_original', 'tipo', 'descricao', 'unidade', 'quantidade', 'valor_unit', 'ipi'],
+        required: ['descricao_original', 'tipo', 'descricao', 'unidade', 'unidade_original', 'quantidade', 'valor_unit', 'ipi', 'item'],
         properties: {
           descricao_original: texto, tipo: { type: 'string', enum: TIPOS }, descricao: texto,
-          unidade: { type: 'string', enum: ['un', 'm', 'kg'] }, quantidade: numero, valor_unit: numero, ipi: numero,
+          unidade: { type: 'string', enum: ['un', 'm', 'kg'] }, unidade_original: texto, quantidade: numero, valor_unit: numero, ipi: numero,
+          item: { type: 'integer' },
         },
       },
     },
@@ -93,6 +101,11 @@ Deno.serve(async (req) => {
     // Descrições já cadastradas, para a IA repetir o mesmo texto quando for o mesmo produto.
     const { data: produtos } = await sb.from('bib_itens').select('grupo, descricao').eq('ativo', true).order('descricao').limit(1500);
     const lista = (produtos ?? []).map((p: { grupo: string; descricao: string }) => `${p.grupo}: ${p.descricao}`).join('\n');
+    // Itens da cotação, numerados a partir de 1 (a tela converte o número de volta para o item).
+    const pedidos = Array.isArray(corpo.itens)
+      ? corpo.itens.slice(0, 300).map((i: { descricao?: string; quantidade?: number; unidade?: string }, n: number) =>
+        `${n + 1}. ${String(i.descricao ?? '').slice(0, 300)} (${Number(i.quantidade) || 0} ${String(i.unidade ?? '').slice(0, 10)})`).join('\n')
+      : '';
 
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -106,7 +119,7 @@ Deno.serve(async (req) => {
             role: 'user',
             content: [
               { type: 'file', file: { filename: 'orcamento.pdf', file_data: `data:application/pdf;base64,${base64(bytes)}` } },
-              { type: 'text', text: `Extraia os itens deste orçamento.\n\nProdutos já cadastrados:\n${lista || '(nenhum)'}` },
+              { type: 'text', text: `Extraia os itens deste orçamento.\n\nProdutos já cadastrados:\n${lista || '(nenhum)'}${pedidos ? `\n\nItens pedidos na cotação:\n${pedidos}` : ''}` },
             ],
           },
         ],

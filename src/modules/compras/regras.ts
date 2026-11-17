@@ -224,3 +224,29 @@ export function agruparLista(pecas: PecaProjeto[]): LinhaImportada[] {
     .sort((a, b) => ordem.indexOf(a.grupo) - ordem.indexOf(b.grupo) || a.descricao.localeCompare(b.descricao));
 }
 
+
+// ---------- PDF do fornecedor na cotação (decisão 135) ----------
+// A IA devolve, em cada linha do PDF, o número (a partir de 1) do item da cotação que ela atende (0 = nenhum).
+// Cada item fica com uma linha só e cada linha com um item só (a primeira que aparecer vale); o resto fica sem par.
+export function ligarLinhas(totalItens: number, linhas: { item?: number }[]): number[] {
+  const usadas = new Set<number>();
+  const ligacao = Array<number>(totalItens).fill(-1);
+  linhas.forEach((l, n) => {
+    const k = Math.trunc(Number(l.item ?? 0)) - 1;
+    if (k < 0 || k >= totalItens || ligacao[k] >= 0 || usadas.has(n)) return;
+    ligacao[k] = n; usadas.add(n);
+  });
+  return ligacao;
+}
+// Unidade parecida o bastante para o preço valer direto (PC = pç = un; MT = m; BR = barra).
+export function mesmaUnidade(a: string, b: string): boolean {
+  const u = (x: string) => {
+    const t = norm(x).replace(/[^a-z]/g, '');
+    if (['pc', 'pca', 'peca', 'pecas', 'un', 'und', 'unid', 'unidade', 'p'].includes(t)) return 'un';
+    if (['m', 'mt', 'mts', 'metro', 'metros', 'ml'].includes(t)) return 'm';
+    if (['kg', 'quilo', 'peso'].includes(t)) return 'kg';
+    if (['br', 'barra', 'barras', 'vara'].includes(t)) return 'barra';
+    return t;
+  };
+  return u(a) === u(b);
+}

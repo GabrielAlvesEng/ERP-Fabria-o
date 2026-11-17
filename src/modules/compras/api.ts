@@ -109,23 +109,39 @@ export async function desativarProduto(id: string): Promise<void> {
 }
 
 // Orçamento do fornecedor lido pela IA (Edge Function compras-ler-orcamento): o PDF vai para o espaço "compras" e volta um rascunho.
-export interface ItemLido { descricao_original: string; tipo: TipoProduto; descricao: string; unidade: 'un' | 'm' | 'kg'; quantidade: number; valor_unit: number; ipi: number }
+export interface ItemLido {
+  descricao_original: string; tipo: TipoProduto; descricao: string; unidade: 'un' | 'm' | 'kg'; unidade_original?: string; quantidade: number; valor_unit: number; ipi: number;
+  item?: number;   // na cotação: número (a partir de 1) do item do pacote que a linha atende; 0 = nenhum
+}
 export interface OrcamentoLido {
   fornecedor: string; cnpj: string; data: string; numero: string; condicao_pagamento: string; prazo_entrega: string; frete: string; itens: ItemLido[];
 }
-export async function lerOrcamento(arquivo: File): Promise<{ caminho: string; orcamento: OrcamentoLido }> {
+// Envia o PDF para o espaço "compras" (orcamentos/…) e devolve o caminho.
+export async function enviarOrcamentoPdf(arquivo: File): Promise<string> {
   const nome = arquivo.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_');
   const caminho = `orcamentos/${Date.now()}_${nome}`;
   const { error } = await supabase.storage.from('compras').upload(caminho, arquivo, { contentType: arquivo.type || 'application/pdf' });
   if (error) throw error;
-  const { data, error: erro } = await supabase.functions.invoke('compras-ler-orcamento', { body: { caminho } });
+  return caminho;
+}
+// Lê o PDF já enviado. Com os itens da cotação (decisão 135), cada linha volta com o número do item que atende.
+export async function lerOrcamentoPdf(caminho: string, itens?: { descricao: string; quantidade: number; unidade: string }[]): Promise<OrcamentoLido> {
+  const { data, error: erro } = await supabase.functions.invoke('compras-ler-orcamento', { body: { caminho, itens } });
   if (erro) {
     // A função devolve { erro } com a explicação; o cliente só traz o status.
     const corpo = await (erro as { context?: Response }).context?.json?.().catch(() => null);
     throw new Error(corpo?.erro ?? 'Não consegui ler o orçamento agora. Tente de novo em instantes.');
   }
   if (data?.erro) throw new Error(data.erro);
-  return { caminho, orcamento: data.orcamento as OrcamentoLido };
+  return data.orcamento as OrcamentoLido;
+}
+export async function lerOrcamento(arquivo: File): Promise<{ caminho: string; orcamento: OrcamentoLido }> {
+  const caminho = await enviarOrcamentoPdf(arquivo);
+  return { caminho, orcamento: await lerOrcamentoPdf(caminho) };
+}
+// Liga o PDF lido ao orçamento do fornecedor na cotação (o clipe na comparação abre este arquivo).
+export async function definirOrcamentoPdf(cotacao: string, caminho: string): Promise<void> {
+  ok(await supabase.from('compras_cotacoes').update({ orcamento_caminho: caminho }).eq('id', cotacao));
 }
 export async function gravarOrcamento(fornecedor: string, data: string | null, documento: string,
   linhas: { produto_id: string | null; grupo: TipoProduto; descricao: string; unidade: string; valor_unit: number; ipi: number }[]): Promise<number> {

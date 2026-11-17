@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { valorComIpi, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
+import { valorComIpi, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -123,5 +123,19 @@ describe('produtosParecidos (decisão 133)', () => {
   });
   it('sem nada em comum, não sugere', () => {
     expect(produtosParecidos(ps, 'Motorredutor 0,5 cv')).toEqual([]);
+  });
+});
+
+describe('PDF do fornecedor na cotação (decisão 135)', () => {
+  it('cada item fica com uma linha e cada linha com um item', () => {
+    expect(ligarLinhas(3, [{ item: 2 }, { item: 0 }, { item: 2 }, { item: 1 }, { item: 9 }])).toEqual([3, 0, -1]);
+    expect(ligarLinhas(2, [])).toEqual([-1, -1]);
+  });
+  it('unidades parecidas', () => {
+    expect(mesmaUnidade('PC', 'pç')).toBe(true);
+    expect(mesmaUnidade('MT', 'm')).toBe(true);
+    expect(mesmaUnidade('BR', 'barra')).toBe(true);
+    expect(mesmaUnidade('BR', 'm')).toBe(false);
+    expect(mesmaUnidade('KG', 'un')).toBe(false);
   });
 });

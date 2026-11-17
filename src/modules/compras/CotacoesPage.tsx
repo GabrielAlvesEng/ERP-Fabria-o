@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Ban, FileDown, Paperclip, Pencil, Plus, Send, Trash2, Undo2 } from 'lucide-react';
+import { ArrowLeft, Ban, FileDown, FileUp, Paperclip, Pencil, Plus, Send, Trash2, Undo2 } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, mensagemErro, moeda } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Campo, CampoData, Entrada, EsqueletoDetalhe, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
@@ -13,6 +13,7 @@ import {
 import { ROTULO_ITEM, ROTULO_PACOTE, descreverCondicao, melhorCotacao, menoresPrecos, rotuloDestino, totalCotacao, valorComIpi, type StatusPacote } from './regras';
 import { COR_ITEM, CotacaoModal, Historico, Justificar, OrdemCartao, PrecoCelula, Referencia, Secao, type Cor } from './comum';
 import { imprimirPedidoCotacao } from './ordemPdf';
+import { ImportarPdfCotacao } from './ImportarPdfCotacao';
 import { ProdutosDaOrdem, precisaProduto } from './ProdutosDaOrdem';
 
 const COR_PACOTE: Record<StatusPacote, Cor> = { aberto: 'azul', comprado: 'verde', cancelado: 'vermelho' };
@@ -70,7 +71,7 @@ export function PacotePage() {
   const { data: eventos = [] } = useQuery({ queryKey: ['compras', 'eventos', 'pacote', id], queryFn: () => listarEventos({ pacote: id }) });
   const { data: fornecedores = [] } = useQuery({ queryKey: ['compras', 'fornecedores'], queryFn: listarFornecedores });
   const [erro, setErro] = useState('');
-  const [modal, setModal] = useState<null | 'cancelar' | 'pdf' | { cotacao: Cotacao | null } | { gerar: Cotacao } | { cancelarOc: Pedido }>(null);
+  const [modal, setModal] = useState<null | 'cancelar' | 'pdf' | { cotacao: Cotacao | null } | { gerar: Cotacao } | { cancelarOc: Pedido } | { importar: Cotacao }>(null);
 
   async function agir(f: () => Promise<unknown>) {
     setErro('');
@@ -129,7 +130,7 @@ export function PacotePage() {
           <Vazio>{aberto ? 'Gere o PDF, mande aos fornecedores e lance aqui o orçamento de cada um para comparar.' : 'Nenhum orçamento lançado.'}</Vazio>
         ) : comparar.length === 0 ? <Vazio>Nenhum item à comprar neste pacote.</Vazio> : (
           <Comparacao itens={comparar} cotacoes={cotacoes} podeCotar={podeCotar} agir={agir} pedidos={pedidos}
-            editar={(c) => setModal({ cotacao: c })} gerar={(c) => setModal({ gerar: c })}
+            editar={(c) => setModal({ cotacao: c })} gerar={(c) => setModal({ gerar: c })} importar={(c) => setModal({ importar: c })}
             pdf={(c) => imprimirPedidoCotacao(pacote, ativos, fornecedores.find((f) => f.id === c.fornecedor_id))} />
         )}
       </Secao>
@@ -157,6 +158,9 @@ export function PacotePage() {
         <CotacaoModal cotacao={modal.cotacao} origem={origem} fornecedores={fornecedores.filter((f) => f.ativo && (f.id === modal.cotacao?.fornecedor_id || !cotacoes.some((c) => c.fornecedor_id === f.id)))}
           onFechar={() => setModal(null)}
           onSalvar={(d, arquivo) => agir(async () => { const cid = await salvarCotacao(pacote.id, modal.cotacao?.id ?? null, d); if (arquivo) await anexarOrcamento(cid, arquivo); })} />
+      )}
+      {modal && typeof modal === 'object' && 'importar' in modal && (
+        <ImportarPdfCotacao cotacao={modal.importar} itens={aComprar} onFechar={() => setModal(null)} />
       )}
       {modal && typeof modal === 'object' && 'gerar' in modal && (
         <GerarOrdem cotacao={modal.gerar} itens={aComprar} onFechar={() => setModal(null)}
@@ -196,9 +200,9 @@ function ItensPacote({ itens, podeCotar, retirar }: { itens: ItemComSolicitacao[
 
 // Comparação item × fornecedor: menor preço por item em verde, menor total (com todos os itens) destacado. O comprador
 // escolhe UM fornecedor para o pacote e gera a ordem de compra dele.
-function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, pdf }: {
+function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, pdf, importar }: {
   itens: ItemComSolicitacao[]; cotacoes: Cotacao[]; podeCotar: boolean; agir: (f: () => Promise<unknown>) => Promise<boolean>; pedidos: Pedido[];
-  editar: (c: Cotacao) => void; gerar: (c: Cotacao) => void; pdf: (c: Cotacao) => void;
+  editar: (c: Cotacao) => void; gerar: (c: Cotacao) => void; pdf: (c: Cotacao) => void; importar: (c: Cotacao) => void;
 }) {
   const cs = cotacoes.map(precosDe);
   const its = itens.map((i) => ({ id: i.id, quantidade: Number(i.quantidade) }));
@@ -233,6 +237,12 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, 
                     </>}
                   </span>
                 </div>
+                {podeCotar && !comprouDe.has(c.id) && (
+                  <button type="button" onClick={() => importar(c)} title="A IA lê o PDF do fornecedor e preenche os preços desta coluna"
+                    className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-roxo-600 ring-1 ring-roxo-200 hover:bg-roxo-50 dark:text-roxo-100 dark:ring-roxo-700 dark:hover:bg-roxo-700/30">
+                    <FileUp size={12} /> Importar PDF
+                  </button>
+                )}
               </th>
             ))}
           </tr>
