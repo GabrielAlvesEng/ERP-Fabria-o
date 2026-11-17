@@ -271,6 +271,7 @@
 - **Decisão 141:** PDF da OC com os dados cadastrais completos da Fabriaço no quadro Comprador (dados da empresa dos Modelos de proposta). Conferido no navegador.
 - **Correção (16/11/2026):** PDF técnico, tabela de Responsabilidades/Documentações que começava no fim da página saía espremida por cima do rodapé e perdia o cabeçalho (visto na 26-59-001). As linhas agora são filhas diretas de uma só View, como na tabela comum. Reproduzido e conferido no gerador local; não tem relação com as opções por item.
 - **Decisão 142:** aba Documentos com lista única (técnica + Forma de pagamento e Valores da comercial) e o seletor técnica/comercial em cima do visualizador. Editor conferido no gerador local; typecheck, 263 testes e build ok; não conferido com login real.
+- **Decisão 144:** aba Documentos sem IA, sem 2ª linha da capa e sem "Gerar e anexar PDF" (o PDF é anexado no envio). Capa conferida no gerador local; 263 testes e build ok.
 - **Decisão 125:** vendedor fora do card do Kanban. Typecheck, 245 testes e build ok; não conferido no navegador com login real.
 
 ## 2026-10-29 (Compras)

@@ -1,18 +1,17 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Eye, FileCheck2, PencilLine, RotateCcw, Sparkles } from 'lucide-react';
-import { supabase } from '@/shared/lib/supabase';
+import { Download, Eye, PencilLine, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, EsqueletoDetalhe, EsqueletoPagina } from '@/shared/ui';
-import { atualizarRascunho, enviarArquivoRevisao, listarRevisoes } from '@/modules/vendas/api';
+import { Aviso, Botao, EsqueletoDetalhe, EsqueletoPagina } from '@/shared/ui';
+import { atualizarRascunho, listarRevisoes } from '@/modules/vendas/api';
 import { atualizarItem, criarItem } from '@/modules/vendas/custos/api';
 import type { Proposta } from '@/modules/vendas/types';
 import { carregarImagens, dadosDaProposta, enviarImagem, lerDocumentos, lerPadroes, salvarDocumento } from './api';
 import { EditorDocumento } from './EditorDocumento';
 import { aplicarDiferenca, diferencaDocumento, juntarDiferencas, type DiferencaDoc } from './aoVivoDoc';
 import { useDigitandoAoVivo } from '../aoVivo';
-import { aplicarTextosIA, aplicarTextosIASecao, completarDocumento, explicacaoParaSecao, fixarSecoesDoModelo, imagensDoDocumento, nomeArquivo, paraEscolher, type Documento, type TextosIA, type TipoDocumento } from './modelo';
+import { completarDocumento, fixarSecoesDoModelo, imagensDoDocumento, nomeArquivo, paraEscolher, type Documento, type TipoDocumento } from './modelo';
 
 const Previa = lazy(() => import('./Previa'));
 const SEM_IMAGENS: Record<string, string> = {};
@@ -96,8 +95,8 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
   const alterarDoc = (t: TipoDocumento, d: Documento) => {
     gravar(t, d, docs[t]);
     const outro = docs[t === 'tecnica' ? 'comercial' : 'tecnica'];
-    if (outro && (d.capa.linha2 !== outro.capa.linha2 || d.capa.imagem !== outro.capa.imagem) && (d.capa.linha2 !== docs[t]?.capa.linha2 || d.capa.imagem !== docs[t]?.capa.imagem)) {
-      gravar(outro.tipo, { ...outro, capa: { ...outro.capa, linha2: d.capa.linha2, imagem: d.capa.imagem } }, outro);
+    if (outro && d.capa.imagem !== outro.capa.imagem && d.capa.imagem !== docs[t]?.capa.imagem) {
+      gravar(outro.tipo, { ...outro, capa: { ...outro.capa, imagem: d.capa.imagem } }, outro);
     }
   };
 
@@ -137,80 +136,19 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
     },
   } : undefined), [editavel, rev, salvandoValor, dados, p.id, p.status, p.titulo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function gerarPdf(anexar: boolean) {
-    if (!doc || !dados || !padroes || !rev) return;
+  // Decisão 144: o PDF anexado é gerado sozinho ao enviar a proposta (decisão 124); aqui só se baixa o que está na prévia.
+  async function baixarPdf() {
+    if (!doc || !dados || !padroes) return;
     setMsg(null); setGerando(true);
     try {
       const { gerarBlob } = await import('./Previa');
       const blob = await gerarBlob(doc, dados, padroes.empresa, urls, docs.tecnica);
-      const nome = nomeArquivo(p.codigo, p.revisao_atual, p.titulo, tipo);
-      if (anexar) {
-        await enviarArquivoRevisao(p.id, rev.id, tipo, new File([blob], nome, { type: 'application/pdf' }));
-        qc.invalidateQueries({ queryKey: ['proposta', p.id] });
-        setMsg({ tipo: 'info', texto: `PDF anexado em Arquivos → Propostas (${tipo === 'tecnica' ? 'técnica' : 'comercial'}, R${p.revisao_atual}). Vai junto no e-mail de envio.` });
-      } else {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob); a.download = nome;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = nomeArquivo(p.codigo, p.revisao_atual, p.titulo, tipo);
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); }
     setGerando(false);
-  }
-
-  // Textos por IA (entrega 3): a explicação vai para a Edge Function, que chama a OpenAI com a chave guardada no Supabase.
-  const [pensando, setPensando] = useState(false);
-  const [secaoIA, setSecaoIA] = useState<string | null>(null); // seção que a IA está refazendo (decisão 81)
-  const [avisoIA, setAvisoIA] = useState<{ secao: string; tipo: 'info' | 'erro'; texto: string } | null>(null); // resultado, mostrado na própria seção
-  const explicacao = docs.tecnica?.explicacao ?? docs.comercial?.explicacao ?? '';
-  // Decisão 142: gera os textos da técnica e da comercial juntos (as duas estão na mesma lista).
-  async function gerarComIA() {
-    const tec = docs.tecnica; const com = docs.comercial;
-    if (!tec || !com || !dados) return;
-    if (explicacao.trim().length < 15) return setMsg({ tipo: 'erro', texto: 'Explique a proposta com um pouco mais de detalhe (o que será feito, para quem e onde).' });
-    const jaTem = tec.secoes.some((s) => s.id === 'objetivo' && s.tipo === 'texto' && s.texto.trim());
-    if (jaTem && !confirm('A IA vai substituir capa, objetivo e os demais textos da obra. Garantia, validade e confidencialidade não mudam. Continuar?')) return;
-    setMsg(null); setPensando(true);
-    try {
-      const pedir = async (t: TipoDocumento) => {
-        const { data, error } = await supabase.functions.invoke('gerar-textos-proposta', {
-          body: { tipo: t, explicacao, titulo: p.titulo, cliente: dados.cliente.nome, local: dados.cliente.local, itens: dados.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) },
-        });
-        if (error) {
-          const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
-          throw new Error(corpo?.erro ?? error.message);
-        }
-        return (data as { textos: TextosIA }).textos;
-      };
-      const [tt, tc] = await Promise.all([pedir('tecnica'), pedir('comercial')]);
-      const novaTec = aplicarTextosIA({ ...tec, explicacao }, tt);
-      gravar('tecnica', novaTec, tec);
-      gravar('comercial', { ...aplicarTextosIA({ ...com, explicacao }, { ...tc, capa: undefined }), capa: { ...com.capa, linha2: novaTec.capa.linha2, imagem: novaTec.capa.imagem } }, com);
-      setMsg({ tipo: 'info', texto: 'Textos gerados pela IA. Revise antes de gerar o PDF: a IA pode errar detalhes técnicos.' });
-    } catch (e) { setMsg({ tipo: 'erro', texto: mensagemErro(e) }); }
-    setPensando(false);
-  }
-
-  // Decisão 81: refazer com a IA só uma seção, com um pedido de ajuste opcional.
-  async function gerarSecaoComIA(t: TipoDocumento, secaoId: string, pedido: string) {
-    const doc = docs[t];
-    if (!doc || !dados) return;
-    const s = doc.secoes.find((x) => x.id === secaoId);
-    if (!s) return;
-    if (explicacao.trim().length < 15) return setAvisoIA({ secao: secaoId, tipo: 'erro', texto: 'Antes, explique a proposta no quadro "Gerar textos com IA", lá em cima (o que será feito, para quem e onde).' });
-    setMsg(null); setAvisoIA(null); setPensando(true); setSecaoIA(secaoId);
-    try {
-      const { data, error } = await supabase.functions.invoke('gerar-textos-proposta', {
-        body: { tipo: t, explicacao: explicacaoParaSecao(explicacao, s, pedido), titulo: p.titulo, cliente: dados.cliente.nome, local: dados.cliente.local, itens: dados.itens.map((i) => ({ letra: i.letra, descricao: i.descricao })) },
-      });
-      if (error) {
-        const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
-        throw new Error(corpo?.erro ?? error.message);
-      }
-      alterarDoc(t, aplicarTextosIASecao({ ...doc, explicacao }, (data as { textos: TextosIA }).textos, secaoId));
-      setAvisoIA({ secao: secaoId, tipo: 'info', texto: 'Pronto: só esta seção foi refeita. Revise antes de gerar o PDF.' });
-    } catch (e) { setAvisoIA({ secao: secaoId, tipo: 'erro', texto: mensagemErro(e) }); }
-    setPensando(false); setSecaoIA(null);
   }
 
   function restaurar() {
@@ -240,34 +178,22 @@ export function DocumentosAba({ proposta: p }: { proposta: Proposta }) {
         </div>
       </div>
       {!editavel && <Aviso tipo="info">{rev?.status === 'enviada' ? `A R${p.revisao_atual} já foi enviada: os textos ficam como foram enviados. Para mudar, crie uma nova revisão.` : 'Somente leitura.'}</Aviso>}
-      {editavel && (
-        <div className="rounded-xl bg-roxo-50/60 p-3 ring-1 ring-roxo-100 dark:bg-roxo-500/10 dark:ring-roxo-500/30">
-          <div className="mb-1 flex items-center gap-2 text-sm font-semibold"><Sparkles size={15} className="text-roxo-600 dark:text-roxo-100" /> Explique a proposta</div>
-          <AreaTexto rows={3} value={explicacao} onChange={(e) => alterarDoc('tecnica', { ...docs.tecnica!, explicacao: e.target.value })}
-            placeholder="Ex.: proposta técnica para a SYMRISE de Descalvado-SP: desenvolvimento de um sistema de vedação pneumática por meio de um perfil de borracha com geometria em “H”, associado a um ponto de conexão para ar comprimido, visando vedar e evitar vazamentos." />
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-suave">Vai para a OpenAI só a explicação, o cliente, o local e os itens. Preços e dados de contato não vão.</span>
-            <Botao onClick={gerarComIA} disabled={pensando || !dados}><Sparkles size={15} /> {pensando ? 'Escrevendo… (até 1 min)' : 'Gerar textos com IA (técnica e comercial)'}</Botao>
-          </div>
-        </div>
-      )}
       {msg && <Aviso tipo={msg.tipo === 'info' ? 'info' : undefined}>{msg.texto}</Aviso>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className={verPrevia ? 'hidden lg:block' : ''}>
           {/* Decisão 142: uma lista só, com as seções da técnica e, no fim, as da comercial (Forma de pagamento e Valores). */}
           <div className="space-y-3">
             <EditorDocumento doc={docs.tecnica} onChange={(d) => alterarDoc('tecnica', d)} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} capaDados={{ titulo: p.titulo, descricao: p.descricao ?? '' }}
-              ia={editavel ? { refazer: (id, pedido) => gerarSecaoComIA('tecnica', id, pedido), pensando, secao: secaoIA, aviso: avisoIA } : undefined} />
+/>
             <EditorDocumento doc={docs.comercial} onChange={(d) => alterarDoc('comercial', d)} editavel={editavel} itens={itensResumo} imagens={imagens} valores={acoesValor} soSecoes
-              ia={editavel ? { refazer: (id, pedido) => gerarSecaoComIA('comercial', id, pedido), pensando, secao: secaoIA, aviso: avisoIA } : undefined} />
+/>
           </div>
         </div>
         <div className={`flex flex-col gap-2 lg:sticky lg:top-0 lg:h-[calc(100vh-9rem)] ${verPrevia ? '' : 'hidden lg:flex'}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             {seletor}
             <div className="flex flex-wrap items-center gap-2">
-              <Botao variante="secundario" tamanho="sm" onClick={() => gerarPdf(false)} disabled={gerando || !dados}><Download size={15} /> Baixar PDF</Botao>
-              {editavel && <Botao tamanho="sm" onClick={() => gerarPdf(true)} disabled={gerando || !dados}><FileCheck2 size={15} /> {gerando ? 'Gerando…' : 'Gerar e anexar PDF'}</Botao>}
+              <Botao variante="secundario" tamanho="sm" onClick={baixarPdf} disabled={gerando || !dados}><Download size={15} /> {gerando ? 'Gerando…' : 'Baixar PDF'}</Botao>
             </div>
           </div>
           <div className="min-h-0 flex-1">

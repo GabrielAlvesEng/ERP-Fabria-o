@@ -593,7 +593,7 @@ function Capa({ doc, d, empresa, imagens }: { doc: Documento; d: DadosProposta; 
           {comercial ? 'PROPOSTA COMERCIAL / CONDIÇÕES DE FORNECIMENTO' : 'PROPOSTA TÉCNICA / ENGENHARIA'} · R{d.revisao}
         </Text>
         <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15 }}>{d.titulo}</Text>
-        {doc.capa.linha2 ? <Text style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.15, color: T.destaque }}>{doc.capa.linha2}</Text> : null}
+        {/* Decisão 144: só o título principal; a 2ª linha (capa.linha2) saiu da capa. */}
         {/* Documento antigo sem descrição em Dados ainda mostra o subtítulo que tinha. */}
         {(d.descricao?.trim() || doc.capa.subtitulo) ? <Text style={{ fontSize: 10.5, color: T.sub, marginTop: 12, maxWidth: 420, lineHeight: 1.5 }}>{resumirTexto(d.descricao?.trim() || doc.capa.subtitulo, 280)}</Text> : null}
         <View style={{ flexDirection: 'row', marginTop: 20 }}>

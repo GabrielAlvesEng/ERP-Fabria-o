@@ -59,7 +59,7 @@ export function ArquivosAba({ p, aprovacao }: { p: Proposta; aprovacao: ReactNod
                 <CardRevisao key={r.id} r={r} arquivos={arquivos.filter((a) => a.revisao_id === r.id && a.tipo === tipo)}
                   onAbrir={abrir} onRemover={podeEditar(r) ? (a) => rm.mutate(a) : undefined} />
               ))}
-              <p className="text-xs text-suave">Os PDFs entram aqui pelo botão “Gerar e anexar PDF” da aba Documentos.</p>
+              <p className="text-xs text-suave">Os PDFs da técnica e da comercial entram aqui sozinhos quando a proposta é enviada.</p>
             </div>
           ))}
         </div>

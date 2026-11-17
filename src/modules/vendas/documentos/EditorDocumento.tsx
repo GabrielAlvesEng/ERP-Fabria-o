@@ -60,7 +60,6 @@ export function EditorDocumento({ doc, onChange, editavel, itens = [], imagens, 
             <div className="mt-1.5 text-xs font-medium text-suave">Subtítulo da capa (Descrição, na aba Dados)</div>
             <div className="whitespace-pre-line text-suave">{capaDados?.descricao || 'Sem descrição.'}</div>
           </div>
-          <Campo rotulo="Complemento do título (2ª linha, opcional)" className="sm:col-span-2"><Entrada value={doc.capa.linha2} onChange={(e) => onChange({ ...doc, capa: { ...doc.capa, linha2: e.target.value } })} placeholder="Ex.: Unidade Arceburgo" /></Campo>
           {imagens && (
             <div className="sm:col-span-2">
               <div className="mb-1 text-xs font-medium text-suave">Imagem principal (capa)</div>
