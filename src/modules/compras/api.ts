@@ -60,9 +60,22 @@ export type ItemComSolicitacao = ItemRequisicao & {
 
 // ---------- Fornecedores ----------
 export const listarFornecedores = async (): Promise<Fornecedor[]> => ok(await supabase.from('fornecedores').select('*').order('nome'));
-export async function salvarFornecedor(f: Partial<Fornecedor> & { nome: string }): Promise<void> {
+export async function salvarFornecedor(f: Partial<Fornecedor> & { nome: string }): Promise<string> {
   const { id, ...dados } = f;
-  ok(id ? await supabase.from('fornecedores').update(dados).eq('id', id) : await supabase.from('fornecedores').insert(dados));
+  if (id) { ok(await supabase.from('fornecedores').update(dados).eq('id', id)); return id; }
+  return (ok(await supabase.from('fornecedores').insert(dados).select('id').single()) as { id: string }).id;
+}
+
+// Dados de pagamento do fornecedor (decisão 137): Compras preenche no cadastro, o Financeiro usa nas contas a pagar.
+// Mesma tabela da decisão 105; as observações do Financeiro não são mexidas por aqui.
+export interface PagamentoFornecedor {
+  banco: string; agencia: string; conta: string; titular: string; documento_titular: string; chave_pix: string; prazo_apos_recebimento: number;
+}
+export const PAGAMENTO_VAZIO: PagamentoFornecedor = { banco: '', agencia: '', conta: '', titular: '', documento_titular: '', chave_pix: '', prazo_apos_recebimento: 28 };
+export const listarPagamentosFornecedores = async (): Promise<(PagamentoFornecedor & { fornecedor_id: string })[]> =>
+  ok(await supabase.from('fornecedores_pagamento').select('fornecedor_id, banco, agencia, conta, titular, documento_titular, chave_pix, prazo_apos_recebimento'));
+export async function salvarPagamentoFornecedor(fornecedor_id: string, d: PagamentoFornecedor): Promise<void> {
+  ok(await supabase.from('fornecedores_pagamento').upsert({ fornecedor_id, ...d }, { onConflict: 'fornecedor_id' }));
 }
 
 // ---------- Produtos (Biblioteca de Materiais, decisão 103) ----------

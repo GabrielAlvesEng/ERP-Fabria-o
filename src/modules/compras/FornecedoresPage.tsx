@@ -4,15 +4,20 @@ import { Loader2, Pencil, Plus, Search } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { consultarCNPJ } from '@/shared/lib/cnpj';
 import { apenasDigitos, cnpjValido, formatarCNPJ, mensagemErro } from '@/shared/lib/formato';
-import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, Entrada, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
-import { listarFornecedores, salvarFornecedor, type Fornecedor } from './api';
+import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, CampoInteiro, Entrada, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
+import { PAGAMENTO_VAZIO, listarFornecedores, listarPagamentosFornecedores, salvarFornecedor, salvarPagamentoFornecedor, type Fornecedor, type PagamentoFornecedor } from './api';
 import { ROTULO_PAGAMENTO } from './regras';
 
 // Compras → Fornecedores (decisão 101): o mesmo cadastro de Administração → Predefinições, com CNPJ, categorias e pagamento.
+// Decisão 137: os dados de pagamento (banco, PIX, titular, prazo) também são preenchidos aqui e vão para o Financeiro.
 export function FornecedoresPage() {
   const { pode } = useAuth();
   const editavel = pode('compras', 'editar') || pode('admin', 'editar');
   const { data: lista = [], isLoading } = useQuery({ queryKey: ['compras', 'fornecedores'], queryFn: listarFornecedores });
+  const vePagamento = pode('compras', 'ler') || pode('financeiro', 'ler');
+  const editaPagamento = pode('compras', 'editar') || pode('financeiro', 'editar');
+  const { data: pagamentos = [] } = useQuery({ queryKey: ['compras', 'fornecedores_pagamento'], queryFn: listarPagamentosFornecedores, enabled: vePagamento });
+  const pagamentoDe = new Map(pagamentos.map((p) => [p.fornecedor_id, p]));
   const [busca, setBusca] = useState('');
   const [inativos, setInativos] = useState(false);
   const [editando, setEditando] = useState<Partial<Fornecedor> | null>(null);
@@ -40,7 +45,7 @@ export function FornecedoresPage() {
                   <td className="px-3 py-2"><span className="font-medium">{f.nome}</span>{!f.ativo && <> <Selo>Inativo</Selo></>}<span className="block text-xs text-suave">{[f.cnpj && formatarCNPJ(f.cnpj), f.cidade].filter(Boolean).join(' · ')}</span></td>
                   <td className="px-3 py-2 text-xs">{f.categorias || '—'}</td>
                   <td className="px-3 py-2 text-xs">{[f.contato, f.telefone, f.email].filter(Boolean).join(' · ') || '—'}</td>
-                  <td className="px-3 py-2 text-xs">{ROTULO_PAGAMENTO[f.condicao_pagamento]}</td>
+                  <td className="px-3 py-2 text-xs">{ROTULO_PAGAMENTO[f.condicao_pagamento]}{vePagamento && !temDadosPagamento(pagamentoDe.get(f.id)) && <span className="block text-amber-600">sem PIX ou conta</span>}</td>
                   <td className="px-2">{editavel && <button type="button" title="Editar" onClick={() => setEditando(f)} className="rounded p-1.5 text-suave hover:bg-pagina hover:text-texto"><Pencil size={15} /></button>}</td>
                 </tr>
               ))}
@@ -48,14 +53,18 @@ export function FornecedoresPage() {
           </table>
         </div>
       )}
-      {editando && <EditarFornecedor f={editando} todos={lista} onFechar={() => setEditando(null)} />}
+      {editando && <EditarFornecedor f={editando} todos={lista} pagamento={editaPagamento ? { ...PAGAMENTO_VAZIO, ...pagamentoDe.get(editando.id ?? '') } : null} onFechar={() => setEditando(null)} />}
     </>
   );
 }
 
-function EditarFornecedor({ f, todos, onFechar }: { f: Partial<Fornecedor>; todos: Fornecedor[]; onFechar: () => void }) {
+const temDadosPagamento = (p?: PagamentoFornecedor) => !!p && (!!p.chave_pix.trim() || !!p.conta.trim());
+
+function EditarFornecedor({ f, todos, pagamento, onFechar }: { f: Partial<Fornecedor>; todos: Fornecedor[]; pagamento: PagamentoFornecedor | null; onFechar: () => void }) {
   const qc = useQueryClient();
   const [d, setD] = useState<Partial<Fornecedor>>({ ...f, cnpj: formatarCNPJ(f.cnpj) });
+  const [pg, setPg] = useState<PagamentoFornecedor | null>(pagamento);
+  const campoPg = (k: Exclude<keyof PagamentoFornecedor, 'prazo_apos_recebimento'>) => ({ value: pg?.[k] ?? '', onChange: (e: { target: { value: string } }) => setPg((x) => x && { ...x, [k]: e.target.value }) });
   const [erro, setErro] = useState('');
   const [infoCnpj, setInfoCnpj] = useState('');
   const [consultando, setConsultando] = useState(false);
@@ -100,9 +109,19 @@ function EditarFornecedor({ f, todos, onFechar }: { f: Partial<Fornecedor>; todo
     if (dig && !cnpjValido(dig)) return setErro('CNPJ inválido.');
     try {
       const { id, nome, razao_social, endereco, cidade, contato, telefone, email, categorias, condicao_pagamento, observacoes, ativo } = d;
-      await salvarFornecedor({ id, nome: nome!.trim(), razao_social: razao_social ?? '', cnpj: dig ? formatarCNPJ(dig) : '', endereco: endereco ?? '', cidade: cidade ?? '', contato: contato ?? '', telefone: telefone ?? '', email: email ?? '', categorias: categorias ?? '', condicao_pagamento: condicao_pagamento ?? 'a_combinar', observacoes: observacoes ?? '', ativo: ativo ?? true });
+      const idSalvo = await salvarFornecedor({ id, nome: nome!.trim(), razao_social: razao_social ?? '', cnpj: dig ? formatarCNPJ(dig) : '', endereco: endereco ?? '', cidade: cidade ?? '', contato: contato ?? '', telefone: telefone ?? '', email: email ?? '', categorias: categorias ?? '', condicao_pagamento: condicao_pagamento ?? 'a_combinar', observacoes: observacoes ?? '', ativo: ativo ?? true });
+      if (pg && (JSON.stringify(pg) !== JSON.stringify(pagamento))) {
+        try { await salvarPagamentoFornecedor(idSalvo, { ...pg, prazo_apos_recebimento: Number(pg.prazo_apos_recebimento) || 0 }); }
+        catch (e) {
+          await qc.invalidateQueries({ queryKey: ['compras', 'fornecedores'] });
+          // O fornecedor já foi gravado: fica em modo edição para tentar de novo só os dados de pagamento.
+          setD((x) => ({ ...x, id: idSalvo }));
+          return setErro(`Fornecedor salvo, mas os dados de pagamento não: ${mensagemErro(e)}`);
+        }
+      }
       await qc.invalidateQueries({ queryKey: ['compras', 'fornecedores'] });
       await qc.invalidateQueries({ queryKey: ['bib', 'fornecedores'] });
+      await qc.invalidateQueries({ queryKey: ['financeiro', 'fornecedores_pagamento'] });
       onFechar();
     } catch (e) { setErro(mensagemErro(e).includes('fornecedores_nome_key') ? 'Já existe um fornecedor com este nome.' : mensagemErro(e)); }
   }
@@ -131,6 +150,25 @@ function EditarFornecedor({ f, todos, onFechar }: { f: Partial<Fornecedor>; todo
             {Object.entries(ROTULO_PAGAMENTO).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
           </Selecao>
         </Campo>
+        {pg && (
+          <fieldset className="space-y-3 rounded-xl p-3 ring-1 ring-borda">
+            <legend className="px-1 text-sm font-semibold">Dados de pagamento <span className="font-normal text-suave">(vão para o Financeiro junto com a OC)</span></legend>
+            <Campo rotulo="Chave PIX"><Entrada {...campoPg('chave_pix')} placeholder="CNPJ, e-mail, telefone ou chave aleatória" /></Campo>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Campo rotulo="Banco"><Entrada {...campoPg('banco')} /></Campo>
+              <Campo rotulo="Agência"><Entrada {...campoPg('agencia')} /></Campo>
+              <Campo rotulo="Conta"><Entrada {...campoPg('conta')} /></Campo>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Campo rotulo="Titular"><Entrada {...campoPg('titular')} placeholder={d.razao_social || ''} /></Campo>
+              <Campo rotulo="CPF/CNPJ do titular"><Entrada {...campoPg('documento_titular')} placeholder={d.cnpj || ''} /></Campo>
+            </div>
+            <Campo rotulo="Prazo para pagar depois da entrega (dias)">
+              <CampoInteiro valor={pg.prazo_apos_recebimento} min={0} max={365} onChange={(v) => setPg({ ...pg, prazo_apos_recebimento: v ?? 0 })} sufixo="dias" />
+            </Campo>
+            <p className="text-xs text-suave">O prazo vale quando a OC é "após o recebimento" sem dias informados.</p>
+          </fieldset>
+        )}
         <Campo rotulo="Observações"><AreaTexto rows={2} value={d.observacoes ?? ''} onChange={(e) => set('observacoes', e.target.value)} /></Campo>
         {f.id && <Caixa marcado={d.ativo ?? true} onChange={(v) => set('ativo', v)}>Ativo (inativo não aparece em novas cotações)</Caixa>}
         {erro && <Aviso>{erro}</Aviso>}

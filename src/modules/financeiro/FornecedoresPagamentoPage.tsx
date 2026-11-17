@@ -10,7 +10,7 @@ import { ROTULO_CONDICAO } from './regras';
 const VAZIO = { banco: '', agencia: '', conta: '', titular: '', documento_titular: '', chave_pix: '', prazo_apos_recebimento: 28, observacoes: '' };
 
 // Financeiro → Dados de pagamento (decisão 105): banco, PIX e prazo depois da entrega de cada fornecedor.
-// O cadastro do fornecedor continua em Compras; esta parte só o Financeiro vê.
+// O cadastro do fornecedor continua em Compras; desde a decisão 137 Compras também preenche estes dados no cadastro.
 export function FornecedoresPagamentoPage() {
   const { pode } = useAuth();
   const { data: fornecedores = [], isLoading } = useQuery({ queryKey: ['financeiro', 'fornecedores'], queryFn: listarFornecedores });
