@@ -81,7 +81,7 @@ export function App() {
   }
   if (carregando) return null;
   if (linkCodigo) return <DefinirSenhaPage convite={linkCodigo.tipo === 'invite'} email={session?.user.email ?? ''} codigo={linkCodigo} onPronto={() => setLinkCodigo(null)} />;
-  if (!session) return <LoginPage erroLink={linkAuth.erro} />;
+  if (!session) return <LoginPage erroLink={linkAuth.erro} recado={pedidoSolidAuto ? 'Entre no ERP para liberar o acesso do SolidAuto. Depois do login, é só confirmar.' : undefined} />;
   if (pedidoSolidAuto && !definirSenha && !session.user.user_metadata?.trocar_senha) {
     return <SolidAutoLoginPage pedido={pedidoSolidAuto} onFim={() => { setPedidoSolidAuto(null); history.replaceState(null, '', window.location.pathname); }} />;
   }

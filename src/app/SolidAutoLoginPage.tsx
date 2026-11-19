@@ -16,8 +16,14 @@ export function SolidAutoLoginPage({ pedido, onFim }: { pedido: PedidoSolidAuto;
   async function entrar() {
     setErro('');
     setEnviando(true);
+    // A sessão guardada no navegador pode ter sido encerrada (ex.: saiu em outra aba ou outro computador): o ERP
+    // continua abrindo até o token vencer, mas o Auth já não a reconhece. Nesse caso pede o login de novo; o pedido
+    // do SolidAuto fica guardado na aba e esta tela volta depois do login.
+    const { error: semSessao } = await supabase.auth.getUser();
+    if (semSessao) return sessaoEncerrada();
     const { data, error } = await supabase.functions.invoke('solidauto-login', { body: {} });
     setEnviando(false);
+    if (error && 'context' in error && (error.context as Response).status === 401) return sessaoEncerrada();
     const codigo = (data as { token_hash?: string } | null)?.token_hash;
     if (error || !codigo) {
       let msg = (data as { erro?: string } | null)?.erro ?? '';
@@ -27,6 +33,11 @@ export function SolidAutoLoginPage({ pedido, onFim }: { pedido: PedidoSolidAuto;
     guardarPedidoSolidAuto(null);
     setPronto(true);
     window.location.href = retornoSolidAuto(pedido, codigo);
+  }
+
+  async function sessaoEncerrada() {
+    guardarPedidoSolidAuto(pedido);
+    await supabase.auth.signOut({ scope: 'local' });
   }
 
   function cancelar() {
