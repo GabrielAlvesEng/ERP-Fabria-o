@@ -295,3 +295,4 @@
 
 ## 2026-11-19 (Compras)
 - **Decisão 145:** atender item do À comprar pelo estoque do Almoxarifado (venda interna): disponível por item, "Atender pelo estoque" com quantidade (parcial divide o item), reserva imediata com custo da última compra, seção "Atendidos pelo estoque" com Desfazer; no Almoxarifado, reserva "Do estoque" em Recebimentos (a entrega dá baixa no saldo) e reservado no Estoque. Migration 92. Typecheck, 266 testes e build ok; telas testadas com dados simulados.
+- **Decisão 146:** pacote de cotação com itens e orçamentos numa tabela só (item fixo à esquerda, um fornecedor por coluna, rolagem lateral). Sem migration. Typecheck, testes e build ok; tela testada com dados simulados (6 fornecedores).

@@ -119,19 +119,19 @@ export function PacotePage() {
         </Campo>
       ) : pacote.observacoes && <p className="whitespace-pre-wrap text-sm text-suave">{pacote.observacoes}</p>}
 
-      <Secao titulo={`Itens (${ativos.length})`} acoes={podeCotar && <Link to="/compras"><Botao tamanho="sm" variante="secundario"><Plus size={14} /> Adicionar itens do À comprar</Botao></Link>}>
-        {itens.length === 0 ? <Vazio>Nenhum item neste pacote.</Vazio> : <ItensPacote itens={itens} podeCotar={podeCotar} retirar={(i) => agir(() => retirarDoPacote(pacote.id, [i.id]))} />}
-      </Secao>
-
-      <Secao titulo={`Orçamentos e comparação (${cotacoes.length})`} acoes={podeCotar && aComprar.length > 0 && (
-        <Botao tamanho="sm" variante="secundario" onClick={() => setModal({ cotacao: null })}><Plus size={14} /> Orçamento de fornecedor</Botao>
-      )}>
-        {cotacoes.length === 0 ? (
-          <Vazio>{aberto ? 'Gere o PDF, mande aos fornecedores e lance aqui o orçamento de cada um para comparar.' : 'Nenhum orçamento lançado.'}</Vazio>
-        ) : comparar.length === 0 ? <Vazio>Nenhum item à comprar neste pacote.</Vazio> : (
-          <Comparacao itens={comparar} cotacoes={cotacoes} podeCotar={podeCotar} agir={agir} pedidos={pedidos}
-            editar={(c) => setModal({ cotacao: c })} gerar={(c) => setModal({ gerar: c })} importar={(c) => setModal({ importar: c })}
-            pdf={(c) => imprimirPedidoCotacao(pacote, ativos, fornecedores.find((f) => f.id === c.fornecedor_id))} />
+      {/* Decisão 146: itens e orçamentos numa tabela só. O item fica fixo à esquerda e cada fornecedor é uma coluna, com rolagem lateral. */}
+      <Secao titulo={`Itens (${ativos.length}) e orçamentos (${cotacoes.length})`} acoes={podeCotar && <>
+        <Link to="/compras"><Botao tamanho="sm" variante="secundario"><Plus size={14} /> Adicionar itens do À comprar</Botao></Link>
+        {aComprar.length > 0 && <Botao tamanho="sm" variante="secundario" onClick={() => setModal({ cotacao: null })}><Plus size={14} /> Orçamento de fornecedor</Botao>}
+      </>}>
+        {itens.length === 0 ? <Vazio>Nenhum item neste pacote.</Vazio> : (
+          <>
+            {cotacoes.length === 0 && <p className="mb-2 text-sm text-suave">{aberto ? 'Gere o PDF, mande aos fornecedores e lance o orçamento de cada um: cada fornecedor vira uma coluna ao lado dos itens.' : 'Nenhum orçamento lançado.'}</p>}
+            <ItensECotacoes itens={itens} comparar={comparar} cotacoes={cotacoes} podeCotar={podeCotar} agir={agir} pedidos={pedidos}
+              retirar={(i) => agir(() => retirarDoPacote(pacote.id, [i.id]))}
+              editar={(c) => setModal({ cotacao: c })} gerar={(c) => setModal({ gerar: c })} importar={(c) => setModal({ importar: c })}
+              pdf={(c) => imprimirPedidoCotacao(pacote, ativos, fornecedores.find((f) => f.id === c.fornecedor_id))} />
+          </>
         )}
       </Secao>
 
@@ -170,44 +170,20 @@ export function PacotePage() {
   );
 }
 
-function ItensPacote({ itens, podeCotar, retirar }: { itens: ItemComSolicitacao[]; podeCotar: boolean; retirar: (i: ItemComSolicitacao) => void }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-sm">
-        <thead className="text-left text-xs text-suave"><tr>
-          <th className="px-2 py-2">Produto</th><th className="w-28 px-2 py-2">Categoria</th><th className="w-28 px-2 py-2 text-right">Quantidade</th>
-          <th className="w-36 px-2 py-2">Para</th><th className="w-32 px-2 py-2">Solicitação</th><th className="w-28 px-2 py-2">Situação</th><th className="w-8" />
-        </tr></thead>
-        <tbody className="divide-y divide-borda">
-          {itens.map((i) => (
-            <tr key={i.id} className={i.status === 'cancelado' ? 'opacity-50' : ''}>
-              <td className="px-2 py-1.5">{i.descricao}{i.observacoes && <span className="block text-[11px] text-suave">{i.observacoes}</span>}<Referencia link={i.referencia_link} imagem={i.referencia_imagem} /></td>
-              <td className="px-2 py-1.5 text-xs">{i.grupo}</td>
-              <td className="px-2 py-1.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString('pt-BR')} {i.unidade}</td>
-              <td className="px-2 py-1.5 text-xs">{rotuloDestino(i.compras_requisicoes)}</td>
-              <td className="px-2 py-1.5 text-xs"><Link to={`/compras/requisicoes/${i.requisicao_id}`} className="font-mono text-roxo-600 hover:underline dark:text-roxo-100">{i.compras_requisicoes.codigo}</Link></td>
-              <td className="px-2 py-1.5"><Selo cor={COR_ITEM[i.status]}>{i.status === 'a_comprar' ? 'Em cotação' : ROTULO_ITEM[i.status]}</Selo></td>
-              <td>{podeCotar && i.status === 'a_comprar' && (
-                <button type="button" title="Tirar do pacote (volta para À comprar)" onClick={() => retirar(i)} className="rounded p-1 text-suave hover:bg-pagina hover:text-texto"><Undo2 size={14} /></button>
-              )}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// Comparação item × fornecedor: menor preço por item em verde, menor total (com todos os itens) destacado. O comprador
+// Decisão 146 (une a lista de itens e a comparação da decisão 111): cada linha é o item (fixo à esquerda na rolagem lateral)
+// e cada orçamento é uma coluna com preço, IPI e total; menor preço por item em verde e menor total destacado. O comprador
 // escolhe UM fornecedor para o pacote e gera a ordem de compra dele.
-function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, pdf, importar }: {
-  itens: ItemComSolicitacao[]; cotacoes: Cotacao[]; podeCotar: boolean; agir: (f: () => Promise<unknown>) => Promise<boolean>; pedidos: Pedido[];
-  editar: (c: Cotacao) => void; gerar: (c: Cotacao) => void; pdf: (c: Cotacao) => void; importar: (c: Cotacao) => void;
+const FIXA = 'sticky left-0 z-10 bg-superficie shadow-[1px_0_0_0_rgb(var(--borda))]';
+function ItensECotacoes({ itens, comparar, cotacoes, podeCotar, agir, pedidos, retirar, editar, gerar, pdf, importar }: {
+  itens: ItemComSolicitacao[]; comparar: ItemComSolicitacao[]; cotacoes: Cotacao[]; podeCotar: boolean; agir: (f: () => Promise<unknown>) => Promise<boolean>;
+  pedidos: Pedido[]; retirar: (i: ItemComSolicitacao) => void; editar: (c: Cotacao) => void; gerar: (c: Cotacao) => void; pdf: (c: Cotacao) => void;
+  importar: (c: Cotacao) => void;
 }) {
   const cs = cotacoes.map(precosDe);
   // Nota do preço (decisão 136): ex.: convertido de barra para metro na importação do PDF.
   const notas = cotacoes.map((c) => Object.fromEntries(c.compras_cotacao_precos.filter((p) => p.observacao).map((p) => [p.item_id, p.observacao!])));
-  const its = itens.map((i) => ({ id: i.id, quantidade: Number(i.quantidade) }));
+  const its = comparar.map((i) => ({ id: i.id, quantidade: Number(i.quantidade) }));
+  const naComparacao = new Set(comparar.map((i) => i.id));
   const menores = menoresPrecos(cs, its);
   const melhor = cotacoes.length > 1 ? melhorCotacao(cs, its) : null;
   const comprouDe = new Set(pedidos.filter((p) => p.status !== 'cancelada').map((p) => p.cotacao_id));
@@ -220,14 +196,15 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, 
     ['Pagamento', (c) => <>{descreverCondicao(c.condicao_tipo, c.condicao_dias ?? [])}{c.condicao_pagamento && <span className="block text-[11px] text-suave">{c.condicao_pagamento}</span>}</>],
     ['Validade', (c) => dataBR(c.validade)],
   ];
+  const LARG_ITEM = 380;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm" style={{ minWidth: 320 + cotacoes.length * 210 }}>
+      <table className="w-full border-separate border-spacing-0 text-sm" style={{ minWidth: LARG_ITEM + cotacoes.length * 210 }}>
         <thead>
           <tr className="align-bottom text-left text-xs text-suave">
-            <th className="px-2 py-2">Item</th>
+            <th className={`${FIXA} border-b border-borda px-2 py-2`} style={{ width: LARG_ITEM, minWidth: LARG_ITEM }}>Item</th>
             {cotacoes.map((c) => (
-              <th key={c.id} className={`w-[210px] px-2 py-2 ${melhor === c.id ? 'bg-petroleo-50 dark:bg-petroleo-600/20' : ''}`}>
+              <th key={c.id} className={`w-[210px] min-w-[210px] border-b border-borda px-2 py-2 ${melhor === c.id ? 'bg-petroleo-50 dark:bg-petroleo-600/20' : ''}`}>
                 <div className="flex items-start justify-between gap-1">
                   <span className="text-sm font-semibold text-texto">{c.fornecedores?.nome}{melhor === c.id && <span className="block text-[11px] font-normal text-petroleo-600 dark:text-petroleo-100">menor total</span>}</span>
                   <span className="flex shrink-0">
@@ -249,53 +226,77 @@ function Comparacao({ itens, cotacoes, podeCotar, agir, pedidos, editar, gerar, 
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-borda">
-          {itens.map((i) => (
-            <tr key={i.id}>
-              <td className="px-2 py-1.5">{i.descricao}<span className="block text-xs text-suave">{Number(i.quantidade).toLocaleString('pt-BR')} {i.unidade} · {i.grupo}</span></td>
-              {cotacoes.map((c, n) => {
-                const v = cs[n].precos[i.id];
-                const ipi = cs[n].ipis[i.id] ?? 0;
-                const menor = v != null && menores[i.id] === v * (1 + ipi / 100) && cotacoes.length > 1;
-                return (
-                  <td key={c.id} className={`px-1 py-1 ${menor ? 'bg-petroleo-50 dark:bg-petroleo-600/20' : ''}`}>
-                    {podeCotar ? (
-                      <div className="flex items-center gap-1">
-                        <PrecoCelula valor={v} rotulo="Preço unitário sem IPI" onConfirmar={(x) => agir(() => salvarPreco(c.id, i.id, x, ipi))} />
-                        <PrecoCelula valor={v == null ? undefined : ipi} placeholder="IPI %" rotulo="IPI %" className="!w-14 shrink-0 text-xs"
-                          onConfirmar={(x) => (v == null ? undefined : (x ?? 0) <= 100 && agir(() => salvarPreco(c.id, i.id, v, x ?? 0)))} />
-                        <span className="text-[11px] text-suave">%</span>
-                      </div>
-                    ) : <span className="block px-2 text-right tabular-nums">{v == null ? '—' : moeda(v)}{ipi > 0 && <span className="text-xs text-suave"> + {ipi.toLocaleString('pt-BR')}%</span>}</span>}
-                    {v != null && <span className="block px-2 text-right text-[11px] text-suave tabular-nums">{moeda(valorComIpi(Number(i.quantidade), v, ipi))}{ipi > 0 && ` com IPI ${ipi.toLocaleString('pt-BR')}%`}</span>}
-                    {v != null && notas[n][i.id] && (
-                      <span title={notas[n][i.id]} className="flex items-start justify-end gap-1 px-2 text-right text-[11px] font-medium text-amber-600">
-                        <AlertTriangle size={11} className="mt-px shrink-0" />{notas[n][i.id].replace(/\. Confira\.$/, '')}
+        <tbody>
+          {itens.map((i) => {
+            const compara = naComparacao.has(i.id);
+            return (
+              <tr key={i.id} className={i.status === 'cancelado' ? 'opacity-50' : ''}>
+                <td className={`${FIXA} border-b border-borda px-2 py-1.5 align-top`}>
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium">{i.descricao}</span>
+                      {i.observacoes && <span className="block text-[11px] text-suave">{i.observacoes}</span>}
+                      <Referencia link={i.referencia_link} imagem={i.referencia_imagem} />
+                      <span className="block text-xs text-suave">
+                        <b className="font-medium text-texto tabular-nums">{Number(i.quantidade).toLocaleString('pt-BR')} {i.unidade}</b> · {i.grupo} · {rotuloDestino(i.compras_requisicoes)} ·{' '}
+                        <Link to={`/compras/requisicoes/${i.requisicao_id}`} className="whitespace-nowrap font-mono text-roxo-600 hover:underline dark:text-roxo-100">{i.compras_requisicoes.codigo}</Link>
                       </span>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Selo cor={COR_ITEM[i.status]}>{i.status === 'a_comprar' ? 'Em cotação' : ROTULO_ITEM[i.status]}</Selo>
+                      {podeCotar && i.status === 'a_comprar' && (
+                        <button type="button" title="Tirar do pacote (volta para À comprar)" aria-label="Tirar do pacote" onClick={() => retirar(i)} className="rounded p-1 text-suave hover:bg-pagina hover:text-texto"><Undo2 size={14} /></button>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                {cotacoes.map((c, n) => {
+                  if (!compara) return <td key={c.id} className="border-b border-borda" />;
+                  const v = cs[n].precos[i.id];
+                  const ipi = cs[n].ipis[i.id] ?? 0;
+                  const menor = v != null && menores[i.id] === v * (1 + ipi / 100) && cotacoes.length > 1;
+                  return (
+                    <td key={c.id} className={`border-b border-borda px-1 py-1 align-top ${menor ? 'bg-petroleo-50 dark:bg-petroleo-600/20' : ''}`}>
+                      {podeCotar ? (
+                        <div className="flex items-center gap-1">
+                          <PrecoCelula valor={v} rotulo="Preço unitário sem IPI" onConfirmar={(x) => agir(() => salvarPreco(c.id, i.id, x, ipi))} />
+                          <PrecoCelula valor={v == null ? undefined : ipi} placeholder="IPI %" rotulo="IPI %" className="!w-14 shrink-0 text-xs"
+                            onConfirmar={(x) => (v == null ? undefined : (x ?? 0) <= 100 && agir(() => salvarPreco(c.id, i.id, v, x ?? 0)))} />
+                          <span className="text-[11px] text-suave">%</span>
+                        </div>
+                      ) : <span className="block px-2 text-right tabular-nums">{v == null ? '—' : moeda(v)}{ipi > 0 && <span className="text-xs text-suave"> + {ipi.toLocaleString('pt-BR')}%</span>}</span>}
+                      {v != null && <span className="block px-2 text-right text-[11px] text-suave tabular-nums">{moeda(valorComIpi(Number(i.quantidade), v, ipi))}{ipi > 0 && ` com IPI ${ipi.toLocaleString('pt-BR')}%`}</span>}
+                      {v != null && notas[n][i.id] && (
+                        <span title={notas[n][i.id]} className="flex items-start justify-end gap-1 px-2 text-right text-[11px] font-medium text-amber-600">
+                          <AlertTriangle size={11} className="mt-px shrink-0" />{notas[n][i.id].replace(/\. Confira\.$/, '')}
+                        </span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
-        <tfoot className="text-sm">
-          {linhas.map(([rot, f]) => (
-            <tr key={rot} className="border-t border-borda">
-              <td className="px-2 py-1.5 text-xs font-medium text-suave">{rot}</td>
-              {cotacoes.map((c, n) => <td key={c.id} className="px-2 py-1.5 text-right tabular-nums">{f(c, n)}</td>)}
-            </tr>
-          ))}
-          <tr className="border-t border-borda">
-            <td className="px-2 py-2 text-xs text-suave">{podeCotar && 'Comprar o pacote deste fornecedor'}</td>
-            {cotacoes.map((c, n) => (
-              <td key={c.id} className="px-2 py-2 text-right">
-                {comprouDe.has(c.id) ? <Selo cor="verde">Ordem gerada</Selo>
-                  : podeCotar && <Botao tamanho="sm" variante={melhor === c.id ? 'primario' : 'secundario'} disabled={totalCotacao(cs[n], its).faltam === its.length} onClick={() => gerar(c)}><Send size={13} /> Gerar OC</Botao>}
-              </td>
+        {cotacoes.length > 0 && its.length > 0 && (
+          <tfoot className="text-sm">
+            {linhas.map(([rot, f]) => (
+              <tr key={rot}>
+                <td className={`${FIXA} border-b border-borda px-2 py-1.5 text-right text-xs font-medium text-suave`}>{rot}</td>
+                {cotacoes.map((c, n) => <td key={c.id} className="border-b border-borda px-2 py-1.5 text-right tabular-nums">{f(c, n)}</td>)}
+              </tr>
             ))}
-          </tr>
-        </tfoot>
+            <tr>
+              <td className={`${FIXA} px-2 py-2 text-right text-xs text-suave`}>{podeCotar && 'Comprar o pacote deste fornecedor'}</td>
+              {cotacoes.map((c, n) => (
+                <td key={c.id} className="px-2 py-2 text-right">
+                  {comprouDe.has(c.id) ? <Selo cor="verde">Ordem gerada</Selo>
+                    : podeCotar && <Botao tamanho="sm" variante={melhor === c.id ? 'primario' : 'secundario'} disabled={totalCotacao(cs[n], its).faltam === its.length} onClick={() => gerar(c)}><Send size={13} /> Gerar OC</Botao>}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
