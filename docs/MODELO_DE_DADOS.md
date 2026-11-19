@@ -251,3 +251,8 @@ Fonte de verdade: `supabase/migrations/`. Este resumo acompanha as migrations.
 - `compromisso_participantes` (compromisso_id, usuario_id): `visto_em` (número de novos no menu), `removido_em` (saiu ou foi tirado). Quem criou sempre está.
 - Leitura direta só de quem participa (RLS); ninguém grava direto. Funções: `agenda_listar(usuario, de, ate)` (sem detalhes quando eu não participo), `compromisso_salvar` (criar/mudar, com modo todos/este/seguintes), `compromisso_cancelar`, `compromisso_sair`, `agenda_marcar_vistos`. As ocorrências da repetição são calculadas na tela.
 - `eng_lista_itens.unidade`: só "un" em item novo ou unidade trocada (decisão 140, migration 90; antes un, mt, kg ou mm pela decisão 127, migration 83). A cópia para nova revisão mantém unidades antigas.
+
+## Atender pelo estoque (`20261119000092_compras_atender_estoque.sql`, decisão 145)
+- `compras_requisicao_itens.status` ganha `estoque` (atendido pelo estoque).
+- `alm_reservas` ganha `alm_item_id` (reserva tirada do saldo de um produto do estoque; nulo nas reservas vindas de OC), `compra_item_id`, `custo_unit` (custo da última compra), `movimento_id` (a retirada feita na entrega) e `cancelado_motivo`; status ganha `cancelado`.
+- Funções: `alm_reservado(item)`, `alm_custo_ultima_compra(item)`, `compras_estoque_disponivel()` (saldo, reservado, disponível e custo), `compras_atender_estoque(item, estoque, quantidade)`, `compras_desfazer_estoque(item, motivo)`, `compras_atendidos_estoque()`. `alm_entregar_reserva` passa a dar baixa no saldo quando a reserva é do estoque. Em `eng_enviar_lista`, `engenharia_solicitar_compra` e `engenharia_solicitacoes`, `estoque` conta como comprado.

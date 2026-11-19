@@ -292,3 +292,6 @@
 
 ## 2026-11-17 (Engenharia)
 - **Decisão 143:** liberar para fabricação e finalizar projeto sem exigir conjuntos Liberados (árvore pausada). Migration 91 aplicada e testada. Typecheck, 263 testes e build ok.
+
+## 2026-11-19 (Compras)
+- **Decisão 145:** atender item do À comprar pelo estoque do Almoxarifado (venda interna): disponível por item, "Atender pelo estoque" com quantidade (parcial divide o item), reserva imediata com custo da última compra, seção "Atendidos pelo estoque" com Desfazer; no Almoxarifado, reserva "Do estoque" em Recebimentos (a entrega dá baixa no saldo) e reservado no Estoque. Migration 92. Typecheck, 266 testes e build ok; telas testadas com dados simulados.

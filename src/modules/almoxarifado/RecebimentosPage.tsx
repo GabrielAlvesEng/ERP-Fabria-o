@@ -59,12 +59,13 @@ export function RecebimentosPage() {
         </div>
       )}
 
-      <h2 className="mb-2 mt-6 font-semibold">Reservado para projetos</h2>
+      <h2 className="mb-1 mt-6 font-semibold">Reservado para projetos</h2>
+      <p className="mb-2 text-xs text-suave">O que veio de uma OC já está separado. O que diz "Do estoque" foi reservado por Compras do saldo do estoque: separe e entregue, e aí sai do saldo.</p>
       {abertas.length === 0 ? <Vazio>Nenhum material reservado.</Vazio> : (
         <div className="overflow-x-auto rounded-xl ring-1 ring-borda">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-pagina text-left text-xs text-suave"><tr>
-              <th className="px-3 py-2">Projeto</th><th className="px-3 py-2">Material</th><th className="px-3 py-2 text-right">Qtd.</th><th className="px-3 py-2">OC</th><th className="px-3 py-2" />
+              <th className="px-3 py-2">Projeto</th><th className="px-3 py-2">Material</th><th className="px-3 py-2 text-right">Qtd.</th><th className="px-3 py-2">Origem</th><th className="px-3 py-2" />
             </tr></thead>
             <tbody className="divide-y divide-borda">
               {abertas.map((r) => (
@@ -72,7 +73,7 @@ export function RecebimentosPage() {
                   <td className="px-3 py-2">{r.projeto_codigo} <span className="text-suave">{r.projeto_titulo}</span></td>
                   <td className="px-3 py-2">{r.descricao}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{qtd(r.quantidade)} <span className="text-xs text-suave">{r.unidade}</span></td>
-                  <td className="px-3 py-2 font-mono text-xs">{r.pedido_codigo}</td>
+                  <td className="px-3 py-2 text-xs">{r.alm_item_id ? <Selo cor="verde">Do estoque</Selo> : <span className="font-mono">{r.pedido_codigo}</span>}</td>
                   <td className="px-3 py-2 text-right">{editar && <Botao tamanho="sm" variante="secundario" onClick={() => setEntregar(r)}>Entregar</Botao>}</td>
                 </tr>
               ))}
@@ -178,7 +179,8 @@ function EntregarReservaModal({ reserva, onFechar }: { reserva: Reserva; onFecha
   return (
     <Modal aberto titulo="Entregar material do projeto" onFechar={onFechar}>
       <div className="space-y-3">
-        <p className="text-sm">{qtd(reserva.quantidade)} {reserva.unidade} de {reserva.descricao} · {reserva.projeto_codigo}</p>
+        <p className="text-sm">{qtd(reserva.quantidade)} {reserva.unidade} de {reserva.descricao} · {reserva.projeto_codigo || reserva.projeto_titulo}</p>
+        {reserva.alm_item_id && <Aviso tipo="info">Reserva do estoque: ao entregar, {qtd(reserva.quantidade)} {reserva.unidade} saem do saldo do produto.</Aviso>}
         <Campo rotulo="Entregue para"><Entrada value={para} onChange={(e) => setPara(e.target.value)} placeholder="Ex.: Preparação (corte a laser), Kleber" autoFocus /></Campo>
         {erro && <Aviso>{erro}</Aviso>}
         <div className="flex justify-end gap-2"><Botao variante="secundario" onClick={onFechar}>Cancelar</Botao><Botao onClick={salvar} disabled={para.trim().length < 2}>Entregar</Botao></div>

@@ -297,3 +297,29 @@ export const listarEventos = async (dono: { requisicao: string } | { pacote: str
 // ---------- Engenharia (só o necessário, por funções do banco) ----------
 export const listarProjetos = async (): Promise<ProjetoCompras[]> => ok(await supabase.rpc('compras_projetos'));
 export const pecasDoProjeto = async (projeto: string): Promise<PecaProjeto[]> => ok(await supabase.rpc('compras_pecas_projeto_v2', { p_projeto: projeto }));
+
+// ---------- Atender pelo estoque do Almoxarifado (decisão 145) ----------
+export interface EstoqueDisponivel {
+  id: string; bib_tipo: BibTipo; bib_id: string; grupo: string; descricao: string; unidade: string;
+  saldo: number; reservado: number; disponivel: number; local: string; custo: number;
+}
+export interface AtendidoEstoque {
+  item_id: string; requisicao_id: string; requisicao_codigo: string; requisicao_titulo: string; destino: string; descricao: string;
+  quantidade: number; unidade: string; estoque_descricao: string; custo_unit: number | null; reserva_status: 'reservado' | 'entregue';
+  entregue_para: string; entregue_em: string | null; criado_em: string;
+}
+const num = (v: unknown) => Number(v ?? 0);
+export const listarEstoqueDisponivel = async (): Promise<EstoqueDisponivel[]> =>
+  (ok(await supabase.rpc('compras_estoque_disponivel')) as EstoqueDisponivel[]).map((e) => ({
+    ...e, saldo: num(e.saldo), reservado: num(e.reservado), disponivel: num(e.disponivel), custo: num(e.custo),
+  }));
+export const listarAtendidosEstoque = async (): Promise<AtendidoEstoque[]> =>
+  (ok(await supabase.rpc('compras_atendidos_estoque')) as AtendidoEstoque[]).map((a) => ({
+    ...a, quantidade: num(a.quantidade), custo_unit: a.custo_unit == null ? null : num(a.custo_unit),
+  }));
+export async function atenderPeloEstoque(item: string, estoque: string, quantidade: number): Promise<string> {
+  return ok(await supabase.rpc('compras_atender_estoque', { p_item: item, p_estoque: estoque, p_quantidade: quantidade }));
+}
+export async function desfazerAtendimentoEstoque(item: string, motivo: string): Promise<void> {
+  ok(await supabase.rpc('compras_desfazer_estoque', { p_item: item, p_motivo: motivo }));
+}

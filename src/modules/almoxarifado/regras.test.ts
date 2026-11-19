@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { combina, lerQuantidade, qtd, situacaoEstoque, sugestaoCompra, unidadePadrao } from './regras';
+import { combina, reservadoPorItem, lerQuantidade, qtd, situacaoEstoque, sugestaoCompra, unidadePadrao } from './regras';
 
 describe('Almoxarifado: regras', () => {
   it('situação do estoque', () => {
@@ -28,5 +28,19 @@ describe('Almoxarifado: regras', () => {
     expect(unidadePadrao('item', 'cx')).toBe('cx');
     expect(combina('Disco de corte 7" Inox', 'corte disco')).toBe(true);
     expect(combina('Eletrodo 6013', 'disco')).toBe(false);
+  });
+});
+
+describe('reservadoPorItem (decisão 145)', () => {
+  it('soma só as reservas do estoque ainda não entregues', () => {
+    const m = reservadoPorItem([
+      { alm_item_id: 'a', status: 'reservado', quantidade: 3 },
+      { alm_item_id: 'a', status: 'reservado', quantidade: '2.5' },
+      { alm_item_id: 'a', status: 'entregue', quantidade: 10 },
+      { alm_item_id: 'a', status: 'cancelado', quantidade: 10 },
+      { alm_item_id: null, status: 'reservado', quantidade: 7 },
+    ]);
+    expect(m.get('a')).toBe(5.5);
+    expect(m.size).toBe(1);
   });
 });

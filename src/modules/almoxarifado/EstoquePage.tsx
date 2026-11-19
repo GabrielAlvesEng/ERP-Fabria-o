@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus, Search } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { Botao, Cabecalho, Entrada, EsqueletoTabela, Selecao, Selo, Vazio } from '@/shared/ui';
-import { listarEstoque, type ItemEstoque } from './api';
-import { ROTULO_SITUACAO, combina, qtd, situacaoEstoque, type SituacaoEstoque } from './regras';
+import { listarEstoque, listarReservas, type ItemEstoque } from './api';
+import { ROTULO_SITUACAO, combina, qtd, reservadoPorItem, situacaoEstoque, type SituacaoEstoque } from './regras';
 import { IncluirItemModal, ItemModal } from './ItemModal';
 import { SolicitarCompraBotao } from './SolicitarCompra';
 
@@ -12,6 +12,8 @@ import { SolicitarCompraBotao } from './SolicitarCompra';
 export function EstoquePage() {
   const { pode } = useAuth();
   const { data: itens = [], isLoading } = useQuery({ queryKey: ['almoxarifado', 'estoque'], queryFn: listarEstoque });
+  const { data: reservas = [] } = useQuery({ queryKey: ['almoxarifado', 'reservas'], queryFn: listarReservas });
+  const reservado = reservadoPorItem(reservas);
   const [busca, setBusca] = useState('');
   const [grupo, setGrupo] = useState('');
   const [situacao, setSituacao] = useState<SituacaoEstoque | ''>('');
@@ -60,7 +62,8 @@ export function EstoquePage() {
                     <td className="px-3 py-2 font-medium">{i.descricao}{!i.ativo && <span className="ml-2 text-xs text-suave">(desativado)</span>}</td>
                     <td className="px-3 py-2 text-suave">{i.grupo}</td>
                     <td className="px-3 py-2">{i.local || '—'}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{qtd(i.saldo)} <span className="text-xs text-suave">{i.unidade}</span></td>
+                    <td className="px-3 py-2 text-right tabular-nums">{qtd(i.saldo)} <span className="text-xs text-suave">{i.unidade}</span>
+                      {reservado.get(i.id) ? <span className="block text-[11px] text-amber-600 dark:text-amber-300">{qtd(reservado.get(i.id))} reservado</span> : null}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-suave">{i.minimo ? qtd(i.minimo) : '—'}</td>
                     <td className="px-3 py-2"><Selo cor={ROTULO_SITUACAO[s].cor}>{ROTULO_SITUACAO[s].rotulo}</Selo></td>
                     <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>{s !== 'ok' && i.ativo && <SolicitarCompraBotao itens={[i]} />}</td>

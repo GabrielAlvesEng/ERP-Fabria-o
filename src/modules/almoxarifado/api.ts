@@ -83,9 +83,12 @@ export interface OCReceber {
   id: string; codigo: string; status: 'aguardando_entrega' | 'entregue_parcial'; previsao: string | null; emitido_em: string; fornecedor: string | null;
   requisicao_codigo: string; requisicao_titulo: string; origem: string; setor: string; projeto_codigo: string; projeto_titulo: string; itens: ItemOC[] | null;
 }
+// Reserva para projeto (ou setor): vinda de uma OC recebida (pedido_codigo) ou, na decisão 145, do próprio estoque (alm_item_id),
+// quando Compras atende um item pelo estoque. A do estoque ainda está no saldo e sai dele na entrega.
 export interface Reserva {
   id: string; projeto_codigo: string; projeto_titulo: string; descricao: string; unidade: string; quantidade: number; pedido_codigo: string;
-  status: 'reservado' | 'entregue'; entregue_para: string; entregue_em: string | null; criado_em: string;
+  status: 'reservado' | 'entregue' | 'cancelado'; entregue_para: string; entregue_em: string | null; criado_em: string;
+  alm_item_id: string | null; custo_unit: number | null;
 }
 export interface Recebimento {
   id: string; pedido_codigo: string; fornecedor_nome: string; data: string; observacao: string; criado_em: string;

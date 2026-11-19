@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { valorComIpi, barraPadrao, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, comprimentoDoItem, comprimentoNaDescricao, converterPreco, pesoDoItem, precoPorUnidade, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
+import { valorComIpi, estoqueParaItem, barraPadrao, agruparAComprar, agruparLista, casarProduto, produtosParecidos, comImpostos, descreverCondicao, comprimentoDoItem, comprimentoNaDescricao, converterPreco, pesoDoItem, precoPorUnidade, ligarLinhas, mesmaUnidade, lerDias, unidadeDoProduto, melhorCotacao, menoresPrecos, pedidoAtrasado, rotuloDestino, totalCotacao, type PecaProjeto } from './regras';
 
 const peca = (p: Partial<PecaProjeto>): PecaProjeto => ({
   descricao: '', cod_op: [], cod_mat: null, material: null, espessura: null, largura: null, comprimento: null, peso_unit: null,
@@ -202,5 +202,25 @@ describe('Tudo por unidade (decisão 140)', () => {
     expect(precoPorUnidade({ unidade_original: 'KG', quantidade: 0, valor_unit: 25 }, item)?.valor).toBe(4246.5);
     expect(precoPorUnidade({ unidade_original: 'KG', quantidade: 340, valor_unit: 25 }, item)?.valor).toBe(4250);
     expect(precoPorUnidade({ unidade_original: 'KG', quantidade: 0, valor_unit: 25 }, { ...item, descricao: 'Rolamento 6205' })).toBeNull();
+  });
+});
+
+describe('estoqueParaItem (decisão 145)', () => {
+  const est = [
+    { id: 'a', bib_tipo: 'item', bib_id: 'p1', grupo: 'Fixadores', descricao: 'Parafuso sextavado M10x30 inox', disponivel: 40 },
+    { id: 'b', bib_tipo: 'item', bib_id: 'p2', grupo: 'Fixadores', descricao: 'Parafuso sextavado M10x40 inox', disponivel: 0 },
+    { id: 'c', bib_tipo: 'item', bib_id: 'p3', grupo: 'Fixadores', descricao: 'Parafuso sextavado M10x30 zincado', disponivel: 12 },
+    { id: 'd', bib_tipo: 'item', bib_id: 'p4', grupo: 'Consumíveis', descricao: 'Disco de corte 7"', disponivel: 5 },
+  ];
+  it('acha o mesmo produto do cadastro e os parecidos com saldo', () => {
+    const r = estoqueParaItem({ bib_tipo: 'item', bib_id: 'p1', descricao: 'Parafuso sextavado M10x30 inox', grupo: 'Fixadores' }, est);
+    expect(r.mesmo?.id).toBe('a');
+    expect(r.parecidos.map((e) => e.id)).toEqual(['c']);
+  });
+  it('sem cadastro, só por descrição; ignora o que não tem disponível', () => {
+    const r = estoqueParaItem({ bib_tipo: null, bib_id: null, descricao: 'parafuso sextavado m10x40 inox', grupo: 'Fixadores' }, est);
+    expect(r.mesmo).toBeUndefined();
+    expect(r.parecidos.map((e) => e.id)).not.toContain('b');
+    expect(r.parecidos.map((e) => e.id)).toContain('a');
   });
 });

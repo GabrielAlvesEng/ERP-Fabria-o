@@ -12,7 +12,7 @@ import { EMPRESA_PADRAO } from '@/modules/vendas/documentos/modelo';
 
 // Peças comuns das telas de Compras (solicitação, pacote de cotação e ordens).
 export type Cor = 'cinza' | 'roxo' | 'verde' | 'vermelho' | 'amarelo' | 'azul';
-export const COR_ITEM: Record<StatusItem, Cor> = { a_comprar: 'cinza', comprado: 'roxo', recebido: 'verde', cancelado: 'vermelho' };
+export const COR_ITEM: Record<StatusItem, Cor> = { a_comprar: 'cinza', comprado: 'roxo', recebido: 'verde', cancelado: 'vermelho', estoque: 'verde' };
 // Link de compra e imagem que a Engenharia deixa no item para o comprador.
 export function Referencia({ link, imagem }: { link?: string; imagem?: string | null }) {
   const { data: url } = useQuery({ queryKey: ['compras', 'ref-img', imagem], queryFn: () => urlImagemReferencia(imagem!), enabled: !!imagem, staleTime: 50 * 60 * 1000 });

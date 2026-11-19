@@ -4,7 +4,7 @@ import type { CodOp } from '@/modules/engenharia/regras';
 // Regras do módulo Compras (docs/PLANEJAMENTO_COMPRAS.md e PLANEJAMENTO_COMPRAS_V2.md, decisões 101 e 103).
 
 export type StatusRequisicao = 'aberta' | 'concluida' | 'cancelada';
-export type StatusItem = 'a_comprar' | 'comprado' | 'recebido' | 'cancelado';
+export type StatusItem = 'a_comprar' | 'comprado' | 'recebido' | 'cancelado' | 'estoque';
 export type StatusPedido = 'aguardando_entrega' | 'entregue_parcial' | 'entregue' | 'cancelada';
 export type Origem = 'engenharia' | 'almoxarifado' | 'compras';
 export type CondicaoTipo = 'antecipado' | 'apos_recebimento' | 'parcelado' | 'a_combinar';
@@ -63,7 +63,7 @@ export type StatusPacote = 'aberto' | 'comprado' | 'cancelado';
 export const ROTULO_PACOTE: Record<StatusPacote, string> = { aberto: 'Em cotação', comprado: 'Comprado', cancelado: 'Cancelado' };
 
 export const ROTULO_STATUS: Record<StatusRequisicao, string> = { aberta: 'Aberta', concluida: 'Concluída', cancelada: 'Cancelada' };
-export const ROTULO_ITEM: Record<StatusItem, string> = { a_comprar: 'À comprar', comprado: 'Comprado', recebido: 'Recebido', cancelado: 'Cancelado' };
+export const ROTULO_ITEM: Record<StatusItem, string> = { a_comprar: 'À comprar', comprado: 'Comprado', recebido: 'Recebido', cancelado: 'Cancelado', estoque: 'Atendido pelo estoque' };
 export const ROTULO_PEDIDO: Record<StatusPedido, string> = { aguardando_entrega: 'Aguardando entrega', entregue_parcial: 'Entrega parcial', entregue: 'Entregue', cancelada: 'Cancelada' };
 export const ROTULO_ORIGEM: Record<Origem, string> = { engenharia: 'Engenharia', almoxarifado: 'Almoxarifado', compras: 'Compras' };
 export const ROTULO_PAGAMENTO: Record<string, string> = { antecipado: 'Antecipado', apos_recebimento: 'Após o recebimento', a_combinar: 'A combinar' };
@@ -405,4 +405,15 @@ export function precoPorUnidade(
   }
   if (calc != null) return { valor: calc, nota: `Cotado por ${u}: ${r(preco, 4)}/${u} × ${medida!.como} = ${r(calc, 4)}/un. Confira.` };
   return null;
+}
+
+// Decisão 145: produtos do estoque que podem atender o item. O mesmo produto do cadastro vem primeiro; depois os parecidos
+// pela descrição. Só entra o que tem disponível (saldo menos o já reservado).
+export function estoqueParaItem<E extends { id: string; bib_tipo: string; bib_id: string; grupo: string; descricao: string; disponivel: number }>(
+  item: { bib_tipo: string | null; bib_id: string | null; descricao: string; grupo: string }, estoque: E[],
+): { mesmo: E | undefined; parecidos: E[] } {
+  const comSaldo = estoque.filter((e) => Number(e.disponivel) > 0);
+  const mesmo = item.bib_id ? comSaldo.find((e) => e.bib_tipo === item.bib_tipo && e.bib_id === item.bib_id) : undefined;
+  const parecidos = produtosParecidos(comSaldo.filter((e) => e !== mesmo), item.descricao, item.grupo, 5);
+  return { mesmo, parecidos };
 }

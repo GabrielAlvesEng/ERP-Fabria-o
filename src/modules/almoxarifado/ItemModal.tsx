@@ -3,9 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataHoraBR, mensagemErro, moeda } from '@/shared/lib/formato';
 import { Aviso, Botao, Campo, Entrada, Modal, Selo, Vazio } from '@/shared/ui';
-import { adicionarItem, ajustarEstoque, atualizarItem, listarMovimentosItem, listarProdutos, type ItemEstoque, type Movimento } from './api';
+import { adicionarItem, ajustarEstoque, atualizarItem, listarMovimentosItem, listarProdutos, listarReservas, type ItemEstoque, type Movimento } from './api';
 import { BuscaItem } from './BuscaItem';
-import { ROTULO_MOVIMENTO, ROTULO_SITUACAO, lerQuantidade, qtd, situacaoEstoque, unidadePadrao } from './regras';
+import { ROTULO_MOVIMENTO, ROTULO_SITUACAO, lerQuantidade, qtd, reservadoPorItem, situacaoEstoque, unidadePadrao } from './regras';
 
 // Incluir no estoque um produto do cadastro único (o Almoxarifado não cria produto: decisão 104, resposta 1).
 export function IncluirItemModal({ onFechar }: { onFechar: () => void }) {
@@ -71,6 +71,8 @@ export function ItemModal({ item, onFechar }: { item: ItemEstoque; onFechar: () 
   const { pode } = useAuth();
   const editavel = pode('almoxarifado', 'editar');
   const { data: movimentos = [], isLoading } = useQuery({ queryKey: ['almoxarifado', 'movimentos', item.id], queryFn: () => listarMovimentosItem(item.id) });
+  const { data: reservas = [] } = useQuery({ queryKey: ['almoxarifado', 'reservas'], queryFn: listarReservas });
+  const reservado = reservadoPorItem(reservas).get(item.id) ?? 0;
   const [minimo, setMinimo] = useState(qtd(item.minimo));
   const [local, setLocal] = useState(item.local);
   const [contado, setContado] = useState('');
@@ -103,6 +105,7 @@ export function ItemModal({ item, onFechar }: { item: ItemEstoque; onFechar: () 
           <span className="text-2xl font-semibold tabular-nums">{qtd(item.saldo)} <span className="text-sm font-normal text-suave">{item.unidade}</span></span>
           <Selo cor={ROTULO_SITUACAO[s].cor}>{ROTULO_SITUACAO[s].rotulo}</Selo>
           <span className="text-suave">{item.grupo} · custo médio {moeda(item.custo_medio)}</span>
+          {reservado > 0 && <span className="text-amber-600 dark:text-amber-300">{qtd(reservado)} {item.unidade} reservado por Compras · disponível {qtd(Math.max(item.saldo - reservado, 0))} {item.unidade}</span>}
         </div>
         {editavel && (
           <div className="grid gap-3 rounded-xl p-3 ring-1 ring-borda sm:grid-cols-[1fr_1fr_auto] sm:items-end">

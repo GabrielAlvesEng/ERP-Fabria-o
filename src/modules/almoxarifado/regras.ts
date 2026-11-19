@@ -55,3 +55,10 @@ export function combina(texto: string, busca: string): boolean {
   const t = semAcento(texto);
   return semAcento(busca).split(/\s+/).filter(Boolean).every((p) => t.includes(p));
 }
+
+// Decisão 145: quanto do saldo de cada produto está reservado (Compras atendeu pelo estoque e ainda não foi entregue).
+export function reservadoPorItem(reservas: { alm_item_id: string | null; status: string; quantidade: number | string }[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const r of reservas) if (r.alm_item_id && r.status === 'reservado') m.set(r.alm_item_id, (m.get(r.alm_item_id) ?? 0) + Number(r.quantidade));
+  return m;
+}

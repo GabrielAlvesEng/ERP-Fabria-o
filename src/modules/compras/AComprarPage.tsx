@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PackagePlus, Plus, Search, Trash2, X } from 'lucide-react';
+import { PackagePlus, Plus, Search, Trash2, Undo2, Warehouse, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { dataBR, hojeISO, mensagemErro } from '@/shared/lib/formato';
+import { dataBR, dataHoraBR, hojeISO, mensagemErro, moeda } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Caixa, Campo, CampoCelula, CampoEscolha, CampoNumero, Entrada, EsqueletoTabela, Modal, Selecao, Selo, Vazio } from '@/shared/ui';
 import {
-  adicionarAoPacote, atualizarItem, cancelarItem, criarPacote, listarAComprar, listarProdutos, pacotesAbertos, type ItemComSolicitacao,
+  adicionarAoPacote, atenderPeloEstoque, atualizarItem, cancelarItem, criarPacote, desfazerAtendimentoEstoque, listarAComprar, listarAtendidosEstoque,
+  listarEstoqueDisponivel, listarProdutos, pacotesAbertos, type AtendidoEstoque, type EstoqueDisponivel, type ItemComSolicitacao,
 } from './api';
-import { GRUPOS, ROTULO_DESTINO, UNIDADES, agruparAComprar, destinoDe, rotuloDestino, type Destino, type GrupoItem } from './regras';
+import { GRUPOS, ROTULO_DESTINO, UNIDADES, agruparAComprar, destinoDe, estoqueParaItem, rotuloDestino, type Destino, type GrupoItem } from './regras';
 import { NovaRequisicaoModal } from './NovaRequisicaoModal';
 import { Referencia } from './comum';
 
@@ -24,20 +25,22 @@ export function AComprarPage() {
   const { data: itens = [], isLoading, error } = useQuery({ queryKey: ['compras', 'a-comprar'], queryFn: listarAComprar });
   const { data: produtos = [] } = useQuery({ queryKey: ['compras', 'produtos'], queryFn: listarProdutos });
   const { data: abertos = [] } = useQuery({ queryKey: ['compras', 'pacotes-abertos'], queryFn: pacotesAbertos });
+  const { data: estoque = [] } = useQuery({ queryKey: ['compras', 'estoque-disponivel'], queryFn: listarEstoqueDisponivel });
+  const { data: atendidos = [] } = useQuery({ queryKey: ['compras', 'atendidos-estoque'], queryFn: listarAtendidosEstoque });
   const [busca, setBusca] = useState('');
   const [destino, setDestino] = useState<Destino | ''>('');
   const [grupo, setGrupo] = useState<GrupoItem | ''>('');
   const [soUrgente, setSoUrgente] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [erro, setErro] = useState('');
-  const [modal, setModal] = useState<null | 'nova' | 'pacote' | { excluir: ItemComSolicitacao }>(null);
+  const [modal, setModal] = useState<null | 'nova' | 'pacote' | { excluir: ItemComSolicitacao } | { estoque: ItemComSolicitacao } | { desfazer: AtendidoEstoque }>(null);
   const [pacoteDestino, setPacoteDestino] = useState('');
   const podeEditar = pode('compras', 'editar');
   const hoje = hojeISO();
 
   async function agir(f: () => Promise<unknown>) {
     setErro('');
-    try { await f(); await qc.invalidateQueries({ queryKey: ['compras'] }); return true; } catch (e) { setErro(mensagemErro(e)); return false; }
+    try { await f(); await qc.invalidateQueries({ queryKey: ['compras'] }); await qc.invalidateQueries({ queryKey: ['almoxarifado'] }); return true; } catch (e) { setErro(mensagemErro(e)); return false; }
   }
 
   const termo = norm(busca.trim());
@@ -62,6 +65,7 @@ export function AComprarPage() {
     ['Urgentes', itens.filter((i) => i.compras_requisicoes.prioridade === 'urgente').length, 'text-red-600 dark:text-red-300'],
     ['Atrasados', itens.filter((i) => i.compras_requisicoes.necessario_em && i.compras_requisicoes.necessario_em < hoje).length, 'text-red-600 dark:text-red-300'],
     ['Pacotes em cotação', abertos.length],
+    ['Atender pelo estoque', itens.filter((i) => i.compras_requisicoes.origem !== 'almoxarifado' && !!estoqueParaItem(i, estoque).mesmo).length, 'text-petroleo-600 dark:text-petroleo-100'],
   ];
 
   return (
@@ -120,8 +124,8 @@ export function AComprarPage() {
                     </tr></thead>
                     <tbody className="divide-y divide-borda">
                       {g.itens.map((i) => (
-                        <LinhaItem key={i.id} i={i} produtos={produtos} hoje={hoje} podeEditar={podeEditar} marcado={sel.has(i.id)}
-                          onMarcar={(v) => marcar([i.id], v)} agir={agir} excluir={() => setModal({ excluir: i })} />
+                        <LinhaItem key={i.id} i={i} produtos={produtos} estoque={estoque} hoje={hoje} podeEditar={podeEditar} marcado={sel.has(i.id)}
+                          onMarcar={(v) => marcar([i.id], v)} agir={agir} excluir={() => setModal({ excluir: i })} atender={() => setModal({ estoque: i })} />
                       ))}
                     </tbody>
                   </table>
@@ -132,6 +136,8 @@ export function AComprarPage() {
           <datalist id="compras-unidades">{UNIDADES.map((u) => <option key={u} value={u} />)}</datalist>
         </div>
       )}
+
+      <AtendidosPeloEstoque lista={atendidos} podeEditar={podeEditar} desfazer={(a) => setModal({ desfazer: a })} />
 
       {podeEditar && selecionados.length > 0 && (
         <div className="sticky bottom-3 z-20 mt-3 rounded-xl bg-superficie/95 px-4 py-3 shadow-lg ring-1 ring-roxo-200 backdrop-blur dark:ring-roxo-700">
@@ -166,6 +172,22 @@ export function AComprarPage() {
             } catch (e) { return mensagemErro(e); }
           }} />
       )}
+      {modal && typeof modal === 'object' && 'estoque' in modal && (
+        <AtenderEstoque item={modal.estoque} estoque={estoque} onFechar={() => setModal(null)}
+          onAtender={async (estoqueId, quantidade) => {
+            try {
+              await atenderPeloEstoque(modal.estoque.id, estoqueId, quantidade);
+              await qc.invalidateQueries({ queryKey: ['compras'] }); await qc.invalidateQueries({ queryKey: ['almoxarifado'] });
+              setSel((s) => { const n = new Set(s); n.delete(modal.estoque.id); return n; });
+              setModal(null);
+              return '';
+            } catch (e) { return mensagemErro(e); }
+          }} />
+      )}
+      {modal && typeof modal === 'object' && 'desfazer' in modal && (
+        <DesfazerEstoque atendido={modal.desfazer} onFechar={() => setModal(null)}
+          onDesfazer={async (motivo) => { if (await agir(() => desfazerAtendimentoEstoque(modal.desfazer.item_id, motivo))) setModal(null); }} />
+      )}
       {modal && typeof modal === 'object' && 'excluir' in modal && (
         <ExcluirItem item={modal.excluir} onFechar={() => setModal(null)}
           onExcluir={async (motivo) => {
@@ -177,15 +199,17 @@ export function AComprarPage() {
   );
 }
 
-function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, excluir }: {
-  i: ItemComSolicitacao; produtos: Awaited<ReturnType<typeof listarProdutos>>; hoje: string; podeEditar: boolean; marcado: boolean;
-  onMarcar: (v: boolean) => void; agir: (f: () => Promise<unknown>) => Promise<boolean>; excluir: () => void;
+function LinhaItem({ i, produtos, estoque, hoje, podeEditar, marcado, onMarcar, agir, excluir, atender }: {
+  i: ItemComSolicitacao; produtos: Awaited<ReturnType<typeof listarProdutos>>; estoque: EstoqueDisponivel[]; hoje: string; podeEditar: boolean; marcado: boolean;
+  onMarcar: (v: boolean) => void; agir: (f: () => Promise<unknown>) => Promise<boolean>; excluir: () => void; atender: () => void;
 }) {
   const r = i.compras_requisicoes;
   const opcoes = useMemo(() => produtos.map((p) => ({ valor: p.descricao, detalhe: p.grupo })), [produtos]);
   const porDescricao = useMemo(() => new Map(produtos.map((p) => [p.descricao, p])), [produtos]);
   const d = destinoDe(r);
   const atrasado = !!r.necessario_em && r.necessario_em < hoje;
+  // Decisão 145: o que o estoque tem para este item. Pedido do próprio Almoxarifado (reposição) não se atende pelo estoque.
+  const noEstoque = useMemo(() => (r.origem === 'almoxarifado' ? { mesmo: undefined, parecidos: [] } : estoqueParaItem(i, estoque)), [i, estoque, r.origem]);
   // Escolher um produto do cadastro liga o item a ele (descrição, categoria e unidade do cadastro); texto livre fica sem cadastro.
   function trocarDescricao(v: string) {
     const t = v.trim();
@@ -196,10 +220,22 @@ function LinhaItem({ i, produtos, hoje, podeEditar, marcado, onMarcar, agir, exc
   return (
     <tr className={marcado ? 'bg-roxo-50/60 dark:bg-roxo-700/10' : ''}>
       {podeEditar && <td className="px-3 py-1"><Caixa marcado={marcado} onChange={onMarcar} /></td>}
-      <td className="px-1 py-1">
+      <td className="min-w-[13rem] px-1 py-1">
         {podeEditar ? <CampoEscolha valor={i.descricao} opcoes={opcoes} placeholder="Produto" onConfirmar={trocarDescricao} /> : <span className="px-2">{i.descricao}</span>}
         {i.observacoes && <span className="block px-2 text-[11px] text-suave">{i.observacoes}</span>}
         <Referencia link={i.referencia_link} imagem={i.referencia_imagem} />
+        {(noEstoque.mesmo || noEstoque.parecidos.length > 0) && (
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 text-[11px] [&>*]:whitespace-nowrap">
+            {noEstoque.mesmo
+              ? <span className="text-petroleo-600 dark:text-petroleo-100">Estoque: {Number(noEstoque.mesmo.disponivel).toLocaleString('pt-BR')} {noEstoque.mesmo.unidade} disponível</span>
+              : <span className="max-w-[14rem] truncate text-suave" title={noEstoque.parecidos[0].descricao}>Parecido no estoque: {noEstoque.parecidos[0].descricao}</span>}
+            {podeEditar && (
+              <button type="button" onClick={atender} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium text-petroleo-600 ring-1 ring-petroleo-500/40 hover:bg-petroleo-50 dark:text-petroleo-100 dark:hover:bg-petroleo-700/30">
+                <Warehouse size={12} /> Atender pelo estoque
+              </button>
+            )}
+          </span>
+        )}
       </td>
       <td className="px-1 py-1">{podeEditar ? (
         <Selecao compacto value={i.grupo} onChange={(e) => agir(() => atualizarItem(i.id, { grupo: e.target.value as GrupoItem }))}>{GRUPOS.map((g) => <option key={g}>{g}</option>)}</Selecao>
@@ -279,6 +315,144 @@ function NovoPacote({ itens, onFechar, onCriar }: { itens: ItemComSolicitacao[];
         <div className="flex justify-end gap-2">
           <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
           <Botao disabled={salvando} onClick={criar}><PackagePlus size={15} /> {salvando ? 'Criando…' : 'Criar pacote'}</Botao>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// Decisão 145: venda interna. O comprador escolhe o produto do estoque e quanto atende; a reserva vale na hora e o resto
+// (se for parcial) continua no À comprar. O custo é o da última compra do produto.
+function AtenderEstoque({ item, estoque, onFechar, onAtender }: {
+  item: ItemComSolicitacao; estoque: EstoqueDisponivel[]; onFechar: () => void; onAtender: (estoque: string, quantidade: number) => Promise<string>;
+}) {
+  const sugestao = useMemo(() => estoqueParaItem(item, estoque), [item, estoque]);
+  const [busca, setBusca] = useState('');
+  const [escolhido, setEscolhido] = useState(sugestao.mesmo?.id ?? sugestao.parecidos[0]?.id ?? '');
+  const e = estoque.find((x) => x.id === escolhido);
+  const pede = Number(item.quantidade);
+  const [quantidade, setQuantidade] = useState(() => String(Math.min(pede, Number((sugestao.mesmo ?? sugestao.parecidos[0])?.disponivel ?? pede))).replace('.', ','));
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const termo = norm(busca.trim());
+  const outros = termo ? estoque.filter((x) => x.disponivel > 0 && norm(`${x.descricao} ${x.local}`).includes(termo)).slice(0, 20) : [];
+  const opcoes = [...(sugestao.mesmo ? [sugestao.mesmo] : []), ...sugestao.parecidos, ...outros.filter((x) => x.id !== sugestao.mesmo?.id && !sugestao.parecidos.includes(x))];
+  const q = Number(quantidade.replace(/\./g, '').replace(',', '.'));
+  const parcial = q > 0 && q < pede;
+  async function confirmar() {
+    if (!e) return setErro('Escolha o produto do estoque.');
+    if (!(q > 0)) return setErro('Informe a quantidade.');
+    if (q > pede) return setErro(`O item pede só ${pede.toLocaleString('pt-BR')} ${item.unidade}.`);
+    if (q > e.disponivel) return setErro(`No estoque há só ${e.disponivel.toLocaleString('pt-BR')} ${e.unidade} disponível.`);
+    setSalvando(true); setErro('');
+    const m = await onAtender(e.id, q);
+    if (m) { setErro(m); setSalvando(false); }
+  }
+  return (
+    <Modal aberto titulo="Atender pelo estoque" onFechar={onFechar} largura="max-w-2xl">
+      <div className="space-y-3 text-sm">
+        <p><span className="font-medium">{item.descricao}</span> · {pede.toLocaleString('pt-BR')} {item.unidade}
+          <span className="block text-xs text-suave">{item.compras_requisicoes.codigo} · {rotuloDestino(item.compras_requisicoes)}</span></p>
+        <p className="text-suave">O material fica reservado na hora para {item.compras_requisicoes.projeto_codigo || item.compras_requisicoes.setor || 'o destino da requisição'}. O Almoxarifado separa e entrega, e aí sai do saldo. O projeto recebe o custo da última compra.</p>
+        <div className="relative">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-suave" />
+          <Entrada value={busca} onChange={(ev) => setBusca(ev.target.value)} placeholder="Buscar outro produto no estoque…" className="pl-9" />
+        </div>
+        {opcoes.length === 0 ? <Vazio>Nada parecido com saldo disponível. Busque pelo nome do produto.</Vazio> : (
+          <ul className="max-h-60 divide-y divide-borda overflow-y-auto rounded-lg ring-1 ring-borda">
+            {opcoes.map((x) => (
+              <li key={x.id}>
+                <label className={`flex cursor-pointer items-center gap-3 px-3 py-2 ${x.id === escolhido ? 'bg-petroleo-50 dark:bg-petroleo-700/20' : 'hover:bg-pagina'}`}>
+                  <input type="radio" name="estoque" checked={x.id === escolhido} onChange={() => { setEscolhido(x.id); setQuantidade(String(Math.min(pede, x.disponivel)).replace('.', ',')); }} />
+                  <span className="flex-1">
+                    {x.descricao}
+                    {x.id === sugestao.mesmo?.id && <span className="ml-1.5"><Selo cor="verde">Mesmo produto</Selo></span>}
+                    <span className="block text-xs text-suave">{x.grupo}{x.local ? ` · ${x.local}` : ''} · saldo {x.saldo.toLocaleString('pt-BR')}{x.reservado > 0 ? `, reservado ${x.reservado.toLocaleString('pt-BR')}` : ''}</span>
+                  </span>
+                  <span className="text-right tabular-nums">
+                    <span className="block font-medium">{x.disponivel.toLocaleString('pt-BR')} {x.unidade}</span>
+                    <span className="block text-xs text-suave">{x.custo > 0 ? `${moeda(x.custo)}/${x.unidade}` : 'sem custo'}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <Campo rotulo={`Quantidade (${e?.unidade ?? item.unidade})`}><Entrada value={quantidade} onChange={(ev) => setQuantidade(ev.target.value)} inputMode="decimal" /></Campo>
+          <div className="self-end pb-2 text-right text-xs text-suave">
+            {e && q > 0 && <span className="block text-sm font-medium text-texto">Custo para o projeto: {moeda(q * e.custo)}</span>}
+            {e && e.custo === 0 && <span className="block text-amber-600">Este produto não tem custo de compra registrado.</span>}
+          </div>
+        </div>
+        {parcial && <Aviso tipo="info">Atendimento parcial: {(pede - q).toLocaleString('pt-BR')} {item.unidade} continuam no À comprar.</Aviso>}
+        {erro && <Aviso>{erro}</Aviso>}
+        <div className="flex justify-end gap-2">
+          <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
+          <Botao disabled={salvando || !e} onClick={confirmar}><Warehouse size={15} /> {salvando ? 'Reservando…' : 'Reservar do estoque'}</Botao>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AtendidosPeloEstoque({ lista, podeEditar, desfazer }: { lista: AtendidoEstoque[]; podeEditar: boolean; desfazer: (a: AtendidoEstoque) => void }) {
+  const [todos, setTodos] = useState(false);
+  if (!lista.length) return null;
+  const aguardando = lista.filter((a) => a.reserva_status === 'reservado');
+  const mostrar = todos ? lista : aguardando;
+  return (
+    <section className="mt-6 rounded-xl bg-superficie shadow-sm ring-1 ring-borda">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-borda px-3 py-2">
+        <div className="flex items-center gap-2"><Warehouse size={15} className="text-petroleo-600 dark:text-petroleo-100" /><h2 className="font-semibold">Atendidos pelo estoque</h2>
+          <span className="text-xs text-suave">{aguardando.length} aguardando o Almoxarifado entregar</span></div>
+        <Caixa marcado={todos} onChange={setTodos}>Mostrar os já entregues</Caixa>
+      </div>
+      {mostrar.length === 0 ? <p className="px-3 py-3 text-sm text-suave">Tudo o que foi atendido pelo estoque já foi entregue.</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
+            <thead className="text-left text-xs text-suave"><tr>
+              <th className="px-3 py-2">Item</th><th className="w-28 px-2 py-2 text-right">Quantidade</th><th className="w-32 px-2 py-2 text-right">Custo</th>
+              <th className="w-40 px-2 py-2">Para</th><th className="w-48 px-2 py-2">Situação</th>{podeEditar && <th className="w-24 px-2 py-2" />}
+            </tr></thead>
+            <tbody className="divide-y divide-borda">
+              {mostrar.map((a) => (
+                <tr key={a.item_id}>
+                  <td className="px-3 py-1.5">{a.descricao}
+                    {a.estoque_descricao && a.estoque_descricao !== a.descricao && <span className="block text-[11px] text-suave">do estoque: {a.estoque_descricao}</span>}
+                    <Link to={`/compras/requisicoes/${a.requisicao_id}`} className="block font-mono text-[11px] text-roxo-600 hover:underline dark:text-roxo-100">{a.requisicao_codigo}</Link></td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{a.quantidade.toLocaleString('pt-BR')} {a.unidade}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{a.custo_unit != null ? moeda(a.quantidade * a.custo_unit) : '—'}
+                    {a.custo_unit != null && <span className="block text-[11px] text-suave">{moeda(a.custo_unit)}/{a.unidade}</span>}</td>
+                  <td className="px-2 py-1.5 text-xs">{a.destino || '—'}</td>
+                  <td className="px-2 py-1.5 text-xs">{a.reserva_status === 'entregue'
+                    ? <><Selo cor="verde">Entregue</Selo><span className="block text-suave">{a.entregue_para} · {dataHoraBR(a.entregue_em)}</span></>
+                    : <><Selo cor="amarelo">Reservado</Selo><span className="block text-suave">desde {dataHoraBR(a.criado_em)}</span></>}</td>
+                  {podeEditar && <td className="px-2 py-1.5 text-right">{a.reserva_status === 'reservado' && (
+                    <Botao tamanho="sm" variante="secundario" onClick={() => desfazer(a)}><Undo2 size={13} /> Desfazer</Botao>)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DesfazerEstoque({ atendido, onFechar, onDesfazer }: { atendido: AtendidoEstoque; onFechar: () => void; onDesfazer: (motivo: string) => Promise<void> }) {
+  const [motivo, setMotivo] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  return (
+    <Modal aberto titulo="Desfazer atendimento pelo estoque" onFechar={onFechar}>
+      <div className="space-y-3 text-sm">
+        <p><span className="font-medium">{atendido.descricao}</span> · {atendido.quantidade.toLocaleString('pt-BR')} {atendido.unidade}
+          <span className="block text-xs text-suave">{atendido.requisicao_codigo} · {atendido.destino}</span></p>
+        <p className="text-suave">A reserva é cancelada (o material fica livre no estoque) e o item volta para o À comprar. Fica registrado no histórico da requisição.</p>
+        <Campo rotulo="Motivo (opcional)"><Entrada value={motivo} onChange={(e) => setMotivo(e.target.value)} autoFocus placeholder="Ex.: material do estoque não serve" /></Campo>
+        <div className="flex justify-end gap-2">
+          <Botao variante="secundario" onClick={onFechar}>Voltar</Botao>
+          <Botao disabled={salvando} onClick={async () => { setSalvando(true); await onDesfazer(motivo.trim()); setSalvando(false); }}><Undo2 size={14} /> Desfazer</Botao>
         </div>
       </div>
     </Modal>
