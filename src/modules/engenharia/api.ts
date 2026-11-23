@@ -42,6 +42,17 @@ export async function criarProjetoExemplo(titulo: string): Promise<Projeto> {
   return ok(await supabase.rpc('criar_projeto_exemplo', { p_titulo: titulo })) as Projeto;
 }
 
+export interface ClienteProjeto { empresa_id: string; empresa: string; contato_id: string; contato: string }
+
+export async function clientesParaProjeto(): Promise<ClienteProjeto[]> {
+  return ok(await supabase.rpc('clientes_para_projeto')) ?? [];
+}
+
+// Projeto sem orçamento (decisão 147): código em branco = padrão normal AA-CC-NNN do contato; ou código antigo AA-NNN-SIGLA.
+export async function criarProjetoSemOrcamento(dados: { titulo: string; contato_id: string; empresa_id: string; codigo: string }): Promise<Projeto> {
+  return ok(await supabase.rpc('criar_projeto_sem_orcamento', { p_dados: dados })) as Projeto;
+}
+
 export async function listarPainel(): Promise<PainelProjeto[]> {
   return ok(await supabase.from('painel_engenharia').select('*'));
 }

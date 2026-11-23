@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { AlertTriangle, FlaskConical, FolderOpen, FolderPlus, PauseCircle, Search } from 'lucide-react';
+import { AlertTriangle, FilePlus2, FlaskConical, FolderOpen, FolderPlus, PauseCircle, Search } from 'lucide-react';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { dataBR, hojeISO, mensagemErro } from '@/shared/lib/formato';
 import { AreaTexto, Aviso, Botao, Cabecalho, Campo, CampoData, Cartao, Entrada, EsqueletoKanban, Modal, Selecao, Selo } from '@/shared/ui';
-import { criarProjeto, criarProjetoExemplo, listarProjetos, listarUsuariosAtivos, moverProjeto, propostasSemProjeto } from './api';
+import { clientesParaProjeto, criarProjeto, criarProjetoExemplo, criarProjetoSemOrcamento, listarProjetos, listarUsuariosAtivos, moverProjeto, propostasSemProjeto } from './api';
 import { COLUNAS_PROJETO, NOME_STATUS_PROJETO, atrasado, tipoMovimento, type ColunaProjeto, type Projeto } from './regras';
 
 const corColuna: Record<ColunaProjeto, string> = {
@@ -29,6 +29,7 @@ export function ProjetosPage() {
   const [erro, setErro] = useState('');
   const [pendente, setPendente] = useState<Pendente | null>(null);
   const [exemplo, setExemplo] = useState(false);
+  const [semOrcamento, setSemOrcamento] = useState(false);
   const hoje = hojeISO();
   const { data: projetos = [], isLoading, error: erroLista } = useQuery({ queryKey: ['projetos'], queryFn: listarProjetos });
   const { data: aguardando = [] } = useQuery({ queryKey: ['propostas_sem_projeto'], queryFn: propostasSemProjeto });
@@ -77,7 +78,10 @@ export function ProjetosPage() {
       <Cabecalho
         titulo="Projetos"
         subtitulo={isLoading ? 'Carregando os projetos…' : `${filtrados.length} projetos · arraste os cards entre as colunas`}
-        acoes={chefe && <Botao variante="secundario" onClick={() => setExemplo(true)}><FlaskConical size={16} /> Projeto de exemplo</Botao>}
+        acoes={<div className="flex flex-wrap gap-2">
+          {pode('engenharia', 'criar') && <Botao onClick={() => setSemOrcamento(true)}><FilePlus2 size={16} /> Projeto sem orçamento</Botao>}
+          {chefe && <Botao variante="secundario" onClick={() => setExemplo(true)}><FlaskConical size={16} /> Projeto de exemplo</Botao>}
+        </div>}
       />
       {erro && <div className="mb-3"><Aviso>{erro}</Aviso></div>}
       {erroLista && <div className="mb-3"><Aviso>Não foi possível carregar os projetos: {mensagemErro(erroLista)}</Aviso></div>}
@@ -120,6 +124,7 @@ export function ProjetosPage() {
       )}
 
       {pendente && <MovimentoModal pendente={pendente} onFechar={() => setPendente(null)} onFeito={() => { setPendente(null); atualizar(); }} />}
+      {semOrcamento && <SemOrcamentoModal onFechar={() => setSemOrcamento(false)} onCriado={(id) => { setSemOrcamento(false); atualizar(); navegar(`/engenharia/projetos/${id}`); }} />}
       {exemplo && <ExemploModal onFechar={() => setExemplo(false)} onCriado={(id) => { setExemplo(false); atualizar(); navegar(`/engenharia/projetos/${id}`); }} />}
     </>
   );
@@ -158,6 +163,7 @@ function Card({ p, hoje, responsavel, onAbrir }: { p: Projeto; hoje: string; res
         <span className="font-mono text-xs font-semibold text-roxo-600 dark:text-roxo-100">{p.codigo}</span>
         <span className="flex items-center gap-1">
           {p.exemplo && <Selo cor="amarelo">Exemplo</Selo>}
+          {p.sem_orcamento && <Selo>Sem orçamento</Selo>}
           {p.pausado && <span title="Projeto pausado"><PauseCircle size={16} className="text-amber-500" /></span>}
           {vencido && <span title={`Prazo vencido em ${dataBR(p.prazo)}`}><AlertTriangle size={16} className="text-red-500" /></span>}
         </span>
@@ -225,6 +231,59 @@ function ExemploModal({ onFechar, onCriado }: { onFechar: () => void; onCriado: 
         <div className="flex justify-end gap-2">
           <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
           <Botao onClick={() => criar.mutate()} disabled={criar.isPending}>Criar</Botao>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// Projeto sem orçamento (decisão 147): cliente obrigatório; código no padrão normal (automático) ou no antigo (digitado).
+function SemOrcamentoModal({ onFechar, onCriado }: { onFechar: () => void; onCriado: (id: string) => void }) {
+  const [titulo, setTitulo] = useState('');
+  const [empresa, setEmpresa] = useState('');
+  const [contato, setContato] = useState('');
+  const [antigo, setAntigo] = useState(false);
+  const [codigo, setCodigo] = useState('');
+  const [erro, setErro] = useState('');
+  const { data: clientes = [], isLoading } = useQuery({ queryKey: ['clientes_para_projeto'], queryFn: clientesParaProjeto });
+  const empresas = useMemo(() => [...new Map(clientes.map((c) => [c.empresa_id, c.empresa])).entries()], [clientes]);
+  const contatos = clientes.filter((c) => c.empresa_id === empresa);
+  const criar = useMutation({
+    mutationFn: () => criarProjetoSemOrcamento({ titulo, empresa_id: empresa, contato_id: contato, codigo: antigo ? codigo : '' }),
+    onSuccess: (p) => onCriado(p.id),
+    onError: (e) => setErro(mensagemErro(e)),
+  });
+  const pronto = titulo.trim().length >= 3 && !!empresa && (antigo ? /^\d{2}-\d{3}-[A-Za-z]{2,6}$/.test(codigo.trim()) : !!contato);
+  return (
+    <Modal aberto titulo="Novo projeto sem orçamento" onFechar={onFechar}>
+      <div className="space-y-3 text-sm">
+        <p className="text-suave">Projeto da Engenharia sem proposta. Ele nasce com a montagem geral e não tem Kick-off.</p>
+        <Campo rotulo="Nome do projeto"><Entrada value={titulo} onChange={(e) => setTitulo(e.target.value)} /></Campo>
+        <Campo rotulo="Cliente">
+          <Selecao value={empresa} onChange={(e) => { setEmpresa(e.target.value); setContato(''); }} disabled={isLoading}>
+            <option value="">{isLoading ? 'Carregando…' : 'Selecione a empresa'}</option>
+            {empresas.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+          </Selecao>
+        </Campo>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={antigo} onChange={(e) => setAntigo(e.target.checked)} />
+          Usar código no padrão antigo (AA-NNN-SIGLA)
+        </label>
+        {antigo ? (
+          <Campo rotulo="Código (ex.: 26-061-EPP)"><Entrada value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} className="font-mono" /></Campo>
+        ) : (
+          <Campo rotulo="Contato (define o código AA-CC-NNN)">
+            <Selecao value={contato} onChange={(e) => setContato(e.target.value)} disabled={!empresa}>
+              <option value="">Selecione o contato</option>
+              {contatos.map((c) => <option key={c.contato_id} value={c.contato_id}>{c.contato}</option>)}
+            </Selecao>
+          </Campo>
+        )}
+        {!antigo && <p className="text-xs text-suave">O código usa o código do cliente no ano e o próximo número da sequência dele, como uma proposta.</p>}
+        {erro && <Aviso>{erro}</Aviso>}
+        <div className="flex justify-end gap-2">
+          <Botao variante="secundario" onClick={onFechar}>Cancelar</Botao>
+          <Botao onClick={() => criar.mutate()} disabled={!pronto || criar.isPending}>Criar projeto</Botao>
         </div>
       </div>
     </Modal>
