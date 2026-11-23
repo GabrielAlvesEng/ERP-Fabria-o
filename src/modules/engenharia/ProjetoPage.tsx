@@ -44,6 +44,7 @@ export function ProjetoPage() {
             <Selo cor={COR_STATUS_PROJETO[projeto.status]}>{NOME_STATUS_PROJETO[projeto.status]}</Selo>
             {projeto.pausado && <Selo cor="amarelo">Pausado</Selo>}
             {projeto.exemplo && <Selo cor="amarelo">Exemplo</Selo>}
+            {projeto.sem_orcamento && <Selo>Sem orçamento</Selo>}
           </div>
           <div className="font-semibold">{projeto.titulo}</div>
           <div className="text-sm text-suave">{projeto.cliente_nome}{responsavel && ` · Resp.: ${responsavel}`}{projeto.prazo && ` · prazo ${projeto.prazo.split('-').reverse().join('/')}`}</div>
@@ -67,7 +68,7 @@ export function ProjetoPage() {
       <div key={aba} className="entrar">
         {aba === 'kickoff' && (projeto.proposta_id
           ? <KickoffAba propostaId={projeto.proposta_id} statusProposta="Aprovado" somenteLeitura />
-          : <Vazio>O Kick-off vem da proposta aprovada. Este projeto de exemplo não tem proposta, então não tem Kick-off.</Vazio>)}
+          : <Vazio>O Kick-off vem da proposta aprovada. Este projeto não tem proposta, então não tem Kick-off.</Vazio>)}
         {aba === 'bom' && <ListaRevisoes projeto={projeto} />}
       </div>
       {excluindo && <ExcluirProjetoModal projeto={projeto} onFechar={() => setExcluindo(false)} onExcluido={() => navegar('/engenharia/projetos')} />}

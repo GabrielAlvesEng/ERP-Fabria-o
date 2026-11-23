@@ -30,6 +30,7 @@ export interface Projeto {
   status: StatusProjeto;
   pausado: boolean;
   exemplo: boolean;
+  sem_orcamento: boolean;
   fabricacao_concluida_em: string | null;
   responsavel_id: string | null;
   prazo: string | null;
